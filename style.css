@@ -1597,3 +1597,136 @@ body::before {
     width: 100%;
   }
 }
+
+/* ============================================
+   ОБЩИЕ УЛУЧШЕНИЯ СТИЛЯ — больше "жизни"
+   ============================================ */
+
+/* Усиливаем свечение акцентного цвета */
+:root {
+  --accent-glow: rgba(74, 222, 128, 0.25);
+  --accent-glow-strong: rgba(74, 222, 128, 0.45);
+}
+
+/* Карточки — более заметный hover */
+.card {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(74, 222, 128, 0.1);
+}
+
+/* Заголовки секций — добавляем декоративный элемент */
+.section-header h2 {
+  position: relative;
+  display: inline-block;
+}
+
+.section-header h2::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #4ade80, transparent);
+  border-radius: 3px;
+}
+
+/* Кнопки — более выраженные эффекты */
+.btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+.btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Пульсирующая точка в бейдже */
+.hero-badge-dot {
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+}
+
+/* Статистика — анимированные числа */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(74, 222, 128, 0.05) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+/* Футер — разделительная линия с градиентом */
+.footer {
+  position: relative;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(74, 222, 128, 0.3), transparent);
+}
+
+/* Ссылки в футере — подсветка */
+.footer-col a {
+  position: relative;
+  display: inline-block;
+}
+
+.footer-col a::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: #4ade80;
+  transition: width 0.3s ease;
+}
+
+.footer-col a:hover::after {
+  width: 100%;
+}
