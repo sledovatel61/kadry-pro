@@ -1325,3 +1325,183 @@ body::before {
 .nav-cta:hover {
   animation: none;
 }
+
+/* ============================================
+   УЛУЧШЕННАЯ HERO-СЕКЦИЯ
+   ============================================ */
+
+/* Бейдж локации (справа вверху) */
+.hero-location-badge {
+  position: absolute;
+  top: 100px;
+  right: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(26, 26, 26, 0.9);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  animation: slideInRight 0.8s ease 0.5s both;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.location-pin {
+  font-size: 1.5rem;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.location-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.location-text strong {
+  color: #4ade80;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.location-text span {
+  color: #aaaaaa;
+  font-size: 0.8rem;
+}
+
+/* Категории услуг (под бейджем) */
+.hero-category {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.category-tag {
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.category-tag:hover {
+  background: rgba(74, 222, 128, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Выделение цены и гарантий */
+.price-highlight {
+  color: #4ade80;
+  font-size: 1.1em;
+  text-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+}
+
+.experience-badge, .guarantee-badge {
+  background: rgba(74, 222, 128, 0.15);
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  color: #4ade80;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Иконки в кнопках */
+.btn-icon {
+  font-size: 1.1em;
+  margin-right: 4px;
+}
+
+/* Преимущества под кнопками */
+.hero-benefits {
+  display: flex;
+  gap: 32px;
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(74, 222, 128, 0.1);
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #aaaaaa;
+  font-size: 0.9rem;
+}
+
+.benefit-icon {
+  font-size: 1.2rem;
+}
+
+/* Декоративные элементы справа */
+.hero-visual-element {
+  position: absolute;
+  right: 10%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 300px;
+  height: 300px;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+.hero-circle {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(74, 222, 128, 0.1);
+  border-radius: 50%;
+  animation: rotate 20s linear infinite;
+}
+
+.hero-dots {
+  position: absolute;
+  inset: 20px;
+  background-image: radial-gradient(rgba(74, 222, 128, 0.3) 2px, transparent 2px);
+  background-size: 30px 30px;
+  border-radius: 50%;
+  animation: rotate 15s linear infinite reverse;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 768px) {
+  .hero-location-badge {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin: 0 16px 20px;
+    justify-content: center;
+  }
+  
+  .hero-visual-element {
+    display: none;
+  }
+  
+  .hero-benefits {
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+  }
+  
+  .hero-category {
+    justify-content: center;
+  }
+}
