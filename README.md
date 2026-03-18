@@ -2,7 +2,7 @@
 
 Профессиональный сайт для услуг кадрового аутсорсинга.
 
-🌐 **Сайт:** [https://sledovatel61.github.io/kadry-pro/](https://sledovatel61.github.io/kadry-pro/)
+🌐 **Сайт:** [kadry-pro.ru/](kadry-pro.ru)
 
 ## Услуги
 - Абонентское кадровое обслуживание от 12 000 ₽/мес
