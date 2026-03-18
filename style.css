@@ -724,37 +724,75 @@ input[type="range"]::-moz-range-thumb {
   .contact-grid { grid-template-columns: 1fr; }
 }
 
+/* ============================================
+   ФИКС МОБИЛЬНОЙ HERO-СЕКЦИИ
+   ============================================ */
+
 @media (max-width: 768px) {
-  html { font-size: 15px; }
-  .container { padding: 0 16px; }
-  .nav-links, .nav-cta { display: none; }
-  .hamburger { display: flex; }
-  .hero { padding: 100px 0 60px; min-height: auto; }
-  .hero h1 { font-size: 2rem; }
-  .hero-actions { flex-direction: column; }
-  .hero-actions .btn { width: 100%; justify-content: center; }
-  .section { padding: 64px 0; }
-  .section-header { margin-bottom: 40px; }
-  .pvs-grid { grid-template-columns: 1fr; }
-  .calc-grid { grid-template-columns: 1fr; }
-  .stats-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
-  .stat-card { padding: 24px 16px; }
-  .services-grid { grid-template-columns: 1fr; }
-  .tabs-nav { flex-wrap: nowrap; overflow-x: auto; }
-  .form-grid { grid-template-columns: 1fr; }
-  .form-group.full { grid-column: auto; }
-  .timeline { padding-left: 32px; }
-  .footer-grid { grid-template-columns: 1fr; gap: 24px; }
-  .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
-  .fixed-call { display: block; }
-  body { padding-bottom: 70px; }
-  .hero-sub { padding: 100px 0 40px; }
-  .comp-grid { grid-template-columns: 1fr; }
-  .messengers { flex-direction: column; }
-  .data-table { font-size: 0.85rem; }
-  .data-table thead th, .data-table tbody td { padding: 12px 8px; }
-  .cookie-banner { left: 12px; right: 12px; bottom: 80px; }
-  .form-radio-group { flex-direction: column; }
+  /* Центрируем весь контент Hero */
+  .hero .container {
+    padding: 0 20px;
+  }
+  
+  .hero-content {
+    text-align: center;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  /* Бейдж локации — сверху по центру */
+  .hero-location-badge {
+    position: relative;
+    top: auto;
+    right: auto;
+    left: auto;
+    margin: 20px auto 30px;
+    width: fit-content;
+    justify-content: center;
+    order: -1; /* Перемещаем в начало */
+  }
+  
+  /* Категории — по центру */
+  .hero-category {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  /* Заголовок — по центру */
+  .hero h1 {
+    text-align: center;
+    font-size: 1.8rem;
+  }
+  
+  /* Подзаголовок — по центру */
+  .hero-subtitle {
+    text-align: center;
+    max-width: 100%;
+  }
+  
+  /* Кнопки — по центру */
+  .hero-actions {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  /* Преимущества — по центру */
+  .hero-benefits {
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+  
+  .benefit-item {
+    justify-content: center;
+  }
+  
+  /* Скрываем декоративные элементы */
+  .hero-visual-element {
+    display: none;
+  }
 }
 
 @media (max-width: 480px) {
