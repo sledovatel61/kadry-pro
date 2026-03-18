@@ -1,0 +1,364 @@
+## services.html
+
+```html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Услуги и цены — Кадровый аутсорсинг Мария Перепечай</title>
+  <meta name="description" content="Прайс-лист на кадровый аутсорсинг: абонентское обслуживание от 12 000 ₽/мес, разработка ЛНА, СОУТ, подбор персонала, подготовка к проверкам.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%234ade80'/><text x='50' y='68' text-anchor='middle' font-size='50' font-family='Arial' font-weight='700' fill='%230a0a0a'>МП</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><div class="nav-logo-icon">МП</div><span>Мария Перепечай</span></a>
+      <div class="nav-links">
+        <a href="index.html">Главная</a>
+        <a href="services.html" class="active">Услуги и цены</a>
+        <a href="about.html">Обо мне</a>
+        <a href="cases.html">Кейсы</a>
+        <a href="contact.html">Контакты</a>
+      </div>
+      <a href="contact.html" class="nav-cta">Оставить заявку</a>
+      <button class="hamburger" aria-label="Меню"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+  <div class="mobile-menu">
+    <a href="index.html">Главная</a>
+    <a href="services.html">Услуги и цены</a>
+    <a href="about.html">Обо мне</a>
+    <a href="cases.html">Кейсы</a>
+    <a href="contact.html">Контакты</a>
+  </div>
+
+  <!-- Hero Sub -->
+  <section class="hero hero-sub">
+    <div class="hero-bg"></div>
+    <div class="container">
+      <div class="hero-content">
+        <h1 class="anim">Услуги и <strong class="accent">цены</strong></h1>
+        <p class="hero-subtitle anim anim-delay-1">Прозрачное ценообразование. Без скрытых платежей. Оплата только за результат.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tabs Section -->
+  <section class="section">
+    <div class="container tabs-container">
+      <div class="tabs-nav anim">
+        <button class="active" data-tab="tab-subscription">Абонентское</button>
+        <button data-tab="tab-single">Разовые услуги</button>
+        <button data-tab="tab-lna">ЛНА</button>
+        <button data-tab="tab-sout">СОУТ</button>
+        <button data-tab="tab-packages">Комплексные пакеты</button>
+      </div>
+
+      <!-- TAB: Абонентское обслуживание -->
+      <div class="tab-content active" id="tab-subscription">
+        <div class="pricing-grid">
+          <div class="card pricing-card anim">
+            <h3>Старт</h3>
+            <p class="pricing-desc">До 10 сотрудников</p>
+            <div class="pricing-price">12 000 ₽ <span class="per">/мес</span></div>
+            <ul class="pricing-features">
+              <li>Кадровые приказы (приём, увольнение, перевод)</li>
+              <li>Табели учёта рабочего времени</li>
+              <li>Оформление отпусков</li>
+              <li>Ведение журналов по охране труда</li>
+              <li>Трудовые договоры и допсоглашения</li>
+              <li>Консультации по трудовому праву</li>
+            </ul>
+            <a href="contact.html" class="btn btn-outline btn-block">Выбрать</a>
+          </div>
+          <div class="card pricing-card featured anim anim-delay-1">
+            <div class="pricing-badge">Популярный</div>
+            <h3>Бизнес</h3>
+            <p class="pricing-desc">11–30 сотрудников</p>
+            <div class="pricing-price">18 000 ₽ <span class="per">/мес</span></div>
+            <ul class="pricing-features">
+              <li>Всё из тарифа «Старт»</li>
+              <li>СОУТ — организация и сопровождение</li>
+              <li>Воинский учёт</li>
+              <li>Штатное расписание и изменения</li>
+              <li>Графики отпусков</li>
+              <li>Статистическая отчётность (П-4 и др.)</li>
+              <li>Бесплатный выезд к клиенту</li>
+            </ul>
+            <a href="contact.html" class="btn btn-primary btn-block">Выбрать</a>
+          </div>
+          <div class="card pricing-card anim anim-delay-2">
+            <h3>Максимум</h3>
+            <p class="pricing-desc">31–50 сотрудников</p>
+            <div class="pricing-price">25 000 ₽ <span class="per">/мес</span></div>
+            <ul class="pricing-features">
+              <li>Всё из тарифа «Бизнес»</li>
+              <li>Полное кадровое сопровождение</li>
+              <li>Разработка и актуализация ЛНА</li>
+              <li>Подготовка к проверкам ГИТ</li>
+              <li>Оформление иностранных работников</li>
+              <li>Медосмотры, СИЗ, охрана труда</li>
+              <li>Приоритетная поддержка</li>
+            </ul>
+            <a href="contact.html" class="btn btn-outline btn-block">Выбрать</a>
+          </div>
+        </div>
+        <div class="text-center mt-32 anim">
+          <p class="text-muted">Нужен тариф для штата 50+ сотрудников? <a href="contact.html">Свяжитесь для индивидуального расчёта</a></p>
+        </div>
+      </div>
+
+      <!-- TAB: Разовые услуги -->
+      <div class="tab-content" id="tab-single">
+        <h3 class="mb-24" style="font-weight:300;font-size:1.3rem;">Кадровые события</h3>
+        <div class="card mb-32">
+          <table class="data-table">
+            <thead><tr><th>Услуга</th><th>Цена</th><th>Что входит</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>Приём на работу</td><td class="price-cell">1 500 ₽</td><td class="note-cell">Трудовой договор, приказ, ЛНА</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Увольнение</td><td class="price-cell">1 000 ₽</td><td class="note-cell">Расчёт, приказ, запись в ТК</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Перевод</td><td class="price-cell">1 200 ₽</td><td class="note-cell">Допсоглашение, приказ</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Приём иностранца + уведомление МВД</td><td class="price-cell">4 000 ₽</td><td class="note-cell">Полный пакет документов</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="mb-24" style="font-weight:300;font-size:1.3rem;">Отпуска</h3>
+        <div class="card mb-32">
+          <table class="data-table">
+            <thead><tr><th>Услуга</th><th>Цена</th><th>Что входит</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>Ежегодный оплачиваемый отпуск</td><td class="price-cell">500 ₽/чел</td><td class="note-cell">Приказ, заявление, график</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Отпуск без сохранения з/п</td><td class="price-cell">400 ₽/чел</td><td class="note-cell">Оформление</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Декретный отпуск</td><td class="price-cell">1 500 ₽</td><td class="note-cell">Весь пакет документов</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="mb-24" style="font-weight:300;font-size:1.3rem;">Документы, аудит, подбор</h3>
+        <div class="card mb-32">
+          <table class="data-table">
+            <thead><tr><th>Услуга</th><th>Цена</th><th>Что входит</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>Дополнительное соглашение</td><td class="price-cell">800 ₽</td><td class="note-cell">Любые изменения условий</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Трудовой договор</td><td class="price-cell">1 500 ₽</td><td class="note-cell">С учётом рисков</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Штатное расписание (Т-3)</td><td class="price-cell">1 500 ₽</td><td class="note-cell">Включая изменения</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>График отпусков</td><td class="price-cell">2 000 ₽</td><td class="note-cell">Годовой</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Табель учёта рабочего времени (до 30 чел)</td><td class="price-cell">3 000 ₽/мес</td><td class="note-cell">Ведение</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Журналы по охране труда (комплект)</td><td class="price-cell">2 500 ₽</td><td class="note-cell">Оформление + ведение</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Аудит кадрового учёта</td><td class="price-cell">5 000 ₽</td><td class="note-cell">Выявление рисков</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Подготовка к проверке ГИТ</td><td class="price-cell">8 000 ₽</td><td class="note-cell">Аудит + устранение нарушений</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Подготовка к проверке военкомата</td><td class="price-cell">5 000 ₽</td><td class="note-cell">Воинский учёт</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Подбор персонала (закрытие вакансии)</td><td class="price-cell">25 000 ₽</td><td class="note-cell">Или 50% от оклада</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Консультация (1 час)</td><td class="price-cell">2 000 ₽</td><td class="note-cell">Онлайн</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+              <tr><td>Выезд к клиенту (разово)</td><td class="price-cell">1 500 ₽</td><td class="note-cell">В черте Ростова</td><td><a href="contact.html" class="btn btn-outline btn-sm">Заказать</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: ЛНА -->
+      <div class="tab-content" id="tab-lna">
+        <div class="section-header" style="margin-bottom:40px;">
+          <h2 style="font-size:1.5rem;">Локальные нормативные <strong>акты</strong></h2>
+          <p>Индивидуальная разработка под специфику вашей компании — не шаблоны из интернета</p>
+        </div>
+        <div class="services-grid">
+          <div class="card card-accent service-card">
+            <h3>Правила внутреннего трудового распорядка</h3>
+            <p>Индивидуально под компанию</p>
+            <div class="service-card-price">10 000 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Положение об оплате труда</h3>
+            <p>Включая премиальную систему</p>
+            <div class="service-card-price">5 000 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Положение о премировании</h3>
+            <p>Критерии и порядок начисления</p>
+            <div class="service-card-price">4 000 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Положение об аттестации</h3>
+            <p>Порядок проведения, документы</p>
+            <div class="service-card-price">4 000 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Положение о персональных данных</h3>
+            <p>По ФЗ-152: согласие, политика, обязательства</p>
+            <div class="service-card-price">4 500 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Регламент кадрового делопроизводства</h3>
+            <p>Описание всех процессов, сроков, ответственности</p>
+            <div class="service-card-price">7 000 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Положение о командировках</h3>
+            <p>Порядок оформления и возмещения</p>
+            <div class="service-card-price">2 500 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Положение о конфиденциальности</h3>
+            <p>Коммерческая тайна, NDA</p>
+            <div class="service-card-price">3 500 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Должностная инструкция</h3>
+            <p>Индивидуальная разработка, не шаблон</p>
+            <div class="service-card-price">3 000 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Инструкция по охране труда</h3>
+            <p>По должности</p>
+            <div class="service-card-price">1 500 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Программа адаптации</h3>
+            <p>С чек-листами и графиком</p>
+            <div class="service-card-price">3 500 ₽</div>
+          </div>
+          <div class="card card-accent service-card">
+            <h3>Положение о противодействии коррупции</h3>
+            <p>Обязательный документ</p>
+            <div class="service-card-price">3 000 ₽</div>
+          </div>
+        </div>
+
+        <div class="mt-48">
+          <h3 style="font-weight:300;font-size:1.3rem;text-align:center;margin-bottom:24px;">Шаблоны и формы</h3>
+          <div class="card">
+            <table class="data-table">
+              <thead><tr><th>Наименование</th><th>Цена</th><th>Примечание</th></tr></thead>
+              <tbody>
+                <tr><td>Пакет шаблонов (базовый)</td><td class="price-cell">5 000 ₽</td><td class="note-cell">10 шаблонов</td></tr>
+                <tr><td>Пакет шаблонов (расширенный)</td><td class="price-cell">8 000 ₽</td><td class="note-cell">20+ шаблонов + инструкции</td></tr>
+                <tr><td>Индивидуальный шаблон</td><td class="price-cell">1 000 ₽</td><td class="note-cell">Под конкретную задачу</td></tr>
+                <tr><td>Форма личного дела</td><td class="price-cell">1 500 ₽</td><td class="note-cell">Оптимизированная под 1С</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: СОУТ -->
+      <div class="tab-content" id="tab-sout">
+        <div class="grid-2">
+          <div>
+            <h3 style="font-weight:300;font-size:1.5rem;margin-bottom:24px;">Специальная оценка условий труда</h3>
+            <p style="color:var(--text-secondary);margin-bottom:32px;">Полный цикл проведения СОУТ: от подготовки документов до получения заключения. Обязательна для всех работодателей.</p>
+            <div class="card mb-24">
+              <table class="data-table">
+                <tbody>
+                  <tr><td>До 10 рабочих мест</td><td class="price-cell">8 000 ₽</td><td class="note-cell">Полный цикл</td></tr>
+                  <tr><td>11–30 рабочих мест</td><td class="price-cell">15 000 ₽</td><td class="note-cell">Полный цикл</td></tr>
+                  <tr><td>Свыше 30 рабочих мест</td><td class="price-cell">Индивидуально</td><td class="note-cell"><a href="contact.html">Запросить расчёт</a></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card" style="align-self:start;">
+            <h4 style="margin-bottom:16px;font-weight:600;">Этапы проведения СОУТ</h4>
+            <div class="pvs-item"><span class="pvs-icon good">1</span><p>Формирование комиссии и перечня рабочих мест</p></div>
+            <div class="pvs-item"><span class="pvs-icon good">2</span><p>Идентификация вредных и опасных факторов</p></div>
+            <div class="pvs-item"><span class="pvs-icon good">3</span><p>Проведение измерений и исследований</p></div>
+            <div class="pvs-item"><span class="pvs-icon good">4</span><p>Оформление результатов, подготовка отчёта</p></div>
+            <div class="pvs-item"><span class="pvs-icon good">5</span><p>Подача декларации в ГИТ</p></div>
+            <div class="pvs-item"><span class="pvs-icon good">6</span><p>Ознакомление работников с результатами</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Комплексные пакеты -->
+      <div class="tab-content" id="tab-packages">
+        <div class="section-header" style="margin-bottom:40px;">
+          <h2 style="font-size:1.5rem;">Комплексные <strong>пакеты ЛНА</strong></h2>
+          <p>Выгоднее, чем заказывать документы по отдельности</p>
+        </div>
+        <div class="packages-grid">
+          <div class="card package-card anim">
+            <h3>Минимальный</h3>
+            <div class="package-price">20 000 ₽</div>
+            <div class="package-saving">Экономия 4 500 ₽</div>
+            <ul class="package-includes">
+              <li>Правила внутреннего трудового распорядка (ПВТР)</li>
+              <li>Положение об оплате труда</li>
+              <li>3 должностные инструкции</li>
+            </ul>
+            <a href="contact.html" class="btn btn-outline btn-block">Заказать пакет</a>
+          </div>
+          <div class="card package-card featured anim anim-delay-1">
+            <div class="pricing-badge">Оптимальный</div>
+            <h3>Стандартный</h3>
+            <div class="package-price">35 000 ₽</div>
+            <div class="package-saving">Экономия 8 000 ₽</div>
+            <ul class="package-includes">
+              <li>Всё из пакета «Минимальный»</li>
+              <li>Регламент кадрового делопроизводства</li>
+              <li>Положение о персональных данных</li>
+              <li>Пакет шаблонов кадровых документов (базовый)</li>
+            </ul>
+            <a href="contact.html" class="btn btn-primary btn-block">Заказать пакет</a>
+          </div>
+          <div class="card package-card anim anim-delay-2">
+            <h3>Полный</h3>
+            <div class="package-price">60 000 ₽</div>
+            <div class="package-saving">Индивидуальный расчёт для штатов 50+</div>
+            <ul class="package-includes">
+              <li>Все локальные нормативные акты</li>
+              <li>Все шаблоны и формы</li>
+              <li>Адаптация под специфику компании</li>
+              <li>Программа адаптации новых сотрудников</li>
+              <li>Регламенты и инструкции</li>
+            </ul>
+            <a href="contact.html" class="btn btn-outline btn-block">Заказать пакет</a>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.tabs-container -->
+  </section>
+
+  <!-- CTA -->
+  <section class="section cta-section">
+    <div class="container">
+      <div class="cta-inner anim">
+        <h2>Не нашли нужное?</h2>
+        <p>Опишите вашу задачу — я подготовлю индивидуальное предложение с точной стоимостью и сроками</p>
+        <a href="contact.html" class="btn btn-primary btn-lg">Запросить расчёт</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="nav-logo" style="margin-bottom:4px;"><div class="nav-logo-icon">МП</div><span>Мария Перепечай</span></div>
+          <p>Кадровый аутсорсинг для малого бизнеса. 14 лет опыта, 0 штрафов, от 12 000 ₽/мес.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Услуги</h4>
+          <a href="services.html?tab=tab-subscription">Абонентское</a>
+          <a href="services.html?tab=tab-lna">ЛНА</a>
+          <a href="services.html?tab=tab-sout">СОУТ</a>
+        </div>
+        <div class="footer-col"><h4>Компания</h4><a href="about.html">Обо мне</a><a href="cases.html">Кейсы</a><a href="contact.html">Контакты</a></div>
+        <div class="footer-col"><h4>Контакты</h4><a href="tel:+79613022112">+7 (961) 302-21-12</a><a href="mailto:m.perepechay@yandex.ru">m.perepechay@yandex.ru</a></div>
+      </div>
+      <div class="footer-bottom"><span>© 2025 Мария Перепечай</span><span>Ростов-на-Дону</span></div>
+    </div>
+  </footer>
+  <div class="fixed-call"><a href="tel:+79613022112">📱 Позвонить: +7 (961) 302-21-12</a></div>
+  <script src="script.js"></script>
+</body>
+</html>
+```
+
+---

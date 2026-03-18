@@ -1,0 +1,187 @@
+## cases.html
+
+```html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Кейсы и результаты — Мария Перепечай</title>
+  <meta name="description" content="Реальные кейсы кадрового аутсорсинга: цифровая трансформация, построение HR-службы с нуля, подготовка к проверкам ГИТ.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%234ade80'/><text x='50' y='68' text-anchor='middle' font-size='50' font-family='Arial' font-weight='700' fill='%230a0a0a'>МП</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><div class="nav-logo-icon">МП</div><span>Мария Перепечай</span></a>
+      <div class="nav-links">
+        <a href="index.html">Главная</a><a href="services.html">Услуги и цены</a>
+        <a href="about.html">Обо мне</a><a href="cases.html" class="active">Кейсы</a><a href="contact.html">Контакты</a>
+      </div>
+      <a href="contact.html" class="nav-cta">Оставить заявку</a>
+      <button class="hamburger" aria-label="Меню"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+  <div class="mobile-menu">
+    <a href="index.html">Главная</a><a href="services.html">Услуги и цены</a>
+    <a href="about.html">Обо мне</a><a href="cases.html">Кейсы</a><a href="contact.html">Контакты</a>
+  </div>
+
+  <section class="hero hero-sub">
+    <div class="hero-bg"></div>
+    <div class="container">
+      <div class="hero-content">
+        <h1 class="anim">Кейсы и <strong class="accent">результаты</strong></h1>
+        <p class="hero-subtitle anim anim-delay-1">Реальные проекты с измеримыми результатами</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <!-- Filters -->
+      <div class="cases-filter anim">
+        <button class="active" data-filter="all">Все</button>
+        <button data-filter="production">Производство</button>
+        <button data-filter="network">Сеть / Филиалы</button>
+        <button data-filter="security">Охрана</button>
+        <button data-filter="construction">Строительство</button>
+      </div>
+
+      <!-- Cases Grid -->
+      <div class="cases-grid">
+
+        <!-- Case 1 -->
+        <div class="card case-card anim" data-category="production">
+          <div class="case-label">Производство</div>
+          <h3>Цифровая трансформация кадрового учёта</h3>
+          <div class="case-meta">
+            <span>Штат: <strong>250 чел</strong></span>
+            <span>Срок: <strong>3 месяца</strong></span>
+            <span>Год: <strong>2025</strong></span>
+          </div>
+          <p><strong>Задача:</strong> Производственное предприятие вело кадровый учёт «на бумаге». Документы терялись, сроки нарушались, риск штрафов при проверке — критический.</p>
+          <p><strong>Что сделано:</strong> Полный перевод кадрового документооборота из бумажного архива в систему 1С ERP. Внедрена система KPI для HR-процессов. Разработана многоступенчатая программа адаптации.</p>
+          <div class="case-results">
+            <h4>Результаты</h4>
+            <ul>
+              <li>Сокращение времени обработки кадровых операций на 60%</li>
+              <li>Повышение удержания новых сотрудников на 35%</li>
+              <li>100% соответствие трудовому законодательству</li>
+              <li>Исключены риски административных санкций</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Case 2 -->
+        <div class="card case-card anim anim-delay-1" data-category="network">
+          <div class="case-label">Сеть / Филиалы</div>
+          <h3>Кадровое управление сетью из 21 филиала</h3>
+          <div class="case-meta">
+            <span>Штат: <strong>250+ чел</strong></span>
+            <span>Филиалов: <strong>21</strong></span>
+            <span>Период: <strong>2,5 года</strong></span>
+          </div>
+          <p><strong>Задача:</strong> Федеральная сеть фитнес-клубов в разных регионах. Отсутствие централизованного HR-управления. Каждый клуб вёл документы по-своему.</p>
+          <p><strong>Что сделано:</strong> Единоличное управление кадрами всей сети. Разработка и внедрение единых корпоративных стандартов кадрового документооборота для всех 21 объекта.</p>
+          <div class="case-results">
+            <h4>Результаты</h4>
+            <ul>
+              <li>Единые стандарты для всех 21 объекта</li>
+              <li>Автоматизация расчётов — 0% ошибок</li>
+              <li>Бесперебойное сопровождение без увеличения HR-штата</li>
+              <li>Полная аттестация рабочих мест с учётом вредных факторов</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Case 3 -->
+        <div class="card case-card anim" data-category="security">
+          <div class="case-label">Охранная деятельность</div>
+          <h3>Построение кадровой службы с нуля для ЧОО с 1000+ сотрудников</h3>
+          <div class="case-meta">
+            <span>Штат: <strong>1000+ чел</strong></span>
+            <span>Срок: <strong>7 лет</strong></span>
+          </div>
+          <p><strong>Задача:</strong> Компания-лидер охранных услуг. Бурный рост, высокая текучесть, сложная лицензионная деятельность. Кадровой службы не было.</p>
+          <p><strong>Что сделано:</strong> Создание кадровой функции с нуля. Все внутренние регламенты. Полный цикл корпоративных изменений: смена гендиректора, перерегистрация акций, изменения устава. Управление ~1000 договорами страхования.</p>
+          <div class="case-results">
+            <h4>Результаты</h4>
+            <ul>
+              <li>0 штрафов за 7 лет при проверках ГИТ, ПФР, ФСС</li>
+              <li>Единственный кадровик на 1000+ человек</li>
+              <li>Полный цикл корпоративных трансформаций «под ключ»</li>
+              <li>Построена воронка найма и резерв кандидатов</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Case 4 -->
+        <div class="card case-card anim anim-delay-1" data-category="construction">
+          <div class="case-label">Строительство</div>
+          <h3>Кадровое сопровождение при вредных условиях труда</h3>
+          <div class="case-meta">
+            <span>Штат: <strong>200+ чел</strong></span>
+            <span>Вредные: <strong>100 чел</strong></span>
+          </div>
+          <p><strong>Задача:</strong> Группа строительных компаний. 100 человек на вредных условиях труда. Необходим допуск СРО. Работали иностранные высококвалифицированные специалисты.</p>
+          <p><strong>Что сделано:</strong> Полный цикл КДП для группы компаний. Оформление иностранных ВКС. Подготовка документации для СРО. Организация медосмотров, выдача СИЗ, специальная оценка условий труда.</p>
+          <div class="case-results">
+            <h4>Результаты</h4>
+            <ul>
+              <li>Получен допуск СРО</li>
+              <li>0 нарушений при проверках</li>
+              <li>Все иностранные ВКС оформлены без замечаний</li>
+              <li>100% соблюдение требований по охране труда</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Reviews placeholder -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-header anim">
+        <h2>Отзывы <strong>клиентов</strong></h2>
+        <p>По запросу предоставлю контакты рекомендателей: генеральные директора, HR-менеджеры, юридические консультанты</p>
+      </div>
+      <div class="text-center anim">
+        <a href="contact.html" class="btn btn-outline btn-lg">Запросить рекомендации</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="section cta-section">
+    <div class="container">
+      <div class="cta-inner anim">
+        <h2>У вас похожая <strong>задача?</strong></h2>
+        <p>Расскажите о вашей ситуации — предложу решение и рассчитаю стоимость</p>
+        <a href="contact.html" class="btn btn-primary btn-lg">Обсудить проект</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand"><div class="nav-logo" style="margin-bottom:4px;"><div class="nav-logo-icon">МП</div><span>Мария Перепечай</span></div><p>Кадровый аутсорсинг для малого бизнеса.</p></div>
+        <div class="footer-col"><h4>Услуги</h4><a href="services.html">Все услуги</a><a href="services.html?tab=tab-subscription">Абонентское</a></div>
+        <div class="footer-col"><h4>Компания</h4><a href="about.html">Обо мне</a><a href="cases.html">Кейсы</a><a href="contact.html">Контакты</a></div>
+        <div class="footer-col"><h4>Контакты</h4><a href="tel:+79613022112">+7 (961) 302-21-12</a><a href="mailto:m.perepechay@yandex.ru">m.perepechay@yandex.ru</a></div>
+      </div>
+      <div class="footer-bottom"><span>© 2025 Мария Перепечай</span><span>Ростов-на-Дону</span></div>
+    </div>
+  </footer>
+  <div class="fixed-call"><a href="tel:+79613022112">📱 Позвонить: +7 (961) 302-21-12</a></div>
+  <script src="script.js"></script>
+</body>
+</html>
+```
+
+---
