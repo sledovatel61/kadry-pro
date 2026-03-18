@@ -1505,3 +1505,95 @@ body::before {
     justify-content: center;
   }
 }
+
+/* ============================================
+   КНОПКИ МЕССЕНДЖЕРОВ — цветные и анимированные
+   ============================================ */
+
+.messenger-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: 2px solid;
+  text-decoration: none;
+}
+
+.messenger-icon {
+  font-size: 1.2rem;
+}
+
+/* WhatsApp — зелёный */
+.messenger-whatsapp {
+  background: rgba(37, 211, 102, 0.1);
+  border-color: rgba(37, 211, 102, 0.3);
+  color: #25d366;
+}
+
+.messenger-whatsapp:hover {
+  background: rgba(37, 211, 102, 0.2);
+  border-color: #25d366;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(37, 211, 102, 0.3);
+}
+
+/* Telegram — синий */
+.messenger-telegram {
+  background: rgba(0, 136, 204, 0.1);
+  border-color: rgba(0, 136, 204, 0.3);
+  color: #0088cc;
+}
+
+.messenger-telegram:hover {
+  background: rgba(0, 136, 204, 0.2);
+  border-color: #0088cc;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 136, 204, 0.3);
+}
+
+/* MAX — фирменный фиолетовый/оранжевый */
+.messenger-max {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
+  border-color: rgba(147, 51, 234, 0.3);
+  color: #c084fc;
+  position: relative;
+  overflow: hidden;
+}
+
+.messenger-max::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.messenger-max:hover::before {
+  left: 100%;
+}
+
+.messenger-max:hover {
+  border-color: #c084fc;
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(147, 51, 234, 0.3);
+}
+
+/* На мобильном — кнопки в столбик */
+@media (max-width: 768px) {
+  .messengers {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .messenger-btn {
+    justify-content: center;
+    width: 100%;
+  }
+}
