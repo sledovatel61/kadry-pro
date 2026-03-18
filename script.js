@@ -129,9 +129,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function getTierName(count) {
-      if (count <= 10) return 'Start (do 10 chel.)';
-      if (count <= 30) return 'Biznes (11-30 chel.)';
-      return 'Maksimum (31-50 chel.)';
+      if (count <= 10) return 'Старт (до 10 чел.)';
+      if (count <= 30) return 'Бизнес (11-30 чел.)';
+      return 'Максимум (31-50 чел.)';
     }
 
     function formatNumber(num) {
@@ -157,14 +157,14 @@ document.addEventListener('DOMContentLoaded', function() {
       var savings = totalEmployer - tierPrice;
 
       if (salaryValue) salaryValue.textContent = formatNumber(salary);
-      if (salaryTax) salaryTax.textContent = formatNumber(tax) + ' rub.';
-      if (salaryTotal) salaryTotal.textContent = formatNumber(totalEmployer) + ' rub.';
-      if (salaryWorkplace) salaryWorkplace.textContent = formatNumber(workplaceCost) + ' rub.';
+      if (salaryTax) salaryTax.textContent = formatNumber(tax) + ' \u0440\u0443\u0431.';
+      if (salaryTotal) salaryTotal.textContent = formatNumber(totalEmployer) + ' \u0440\u0443\u0431.';
+      if (salaryWorkplace) salaryWorkplace.textContent = formatNumber(workplaceCost) + ' \u0440\u0443\u0431.';
       if (staffValue) staffValue.textContent = staff;
       if (staffTier) staffTier.textContent = getTierName(staff);
-      if (staffPrice) staffPrice.textContent = formatNumber(tierPrice) + ' rub./mes';
+      if (staffPrice) staffPrice.textContent = formatNumber(tierPrice) + ' \u0440\u0443\u0431./\u043C\u0435\u0441';
       if (savingsMonth) savingsMonth.textContent = formatNumber(Math.max(0, savings));
-      if (savingsYear) savingsYear.textContent = formatNumber(Math.max(0, savings * 12)) + ' rub. v god';
+      if (savingsYear) savingsYear.textContent = formatNumber(Math.max(0, savings * 12)) + ' \u0440\u0443\u0431. \u0432 \u0433\u043E\u0434';
 
       updateRangeFill(salarySlider);
       updateRangeFill(staffSlider);
