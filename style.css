@@ -1742,3 +1742,29 @@ body::before {
 .footer-col a:hover::after {
   width: 100%;
 }
+
+/* ============================================
+   ДЕКОРАТИВНЫЙ ФОН — HR ТЕМАТИКА v3
+   ============================================ */
+
+/* --- ШАГ 1: Крупная техническая сетка --- */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -3;
+  pointer-events: none;
+  background-image:
+    /* Горизонтальные линии */
+    linear-gradient(rgba(74, 222, 128, 0.025) 1px, transparent 1px),
+    /* Вертикальные линии */
+    linear-gradient(90deg, rgba(74, 222, 128, 0.025) 1px, transparent 1px);
+  /* Размер одной клетки: 200x200 пикселей */
+  background-size: 200px 200px;
+  /* Линии видны только в центре, к краям — затухают */
+  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 75%);
+}
