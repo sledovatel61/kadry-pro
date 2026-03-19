@@ -1744,126 +1744,161 @@ body::before {
 }
 
 /* ============================================
-   ДЕКОРАТИВНЫЙ ФОН — РАБОЧАЯ ВЕРСИЯ
+   ДЕКОРАТИВНЫЙ ФОН — HR ТЕМАТИКА v3
    ============================================ */
 
-/* Удаляем предыдущие тесты */
-html::before,
-.hero::after,
-.hero .container::before,
-.hero-bg::after {
-  display: none !important;
-}
-
-/* 1. СЕТКА — через отдельный слой на body::after */
-/* Переопределяем существующий body::after, добавляя сетку поверх */
-body {
-  position: relative;
-}
-
-/* Проверяем, есть ли у вас body::after — если да, объединяем */
+/* --- ШАГ 1: Крупная техническая сетка --- */
 body::after {
-  /* Сохраняем существующий контент если есть, или добавляем новый */
-  content: '' !important;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  z-index: -1 !important;
-  pointer-events: none !important;
-  
-  /* Сетка поверх всего */
-  background-image: 
-    linear-gradient(rgba(74, 222, 128, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 222, 128, 0.035) 1px, transparent 1px) !important;
-  background-size: 60px 60px !important;
-  background-position: center center !important;
-  
-  /* Усиливаем видимость */
-  opacity: 1 !important;
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -3;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(74, 222, 128, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 222, 128, 0.025) 1px, transparent 1px);
+  background-size: 200px 200px;
+  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 75%);
 }
 
-/* 2. ЯРКОЕ ЗЕЛЁНОЕ ПЯТНО для теста — должно быть видно 100% */
-.hero-bg {
-  position: relative !important;
-  overflow: visible !important;
+/* --- ШАГ 2: Контейнер декораций --- */
+.bg-decor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
 }
 
-.hero-bg::after {
-  content: '' !important;
-  position: absolute !important;
-  top: 20% !important;
-  right: 10% !important;
-  width: 300px !important;
-  height: 300px !important;
-  border-radius: 50% !important;
-  background: radial-gradient(circle, rgba(74, 222, 128, 0.2) 0%, transparent 70%) !important;
-  z-index: 1 !important;
-  pointer-events: none !important;
-  animation: test-pulse 3s ease-in-out infinite !important;
+.bg-decor-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
 }
 
-@keyframes test-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.1); opacity: 1; }
+.bg-decor-glow--1 {
+  width: 500px; height: 500px;
+  background: rgba(74, 222, 128, 0.05);
+  top: -5%; left: -10%;
+  animation: glow-drift 30s ease-in-out infinite;
 }
-
-/* 3. ПРОВЕРОЧНАЯ НАДПИСЬ — если не видно, проблема в z-index */
-.hero::before {
-  content: '✓ ФОН РАБОТАЕТ' !important;
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  background: #4ade80 !important;
-  color: #0a0a0a !important;
-  padding: 20px 40px !important;
-  font-size: 24px !important;
-  font-weight: bold !important;
-  z-index: 10000 !important;
-  border-radius: 8px !important;
-  box-shadow: 0 0 50px rgba(74, 222, 128, 0.5) !important;
+.bg-decor-glow--2 {
+  width: 400px; height: 400px;
+  background: rgba(74, 222, 128, 0.04);
+  top: 40%; right: -15%;
+  animation: glow-drift 25s ease-in-out infinite reverse;
 }
-
-/* 4. Если всё работает — убираем тест и добавляем красоту */
-/* Закомментируйте блок 2 и 3 выше, раскомментируйте ниже */
-
-/*
-.hero-bg::after {
-  content: '' !important;
-  position: absolute !important;
-  top: 10% !important;
-  right: -5% !important;
-  width: 400px !important;
-  height: 400px !important;
-  border-radius: 50% !important;
-  background: radial-gradient(circle, rgba(74,222,128,0.08) 0%, transparent 65%) !important;
-  animation: glow-drift 20s ease-in-out infinite !important;
-  z-index: 0 !important;
-  pointer-events: none !important;
-}
-
-.hero::after {
-  content: '' !important;
-  position: absolute !important;
-  bottom: -10% !important;
-  left: -10% !important;
-  width: 350px !important;
-  height: 350px !important;
-  border-radius: 50% !important;
-  background: radial-gradient(circle, rgba(74,222,128,0.06) 0%, transparent 60%) !important;
-  animation: glow-drift 15s ease-in-out infinite reverse !important;
-  z-index: 0 !important;
-  pointer-events: none !important;
+.bg-decor-glow--3 {
+  width: 350px; height: 350px;
+  background: rgba(74, 222, 128, 0.035);
+  bottom: -10%; left: 30%;
+  animation: glow-drift 22s ease-in-out infinite 5s;
 }
 
 @keyframes glow-drift {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(20px, -15px) scale(1.03); }
+  33%      { transform: translate(40px, -30px) scale(1.05); }
+  66%      { transform: translate(-30px, 40px) scale(0.95); }
 }
 
-.hero::before {
-  display: none !important;
+/* --- ШАГ 3: HR-иконки --- */
+.bg-decor-icon {
+  position: absolute;
+  color: #4ade80;
+  opacity: 0.04;
 }
-*/
+
+.bg-decor-icon--1 { top: 10%; left: 5%;  width: 56px; }
+.bg-decor-icon--2 { top: 28%; right: 6%; width: 52px; }
+.bg-decor-icon--3 { top: 50%; left: 3%;  width: 50px; }
+.bg-decor-icon--4 { top: 65%; right: 4%; width: 48px; }
+.bg-decor-icon--5 { top: 15%; left: 90%; width: 44px; }
+.bg-decor-icon--6 { top: 80%; left: 7%;  width: 46px; }
+
+/* --- ШАГ 4: Текстура, кольца, линии --- */
+.bg-decor-texture {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  opacity: 0.015;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0px, transparent 1px, transparent 3px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0px, transparent 1px, transparent 3px);
+  background-size: 4px 4px;
+}
+
+.bg-decor-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(74, 222, 128, 0.04);
+}
+.bg-decor-ring--1 { width: 220px; height: 220px; top: 12%; right: 18%; }
+.bg-decor-ring--2 { width: 150px; height: 150px; top: 55%; left: 12%; }
+.bg-decor-ring--3 { width: 90px;  height: 90px;  bottom: 18%; right: 22%; }
+
+.bg-decor-line {
+  position: absolute;
+  width: 1px;
+}
+.bg-decor-line--l {
+  left: 8%; top: 5%; height: 90%;
+  background: repeating-linear-gradient(to bottom, transparent 0px, transparent 16px, rgba(74,222,128,0.05) 16px, rgba(74,222,128,0.05) 24px);
+}
+.bg-decor-line--r {
+  right: 10%; top: 15%; height: 70%;
+  background: repeating-linear-gradient(to bottom, transparent 0px, transparent 20px, rgba(74,222,128,0.04) 20px, rgba(74,222,128,0.04) 28px);
+}
+
+/* --- ШАГ 5: Анимации --- */
+@keyframes icon-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+
+.bg-decor-icon--1 { animation: icon-float 18s ease-in-out infinite; }
+.bg-decor-icon--2 { animation: icon-float 22s ease-in-out infinite 3s; }
+.bg-decor-icon--3 { animation: icon-float 20s ease-in-out infinite 6s; }
+.bg-decor-icon--4 { animation: icon-float 24s ease-in-out infinite 1s; }
+.bg-decor-icon--5 { animation: icon-float 21s ease-in-out infinite 7s; }
+.bg-decor-icon--6 { animation: icon-float 17s ease-in-out infinite 4s; }
+
+@keyframes ring-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.06); opacity: 0.6; }
+}
+
+.bg-decor-ring--1 { animation: ring-pulse 12s ease-in-out infinite; }
+.bg-decor-ring--2 { animation: ring-pulse 16s ease-in-out infinite 4s; }
+.bg-decor-ring--3 { animation: ring-pulse 14s ease-in-out infinite 8s; }
+
+/* --- ШАГ 6: Мобильная адаптация --- */
+@media (max-width: 1024px) {
+  .bg-decor-glow--1 { width: 350px; height: 350px; }
+  .bg-decor-glow--2 { width: 280px; height: 280px; }
+  .bg-decor-glow--3 { width: 220px; height: 220px; }
+  .bg-decor-icon--3, .bg-decor-icon--5 { display: none; }
+  .bg-decor-ring--3 { display: none; }
+  .bg-decor-line--r { display: none; }
+}
+
+@media (max-width: 768px) {
+  body::after { background-size: 100px 100px; opacity: 0.5; }
+  .bg-decor-glow--1 { width: 250px; height: 250px; }
+  .bg-decor-glow--2 { width: 200px; height: 200px; }
+  .bg-decor-glow--3 { display: none; }
+  .bg-decor-icon--2, .bg-decor-icon--3, .bg-decor-icon--4, .bg-decor-icon--5 { display: none; }
+  .bg-decor-icon { opacity: 0.03; }
+  .bg-decor-texture, .bg-decor-ring, .bg-decor-line { display: none; }
+}
+
+@media (max-width: 480px) {
+  .bg-decor-icon { display: none; }
+  body::after { display: none; }
+  .bg-decor-glow--2 { display: none; }
+}
