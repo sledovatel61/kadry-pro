@@ -1744,137 +1744,127 @@ body::before {
 }
 
 /* ============================================
-   ДЕКОРАТИВНЫЙ ФОН — ОПТИМАЛЬНОЕ РЕШЕНИЕ
-   Без конфликтов с существующим кодом
+   ДЕКОРАТИВНЫЙ ФОН — РАБОТАЕТ ПО КЛАССАМ
    ============================================ */
 
-/* --- 1. КРУПНАЯ СЕТКА (дополняет существующую точечную) --- */
-/* Используем ::before на html, чтобы не конфликтовать с body::before */
-html::before {
+/* --- 1. КРУПНАЯ СЕТКА НА ВЕСЬ САЙТ --- */
+/* Добавляем к существующей точечной сетке */
+body {
+  position: relative;
+}
+
+body::after {
   content: '';
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: -3;
+  z-index: -2;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(74, 222, 128, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 222, 128, 0.02) 1px, transparent 1px);
-  background-size: 150px 150px;
-  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, transparent 70%);
+    linear-gradient(rgba(74, 222, 128, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 222, 128, 0.025) 1px, transparent 1px);
+  background-size: 120px 120px;
+  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 70%);
 }
 
-/* --- 2. ГРАДИЕНТНЫЕ ПЯТНА (только CSS, без HTML) --- */
-/* Пятно 1: правый верх hero */
-.hero::after {
+/* --- 2. ГРАДИЕНТНЫЕ ПЯТНА --- */
+/* Пятно в hero */
+.hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
   content: '';
   position: absolute;
   top: -10%;
-  right: -5%;
-  width: 600px;
-  height: 600px;
+  right: -10%;
+  width: 500px;
+  height: 500px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(74,222,128,0.06) 0%, transparent 65%);
-  animation: glow-drift 25s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(74,222,128,0.08) 0%, transparent 60%);
+  animation: glow-move 20s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
 }
 
-/* Пятно 2: левый низ */
-.section-alt:nth-of-type(2)::before {
+/* Второе пятно — вторая секция (проблемы) */
+.section:nth-of-type(2) {
+  position: relative;
+  overflow: hidden;
+}
+
+.section:nth-of-type(2)::before {
   content: '';
   position: absolute;
   bottom: -10%;
   left: -10%;
-  width: 500px;
-  height: 500px;
+  width: 400px;
+  height: 400px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(74,222,128,0.05) 0%, transparent 60%);
-  animation: glow-drift 20s ease-in-out infinite reverse;
+  background: radial-gradient(circle, rgba(74,222,128,0.06) 0%, transparent 60%);
+  animation: glow-move 15s ease-in-out infinite reverse;
   pointer-events: none;
   z-index: 0;
 }
 
-@keyframes glow-drift {
+@keyframes glow-move {
   0%, 100% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(30px, -20px) scale(1.05); }
 }
 
 /* --- 3. ДЕКОРАТИВНЫЕ КОЛЬЦА --- */
-/* Большое кольцо справа в hero */
-.hero .container::before {
-  content: '';
-  position: absolute;
-  top: 20%;
-  right: 10%;
-  width: 300px;
-  height: 300px;
-  border: 1px solid rgba(74, 222, 128, 0.08);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
+/* Кольцо в hero */
+.hero .container {
+  position: relative;
 }
 
-/* Пунктирное кольцо поменьше */
 .hero .container::after {
   content: '';
   position: absolute;
-  top: 25%;
+  top: 30%;
   right: 15%;
-  width: 200px;
-  height: 200px;
-  border: 1px dashed rgba(74, 222, 128, 0.06);
+  width: 250px;
+  height: 250px;
+  border: 1px solid rgba(74, 222, 128, 0.1);
   border-radius: 50%;
-  animation: rotate-slow 30s linear infinite;
   pointer-events: none;
   z-index: 0;
 }
 
-@keyframes rotate-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* --- 4. SVG ИКОНКИ НА ФОНЕ --- */
+/* Иконка 1: в первой секции после hero (проблемы) */
+.section:nth-of-type(2) .container {
+  position: relative;
 }
 
-/* --- 4. SVG-ИКОНКИ ЧЕРЕЗ BACKGROUND (без HTML) --- */
-/* Документ в секции проблем */
-#problems .container::before {
-  content: '';
-  position: absolute;
-  top: 10%;
-  left: 5%;
-  width: 40px;
-  height: 52px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 52' fill='none' stroke='%234ade80' stroke-width='1.5'%3E%3Cpath d='M6 2h20l8 8v40H6z'/%3E%3Cpath d='M26 2v8h8'/%3E%3Cline x1='12' y1='18' x2='28' y2='18'/%3E%3Cline x1='12' y1='26' x2='28' y2='26'/%3E%3Cline x1='12' y1='34' x2='22' y2='34'/%3E%3C/svg%3E");
-  background-size: contain;
-  background-repeat: no-repeat;
-  opacity: 0.04;
-  pointer-events: none;
-}
-
-/* Человек в секции услуг */
-#services-overview .container::before {
+.section:nth-of-type(2) .container::after {
   content: '';
   position: absolute;
   top: 15%;
-  right: 8%;
-  width: 36px;
-  height: 48px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 52' fill='none' stroke='%234ade80' stroke-width='1.5'%3E%3Ccircle cx='20' cy='12' r='8'/%3E%3Cpath d='M4 48c0-8.8 7.2-16 16-16s16 7.2 16 16'/%3E%3C/svg%3E");
+  left: 3%;
+  width: 50px;
+  height: 65px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 52' fill='none' stroke='%234ade80' stroke-width='1.5'%3E%3Cpath d='M6 2h20l8 8v40H6z'/%3E%3Cpath d='M26 2v8h8'/%3E%3Cline x1='12' y1='18' x2='28' y2='18'/%3E%3Cline x1='12' y1='26' x2='28' y2='26'/%3E%3Cline x1='12' y1='34' x2='22' y2='34'/%3E%3C/svg%3E");
   background-size: contain;
   background-repeat: no-repeat;
-  opacity: 0.035;
+  opacity: 0.05;
   pointer-events: none;
 }
 
-/* График в калькуляторе */
-#calculator .container::after {
+/* Иконка 2: в секции с калькулятором (третья секция) */
+.section:nth-of-type(3) {
+  position: relative;
+}
+
+.section:nth-of-type(3)::after {
   content: '';
   position: absolute;
   bottom: 20%;
-  left: 8%;
+  right: 5%;
   width: 48px;
   height: 48px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='%234ade80' stroke-width='1.5'%3E%3Crect x='6' y='28' width='8' height='16' rx='1'/%3E%3Crect x='20' y='16' width='8' height='28' rx='1'/%3E%3Crect x='34' y='8' width='8' height='36' rx='1'/%3E%3Cline x1='2' y1='46' x2='46' y2='46'/%3E%3C/svg%3E");
@@ -1884,68 +1874,44 @@ html::before {
   pointer-events: none;
 }
 
-/* Чек-лист в CTA */
-.cta-section::before {
+/* Иконка 3: в секции статистики (четвёртая секция) */
+.section:nth-of-type(4) {
+  position: relative;
+}
+
+.section:nth-of-type(4)::before {
   content: '';
   position: absolute;
-  top: 30%;
-  right: 12%;
-  width: 44px;
-  height: 56px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 56' fill='none' stroke='%234ade80' stroke-width='1.5'%3E%3Crect x='2' y='2' width='40' height='52' rx='4'/%3E%3Cpolyline points='10,16 14,20 22,12'/%3E%3Cline x1='26' y1='16' x2='36' y2='16'/%3E%3Cpolyline points='10,28 14,32 22,24'/%3E%3Cline x1='26' y1='28' x2='36' y2='28'/%3E%3Cpolyline points='10,40 14,44 22,36'/%3E%3Cline x1='26' y1='40' x2='36' y2='40'/%3E%3C/svg%3E");
+  top: 20%;
+  left: 5%;
+  width: 40px;
+  height: 52px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 52' fill='none' stroke='%234ade80' stroke-width='1.5'%3E%3Ccircle cx='20' cy='12' r='8'/%3E%3Cpath d='M4 48c0-8.8 7.2-16 16-16s16 7.2 16 48'/%3E%3C/svg%3E");
   background-size: contain;
   background-repeat: no-repeat;
-  opacity: 0.035;
+  opacity: 0.04;
   pointer-events: none;
 }
 
-/* --- 5. МИКРО-АНИМАЦИИ --- */
-/* Пульсирующее свечение вокруг статистики */
-#stats::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 400px;
-  height: 200px;
-  background: radial-gradient(ellipse, rgba(74,222,128,0.05) 0%, transparent 60%);
-  animation: pulse-glow 4s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 0;
-}
-
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
-}
-
-/* --- 6. МОБИЛЬНАЯ АДАПТАЦИЯ --- */
+/* --- 5. МОБИЛЬНАЯ АДАПТАЦИЯ --- */
 @media (max-width: 768px) {
-  html::before {
-    background-size: 80px 80px;
-    opacity: 0.5;
+  body::after {
+    background-size: 60px 60px;
+    opacity: 0.4;
   }
   
-  .hero::after,
-  .section-alt:nth-of-type(2)::before,
-  #problems .container::before,
-  #services-overview .container::before,
-  #calculator .container::after,
-  .cta-section::before,
-  .hero .container::before,
-  .hero .container::after {
+  .hero::before,
+  .section:nth-of-type(2)::before,
+  .hero .container::after,
+  .section:nth-of-type(2) .container::after,
+  .section:nth-of-type(3)::after,
+  .section:nth-of-type(4)::before {
     display: none;
-  }
-  
-  #stats::after {
-    width: 200px;
-    height: 100px;
   }
 }
 
 @media (max-width: 480px) {
-  #stats::after {
+  body::after {
     display: none;
   }
 }
