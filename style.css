@@ -1744,179 +1744,59 @@ body::before {
 }
 
 /* ============================================
-   ДЕКОРАТИВНЫЙ ФОН — РАБОТАЕТ ПО КЛАССАМ
+   ДЕКОРАТИВНЫЙ ФОН — УНИВЕРСАЛЬНЫЙ
    ============================================ */
 
-/* --- 1. КРУПНАЯ СЕТКА НА ВЕСЬ САЙТ --- */
-/* Добавляем к существующей точечной сетке */
-body {
+/* 1. КРУПНАЯ СЕТКА — должна быть видна сразу */
+html {
   position: relative;
 }
 
-body::after {
+html::after {
   content: '';
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: -2;
+  z-index: -1;
   pointer-events: none;
-  background-image:
-    linear-gradient(rgba(74, 222, 128, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 222, 128, 0.025) 1px, transparent 1px);
-  background-size: 120px 120px;
-  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 70%);
+  background-image: 
+    linear-gradient(rgba(74, 222, 128, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 222, 128, 0.03) 1px, transparent 1px);
+  background-size: 100px 100px;
 }
 
-/* --- 2. ГРАДИЕНТНЫЕ ПЯТНА --- */
-/* Пятно в hero */
+/* 2. ЯРКОЕ ПЯТНО В HERO — для проверки */
 .hero {
-  position: relative;
+  position: relative !important;
   overflow: hidden;
 }
 
-.hero::before {
-  content: '';
-  position: absolute;
-  top: -10%;
-  right: -10%;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(74,222,128,0.08) 0%, transparent 60%);
-  animation: glow-move 20s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 0;
+.hero::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 10% !important;
+  right: 10% !important;
+  width: 300px !important;
+  height: 300px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle, rgba(74, 222, 128, 0.15) 0%, transparent 70%) !important;
+  z-index: 9999 !important; /* поверх всего для теста */
+  pointer-events: none !important;
 }
 
-/* Второе пятно — вторая секция (проблемы) */
-.section:nth-of-type(2) {
-  position: relative;
-  overflow: hidden;
-}
-
-.section:nth-of-type(2)::before {
-  content: '';
-  position: absolute;
-  bottom: -10%;
-  left: -10%;
-  width: 400px;
-  height: 400px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(74,222,128,0.06) 0%, transparent 60%);
-  animation: glow-move 15s ease-in-out infinite reverse;
-  pointer-events: none;
-  z-index: 0;
-}
-
-@keyframes glow-move {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(30px, -20px) scale(1.05); }
-}
-
-/* --- 3. ДЕКОРАТИВНЫЕ КОЛЬЦА --- */
-/* Кольцо в hero */
-.hero .container {
-  position: relative;
-}
-
-.hero .container::after {
-  content: '';
-  position: absolute;
-  top: 30%;
-  right: 15%;
-  width: 250px;
-  height: 250px;
-  border: 1px solid rgba(74, 222, 128, 0.1);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* --- 4. SVG ИКОНКИ НА ФОНЕ --- */
-/* Иконка 1: в первой секции после hero (проблемы) */
-.section:nth-of-type(2) .container {
-  position: relative;
-}
-
-.section:nth-of-type(2) .container::after {
-  content: '';
-  position: absolute;
-  top: 15%;
-  left: 3%;
-  width: 50px;
-  height: 65px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 52' fill='none' stroke='%234ade80' stroke-width='1.5'%3E%3Cpath d='M6 2h20l8 8v40H6z'/%3E%3Cpath d='M26 2v8h8'/%3E%3Cline x1='12' y1='18' x2='28' y2='18'/%3E%3Cline x1='12' y1='26' x2='28' y2='26'/%3E%3Cline x1='12' y1='34' x2='22' y2='34'/%3E%3C/svg%3E");
-  background-size: contain;
-  background-repeat: no-repeat;
-  opacity: 0.05;
-  pointer-events: none;
-}
-
-/* Иконка 2: в секции с калькулятором (третья секция) */
-.section:nth-of-type(3) {
-  position: relative;
-}
-
-.section:nth-of-type(3)::after {
-  content: '';
-  position: absolute;
-  bottom: 20%;
-  right: 5%;
-  width: 48px;
-  height: 48px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='%234ade80' stroke-width='1.5'%3E%3Crect x='6' y='28' width='8' height='16' rx='1'/%3E%3Crect x='20' y='16' width='8' height='28' rx='1'/%3E%3Crect x='34' y='8' width='8' height='36' rx='1'/%3E%3Cline x1='2' y1='46' x2='46' y2='46'/%3E%3C/svg%3E");
-  background-size: contain;
-  background-repeat: no-repeat;
-  opacity: 0.04;
-  pointer-events: none;
-}
-
-/* Иконка 3: в секции статистики (четвёртая секция) */
-.section:nth-of-type(4) {
-  position: relative;
-}
-
-.section:nth-of-type(4)::before {
-  content: '';
-  position: absolute;
-  top: 20%;
-  left: 5%;
-  width: 40px;
-  height: 52px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 52' fill='none' stroke='%234ade80' stroke-width='1.5'%3E%3Ccircle cx='20' cy='12' r='8'/%3E%3Cpath d='M4 48c0-8.8 7.2-16 16-16s16 7.2 16 48'/%3E%3C/svg%3E");
-  background-size: contain;
-  background-repeat: no-repeat;
-  opacity: 0.04;
-  pointer-events: none;
-}
-
-/* --- 5. МОБИЛЬНАЯ АДАПТАЦИЯ --- */
-@media (max-width: 768px) {
-  body::after {
-    background-size: 60px 60px;
-    opacity: 0.4;
-  }
-  
-  .hero::before,
-  .section:nth-of-type(2)::before,
-  .hero .container::after,
-  .section:nth-of-type(2) .container::after,
-  .section:nth-of-type(3)::after,
-  .section:nth-of-type(4)::before {
-    display: none;
-  }
-}
-
-@media (max-width: 480px) {
-  body::after {
-    display: none;
-  }
-}
-
-/* ТЕСТ: если это сработает — увидите красную рамку вокруг всего */
-body {
-  border: 5px solid red !important;
+/* 3. ТЕСТОВАЯ ИКОНКА — большая и яркая */
+.hero .container::before {
+  content: 'TEST' !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  font-size: 48px !important;
+  color: #4ade80 !important;
+  border: 3px solid #4ade80 !important;
+  padding: 20px !important;
+  z-index: 9999 !important;
+  background: rgba(0,0,0,0.8) !important;
 }
