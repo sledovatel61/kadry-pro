@@ -234,6 +234,23 @@
   </footer>
   <div class="fixed-call"><a href="tel:+79613022112">📱 Позвонить: +7 (961) 302-21-12</a></div>
   <script src="script.js"></script>
+
+  <script>
+// Проверка инициализации меню для about.html
+(function() {
+  var hamburger = document.querySelector('.hamburger');
+  var mobileMenu = document.querySelector('.mobile-menu');
+  
+  console.log('Hamburger found:', !!hamburger);
+  console.log('Mobile menu found:', !!mobileMenu);
+  
+  if (hamburger && mobileMenu) {
+    console.log('Menu initialized successfully');
+  } else {
+    console.error('Menu elements not found!');
+  }
+})();
+</script>
 </body>
 </html>
 ```
