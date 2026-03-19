@@ -2138,24 +2138,36 @@ body::after {
 }
 
 /* ============================================
-   ФОТО МАРИИ ПЕРЕПЕЧАЙ — Hero секция
+   ФОТО МАРИИ ПЕРЕПЕЧАЙ — ИСПРАВЛЕННАЯ ВЕРСИЯ
    ============================================ */
 
-/* Контейнер для фото в Hero */
+/* Hero-контейнер: текст СЛЕВА, фото СПРАВА в ряд */
+.hero .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 48px;
+}
+
+/* Текстовая часть — не залезает на фото */
+.hero-content-with-photo {
+  flex: 1;
+  min-width: 0;
+  max-width: 620px;
+}
+
+/* Блок с фото — обычный элемент в ряду, НЕ поверх текста */
 .hero-photo-wrapper {
-  position: absolute;
-  right: 5%;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 1;
+  position: relative;
+  flex-shrink: 0;
   width: 320px;
-  height: 400px;
+  z-index: 1;
 }
 
 /* Само фото */
 .hero-photo {
   width: 100%;
-  height: 100%;
+  height: 420px;
   object-fit: cover;
   object-position: top center;
   border-radius: 16px;
@@ -2167,7 +2179,7 @@ body::after {
   transition: all 0.5s ease;
 }
 
-/* При наведении — фото становится ярче */
+/* При наведении — фото ярче */
 .hero-photo:hover {
   filter: grayscale(0%) brightness(1);
   border-color: rgba(74, 222, 128, 0.4);
@@ -2177,7 +2189,7 @@ body::after {
   transform: scale(1.02);
 }
 
-/* Декоративная рамка-уголок вокруг фото */
+/* Декоративные уголки вокруг фото */
 .hero-photo-wrapper::before {
   content: '';
   position: absolute;
@@ -2194,7 +2206,7 @@ body::after {
 .hero-photo-wrapper::after {
   content: '';
   position: absolute;
-  bottom: -8px;
+  bottom: 44px;
   right: -8px;
   width: 50px;
   height: 50px;
@@ -2211,7 +2223,6 @@ body::after {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-weight: 400;
-  letter-spacing: 0.02em;
 }
 
 .hero-photo-caption strong {
@@ -2222,105 +2233,131 @@ body::after {
   margin-bottom: 2px;
 }
 
-/* Адаптируем Hero-контент, чтобы текст не налезал на фото */
-.hero-content-with-photo {
-  max-width: 55%;
+/* Скрываем крутящийся круг из точек — теперь вместо него фото */
+.hero-visual-element {
+  display: none !important;
 }
 
 /* ===========================
-   АДАПТАЦИЯ ФОТО ПОД РАЗНЫЕ ЭКРАНЫ
+   ФОТО — АДАПТАЦИЯ ПОД ЭКРАНЫ
    =========================== */
 
-/* Большие экраны (1400px+) — фото крупнее */
+/* Большой экран */
 @media (min-width: 1400px) {
   .hero-photo-wrapper {
     width: 380px;
-    height: 460px;
-    right: 6%;
+  }
+  .hero-photo {
+    height: 480px;
+  }
+  .hero-content-with-photo {
+    max-width: 700px;
   }
 }
 
-/* Средние экраны (1024–1200px) — фото чуть меньше */
+/* Экран 1024–1200px */
 @media (max-width: 1200px) {
   .hero-photo-wrapper {
-    width: 280px;
-    height: 350px;
-    right: 3%;
+    width: 270px;
   }
-
-  .hero-content-with-photo {
-    max-width: 55%;
+  .hero-photo {
+    height: 350px;
+  }
+  .hero .container {
+    gap: 32px;
   }
 }
 
-/* Планшет (768–1024px) — фото ещё меньше */
+/* Планшет 768–1024px */
 @media (max-width: 1024px) {
   .hero-photo-wrapper {
-    width: 240px;
-    height: 300px;
-    right: 2%;
+    width: 230px;
   }
-
+  .hero-photo {
+    height: 300px;
+  }
+  .hero .container {
+    gap: 24px;
+  }
   .hero-content-with-photo {
-    max-width: 58%;
+    max-width: none;
   }
 }
 
-/* Мобильный (до 768px) — фото уходит НАД текстом */
+/* Мобильный до 768px — фото сверху, текст снизу */
 @media (max-width: 768px) {
 
-  /* Hero становится колонкой */
+  /* Контейнер — столбцом */
   .hero .container {
-    display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 20px;
   }
 
-  /* Фото — сверху, по центру */
+  /* Фото — наверх */
   .hero-photo-wrapper {
-    position: relative;
-    right: auto;
-    top: auto;
-    transform: none;
-    width: 200px;
-    height: 250px;
-    margin-bottom: 24px;
+    width: 180px;
     order: -1;
+    margin-bottom: 8px;
   }
 
+  /* Круглое фото на мобильном */
   .hero-photo {
+    height: 180px;
     border-radius: 50%;
     border-width: 3px;
+    object-position: top center;
   }
 
+  /* Убираем уголки на мобильном */
   .hero-photo-wrapper::before,
   .hero-photo-wrapper::after {
     display: none;
-  }
-
-  .hero-photo-caption {
-    margin-top: 12px;
-  }
-
-  .hero-photo-caption strong {
-    font-size: 0.9rem;
-  }
-
-  .hero-photo-caption {
-    font-size: 0.8rem;
   }
 
   /* Текст — на всю ширину */
   .hero-content-with-photo {
     max-width: 100%;
   }
+
+  /* Подпись — компактнее */
+  .hero-photo-caption {
+    margin-top: 10px;
+    font-size: 0.8rem;
+  }
+  .hero-photo-caption strong {
+    font-size: 0.9rem;
+  }
+
+  /* Бейджи «14 лет опыта» и «0 штрафов» — не наезжают друг на друга */
+  .experience-badge,
+  .guarantee-badge {
+    display: inline-block;
+    margin-top: 6px;
+    margin-bottom: 2px;
+    line-height: 1.8;
+  }
+
+  /* Больше отступ между hero-badge и subtitle */
+  .hero-badge {
+    margin-bottom: 20px;
+  }
+
+  .hero-category {
+    margin-bottom: 16px;
+  }
+
+  .hero-subtitle {
+    line-height: 1.9;
+  }
 }
 
-/* Маленький мобильный (до 480px) */
+/* Маленький мобильный до 480px */
 @media (max-width: 480px) {
   .hero-photo-wrapper {
-    width: 160px;
-    height: 200px;
-    margin-bottom: 20px;
+    width: 150px;
+  }
+  .hero-photo {
+    height: 150px;
   }
 }
