@@ -2136,3 +2136,191 @@ body::after {
   body::after { display: none; }
   .bg-decor-glow--2 { display: none; }
 }
+
+/* ============================================
+   ФОТО МАРИИ ПЕРЕПЕЧАЙ — Hero секция
+   ============================================ */
+
+/* Контейнер для фото в Hero */
+.hero-photo-wrapper {
+  position: absolute;
+  right: 5%;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  width: 320px;
+  height: 400px;
+}
+
+/* Само фото */
+.hero-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 16px;
+  border: 2px solid rgba(74, 222, 128, 0.2);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(74, 222, 128, 0.08);
+  filter: grayscale(15%) brightness(0.95);
+  transition: all 0.5s ease;
+}
+
+/* При наведении — фото становится ярче */
+.hero-photo:hover {
+  filter: grayscale(0%) brightness(1);
+  border-color: rgba(74, 222, 128, 0.4);
+  box-shadow:
+    0 25px 70px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(74, 222, 128, 0.15);
+  transform: scale(1.02);
+}
+
+/* Декоративная рамка-уголок вокруг фото */
+.hero-photo-wrapper::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 50px;
+  height: 50px;
+  border-top: 2px solid rgba(74, 222, 128, 0.3);
+  border-left: 2px solid rgba(74, 222, 128, 0.3);
+  border-radius: 16px 0 0 0;
+  pointer-events: none;
+}
+
+.hero-photo-wrapper::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  width: 50px;
+  height: 50px;
+  border-bottom: 2px solid rgba(74, 222, 128, 0.3);
+  border-right: 2px solid rgba(74, 222, 128, 0.3);
+  border-radius: 0 0 16px 0;
+  pointer-events: none;
+}
+
+/* Подпись под фото */
+.hero-photo-caption {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.hero-photo-caption strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+/* Адаптируем Hero-контент, чтобы текст не налезал на фото */
+.hero-content-with-photo {
+  max-width: 55%;
+}
+
+/* ===========================
+   АДАПТАЦИЯ ФОТО ПОД РАЗНЫЕ ЭКРАНЫ
+   =========================== */
+
+/* Большие экраны (1400px+) — фото крупнее */
+@media (min-width: 1400px) {
+  .hero-photo-wrapper {
+    width: 380px;
+    height: 460px;
+    right: 6%;
+  }
+}
+
+/* Средние экраны (1024–1200px) — фото чуть меньше */
+@media (max-width: 1200px) {
+  .hero-photo-wrapper {
+    width: 280px;
+    height: 350px;
+    right: 3%;
+  }
+
+  .hero-content-with-photo {
+    max-width: 55%;
+  }
+}
+
+/* Планшет (768–1024px) — фото ещё меньше */
+@media (max-width: 1024px) {
+  .hero-photo-wrapper {
+    width: 240px;
+    height: 300px;
+    right: 2%;
+  }
+
+  .hero-content-with-photo {
+    max-width: 58%;
+  }
+}
+
+/* Мобильный (до 768px) — фото уходит НАД текстом */
+@media (max-width: 768px) {
+
+  /* Hero становится колонкой */
+  .hero .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Фото — сверху, по центру */
+  .hero-photo-wrapper {
+    position: relative;
+    right: auto;
+    top: auto;
+    transform: none;
+    width: 200px;
+    height: 250px;
+    margin-bottom: 24px;
+    order: -1;
+  }
+
+  .hero-photo {
+    border-radius: 50%;
+    border-width: 3px;
+  }
+
+  .hero-photo-wrapper::before,
+  .hero-photo-wrapper::after {
+    display: none;
+  }
+
+  .hero-photo-caption {
+    margin-top: 12px;
+  }
+
+  .hero-photo-caption strong {
+    font-size: 0.9rem;
+  }
+
+  .hero-photo-caption {
+    font-size: 0.8rem;
+  }
+
+  /* Текст — на всю ширину */
+  .hero-content-with-photo {
+    max-width: 100%;
+  }
+}
+
+/* Маленький мобильный (до 480px) */
+@media (max-width: 480px) {
+  .hero-photo-wrapper {
+    width: 160px;
+    height: 200px;
+    margin-bottom: 20px;
+  }
+}
