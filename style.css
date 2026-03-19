@@ -1484,11 +1484,23 @@ body::before {
 /* Адаптация для мобильных */
 @media (max-width: 768px) {
   .hero-location-badge {
-    position: relative;
-    top: auto;
-    right: auto;
-    margin: 0 16px 20px;
-    justify-content: center;
+    display: none !important;
+  }
+  
+  .hero-content {
+    text-align: center !important;
+    padding-top: 20px !important;
+  }
+  
+  .hero h1,
+  .hero-subtitle {
+    text-align: center !important;
+  }
+  
+  .hero-actions,
+  .hero-benefits,
+  .hero-category {
+    justify-content: center !important;
   }
   
   .hero-visual-element {
