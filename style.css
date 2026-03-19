@@ -1915,3 +1915,8 @@ body::after {
     display: none;
   }
 }
+
+/* ТЕСТ: если это сработает — увидите красную рамку вокруг всего */
+body {
+  border: 5px solid red !important;
+}
