@@ -240,12 +240,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // --- НАСТРОЙКА ОТПРАВКИ ФОРМЫ ---
   var forms = document.querySelectorAll('form[data-validate]');
   for (var f = 0; f < forms.length; f++) {
     forms[f].addEventListener('submit', function(e) {
       e.preventDefault();
       var form = this;
       var valid = true;
+
+      // --- ВСЕ ПРОВЕРКИ ВАЛИДНОСТИ ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ ---
       var inputs = form.querySelectorAll('.form-input, .form-textarea, .form-select');
       for (var i = 0; i < inputs.length; i++) {
         inputs[i].classList.remove('error');
@@ -277,17 +280,72 @@ document.addEventListener('DOMContentLoaded', function() {
       if (consent && !consent.checked) {
         valid = false;
       }
+      // --- КОНЕЦ ПРОВЕРОК ВАЛИДНОСТИ ---
+
+      // Если форма не прошла проверку
       if (!valid) {
         var firstError = form.querySelector('.error');
         if (firstError) firstError.focus();
         return;
       }
-      var successEl = form.querySelector('.form-success');
-      if (!successEl) successEl = form.parentElement.querySelector('.form-success');
-      if (successEl) {
-        form.style.display = 'none';
-        successEl.classList.add('visible');
+
+      // --- НОВЫЙ КОД: ОТПРАВКА ДАННЫХ НА СЕРВЕР ---
+      // Показываем пользователю, что идёт отправка (можно изменить текст кнопки, но для простоты пока оставим так)
+      var submitButton = form.querySelector('button[type="submit"]');
+      var originalButtonText = submitButton ? submitButton.textContent : 'Отправить заявку';
+      if (submitButton) {
+        submitButton.textContent = 'Отправка...';
+        submitButton.disabled = true;
       }
+
+      // Собираем данные из формы
+      var formData = new FormData(form);
+      // Важно! Formspree ожидает данные в формате FormData, что нам и подходит.
+
+      // Отправляем запрос на наш эндпоинт от Formspree
+      fetch('https://formspree.io/f/xojpqrav', { // ВСТАВЬТЕ СВОЙ АДРЕС
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json' // Говорим, что ждём ответ в JSON
+        }
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json(); // Если всё хорошо, разбираем ответ
+        }
+        throw new Error('Ошибка сети или сервера');
+      })
+      .then(data => {
+        // Успешная отправка
+        var successEl = form.querySelector('.form-success');
+        if (!successEl) successEl = form.parentElement.querySelector('.form-success');
+        if (successEl) {
+          form.style.display = 'none';
+          successEl.classList.add('visible');
+        } else {
+          // Если нет блока с успехом, просто очищаем форму и показываем alert
+          alert('Заявка успешно отправлена!');
+          form.reset();
+        }
+      })
+      .catch(error => {
+        // Ошибка отправки
+        console.error('Ошибка:', error);
+        alert('Произошла ошибка при отправке. Пожалуйста, попробуйте позже или свяжитесь по телефону.');
+        // Возвращаем кнопку в исходное состояние
+        if (submitButton) {
+          submitButton.textContent = originalButtonText;
+          submitButton.disabled = false;
+        }
+      })
+      .finally(() => {
+        // В любом случае, если отправка прошла успешно, кнопка уже не нужна,
+        // но если была ошибка, мы её уже разблокировали выше.
+        // Этот блок выполнится после всего.
+      });
+      // --- КОНЕЦ НОВОГО КОДА ---
+
     });
   }
 
