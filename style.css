@@ -2364,7 +2364,7 @@ body::after {
 
 /* Логотип в навигации — УВЕЛИЧЕННЫЙ */
 .nav-logo .logo {
-  height: 100px;
+  height: 140px;
   width: auto;
   display: block;
   transition: all 0.3s ease;
@@ -2373,20 +2373,20 @@ body::after {
 /* Для планшетов */
 @media (max-width: 1024px) {
   .nav-logo .logo {
-    height: 65px;
+    height: 75px;
   }
 }
 
 /* Для мобильных */
 @media (max-width: 768px) {
   .nav-logo .logo {
-    height: 75px;
+    height: 95px;
   }
 }
 
 @media (max-width: 480px) {
   .nav-logo .logo {
-    height: 50px;
+    height: 70px;
   }
 }
 
