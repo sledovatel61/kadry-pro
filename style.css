@@ -2362,41 +2362,41 @@ body::after {
   }
 }
 
-/* Логотип в навигации */
+/* Логотип в навигации — УВЕЛИЧЕННЫЙ */
 .nav-logo .logo {
-  height: 55px;
+  height: 70px;
   width: auto;
   display: block;
   transition: all 0.3s ease;
 }
 
-/* Адаптация для планшетов */
+/* Для планшетов */
 @media (max-width: 1024px) {
   .nav-logo .logo {
-    height: 50px;
+    height: 65px;
   }
 }
 
-/* Адаптация для мобильных */
+/* Для мобильных */
 @media (max-width: 768px) {
   .nav-logo .logo {
-    height: 45px;
+    height: 55px;
   }
 }
 
 @media (max-width: 480px) {
   .nav-logo .logo {
-    height: 40px;
+    height: 50px;
   }
 }
 
-/* Логотип в футере — чуть меньше */
+/* Логотип в футере */
 .footer .nav-logo .logo {
-  height: 45px;
+  height: 60px;
 }
 
 @media (max-width: 768px) {
   .footer .nav-logo .logo {
-    height: 40px;
+    height: 50px;
   }
 }
