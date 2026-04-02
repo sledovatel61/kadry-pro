@@ -2373,20 +2373,20 @@ body::after {
 /* Для планшетов */
 @media (max-width: 1024px) {
   .nav-logo .logo {
-    height: 75px;
+    height: 125px;
   }
 }
 
 /* Для мобильных */
 @media (max-width: 768px) {
   .nav-logo .logo {
-    height: 95px;
+    height: 140px;
   }
 }
 
 @media (max-width: 480px) {
   .nav-logo .logo {
-    height: 70px;
+    height: 100px;
   }
 }
 
