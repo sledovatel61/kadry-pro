@@ -2361,3 +2361,35 @@ body::after {
     height: 150px;
   }
 }
+
+/* Логотип в шапке */
+.nav-brand .logo {
+  height: 40px;
+  width: auto;
+  display: block;
+  transition: all 0.3s ease;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 768px) {
+  .nav-brand .logo {
+    height: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-brand .logo {
+    height: 28px;
+  }
+}
+
+/* Для мобильной навигации */
+.mobile-menu .nav-brand .logo {
+  height: 36px;
+  margin-bottom: 20px;
+}
