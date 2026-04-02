@@ -2362,34 +2362,38 @@ body::after {
   }
 }
 
-/* Логотип в шапке */
-.nav-brand .logo {
+/* Логотип в навигации */
+.nav-logo .logo {
   height: 40px;
   width: auto;
   display: block;
   transition: all 0.3s ease;
 }
 
-.nav-brand {
+.nav-logo {
   display: flex;
   align-items: center;
+  text-decoration: none;
+}
+
+/* Логотип в футере */
+.footer-logo {
+  height: 36px;
+  margin-bottom: 8px;
 }
 
 /* Адаптация для мобильных */
 @media (max-width: 768px) {
-  .nav-brand .logo {
+  .nav-logo .logo {
     height: 32px;
   }
 }
 
 @media (max-width: 480px) {
-  .nav-brand .logo {
+  .nav-logo .logo {
     height: 28px;
   }
-}
-
-/* Для мобильной навигации */
-.mobile-menu .nav-brand .logo {
-  height: 36px;
-  margin-bottom: 20px;
+  .footer-logo {
+    height: 30px;
+  }
 }
