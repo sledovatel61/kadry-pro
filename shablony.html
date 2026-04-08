@@ -3971,13 +3971,23 @@ function handleEmailFormSubmit(form, emailInputId, errorId, submitBtnId, formWra
   
   // Трекинг успешной отправки
   trackEmailSubmit(templateNameVal);
-  
+
+  var isBundleForm = form.id === 'bundle-email-form';
+    
   // Редирект на страницу скачивания через 2 секунды
-  var fileName = form.querySelector('input[name="template_file"]')?.value || '';
-  if (fileName) {
+  if (isBundleForm) {
+    // Для Email-пакета (25 шаблонов)
     setTimeout(function() {
-      window.location.href = 'thank-you.html?file=' + encodeURIComponent(fileName);
+      window.location.href = 'bundle-download.html';
     }, 1500);
+  } else {
+    // Для одного шаблона
+    var fileName = form.querySelector('input[name="template_file"]')?.value || '';
+    if (fileName) {
+      setTimeout(function() {
+        window.location.href = 'thank-you.html?file=' + encodeURIComponent(fileName);
+      }, 1500);
+    }
   }
 })
   .catch(function(error) {
