@@ -1,132 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://kadry-pro.ru/</loc>
-    <lastmod>2025-03-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>1.0</priority>
-  </url>
-</urlset>
 
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  
   <!-- Главная -->
   <url>
     <loc>https://kadry-pro.ru/</loc>
-    <lastmod>2025-03-18</lastmod>
+    <lastmod>2025-01-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
-  
+
   <!-- Услуги -->
   <url>
     <loc>https://kadry-pro.ru/services.html</loc>
-    <lastmod>2025-03-18</lastmod>
+    <lastmod>2025-01-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
-  
-  <!-- НОВАЯ СТРАНИЦА -->
-  <url>
-    <loc>https://kadry-pro.ru/shtrafy-git.html</loc>
-    <lastmod>2025-03-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  
-  <!-- Остальные страницы... -->
-  <url>
-    <loc>https://kadry-pro.ru/about.html</loc>
-    <lastmod>2025-03-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  
-  <!-- ... и так далее -->
-  
-</urlset>
 
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  
-  <url>
-    <loc>https://kadry-pro.ru/</loc>
-    <lastmod>2025-03-18</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  
-  <url>
-    <loc>https://kadry-pro.ru/services.html</loc>
-    <lastmod>2025-03-18</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  
-  <!-- НОВЫЕ СТРАНИЦЫ -->
-  <url>
-    <loc>https://kadry-pro.ru/shtrafy-git.html</loc>
-    <lastmod>2025-03-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  
+  <!-- ЛНА -->
   <url>
     <loc>https://kadry-pro.ru/lna.html</loc>
-    <lastmod>2025-03-18</lastmod>
+    <lastmod>2025-01-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-  
+
+  <!-- НОВАЯ СТРАНИЦА: Шаблоны -->
+  <url>
+    <loc>https://kadry-pro.ru/shablony.html</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Штрафы ГИТ -->
+  <url>
+    <loc>https://kadry-pro.ru/shtrafy-git.html</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- СОУТ -->
   <url>
     <loc>https://kadry-pro.ru/sout.html</loc>
-    <lastmod>2025-03-18</lastmod>
+    <lastmod>2025-01-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-  
+
+  <!-- Воинский учёт -->
   <url>
     <loc>https://kadry-pro.ru/voinskiy-uchet.html</loc>
-    <lastmod>2025-03-18</lastmod>
+    <lastmod>2025-01-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-  
-  <!-- Остальные страницы -->
+
+  <!-- Аудит -->
+  <url>
+    <loc>https://kadry-pro.ru/audit.html</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Подбор персонала -->
+  <url>
+    <loc>https://kadry-pro.ru/podbor.html</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Обо мне -->
   <url>
     <loc>https://kadry-pro.ru/about.html</loc>
-    <lastmod>2025-03-18</lastmod>
+    <lastmod>2025-01-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
-  
+
+  <!-- Кейсы -->
   <url>
     <loc>https://kadry-pro.ru/cases.html</loc>
-    <lastmod>2025-03-18</lastmod>
+    <lastmod>2025-01-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
-  
+
+  <!-- Контакты -->
   <url>
     <loc>https://kadry-pro.ru/contact.html</loc>
-    <lastmod>2025-03-18</lastmod>
+    <lastmod>2025-01-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
+  <!-- Политика конфиденциальности -->
   <url>
-  <loc>https://kadry-pro.ru/audit.html</loc>
-  <lastmod>2025-03-18</lastmod>
-  <changefreq>monthly</changefreq>
-  <priority>0.8</priority>
-</url>
+    <loc>https://kadry-pro.ru/privacy.html</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
 
-<url>
-  <loc>https://kadry-pro.ru/podbor.html</loc>
-  <lastmod>2025-03-18</lastmod>
-  <changefreq>monthly</changefreq>
-  <priority>0.8</priority>
-</url>
-  
 </urlset>
