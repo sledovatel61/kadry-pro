@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шаблон отправлен | Кадры-Про</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;">
+        <div class="card" style="max-width:600px;text-align:center;padding:40px;">
+            <div style="font-size:4rem;margin-bottom:20px;">✅</div>
+            <h1 style="margin-bottom:16px;">Шаблон готов к скачиванию!</h1>
+            <p style="color:var(--text-secondary);margin-bottom:24px;line-height:1.6;">
+                Проверьте почту (и папку "Спам").<br>
+                Если письмо не пришло — скачайте файл прямо сейчас:
+            </p>
+            
+            <!-- КНОПКА СКАЧИВАНИЯ -->
+            <a id="download-link" href="#" download class="btn btn-primary btn-lg" style="margin-bottom:24px;">
+                ⬇ Скачать шаблон
+            </a>
+            
+            <p style="font-size:0.85rem;color:var(--text-muted);">
+                Или вернитесь на <a href="shablony.html" style="color:var(--accent);">страницу шаблонов</a>
+            </p>
+            
+            <!-- Бонус: призыв -->
+            <div style="margin-top:32px;padding-top:24px;border-top:1px solid var(--border-color);">
+                <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:16px;">
+                    <strong>Нужно заполнить шаблон под вашу компанию?</strong><br>
+                    Первая консультация — бесплатно.
+                </p>
+                <a href="contact.html" class="btn btn-outline">Написать Марии</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Автоматически подставляем ссылку на файл
+        const params = new URLSearchParams(window.location.search);
+        const file = params.get('file');
+        if (file) {
+            const link = document.getElementById('download-link');
+            link.href = 'shablony/' + file;
+            link.textContent = '⬇ Скачать: ' + decodeURIComponent(file.replace(/_/g, ' ').replace('.pdf', ''));
+        }
+    </script>
+</body>
+</html>
