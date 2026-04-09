@@ -3287,29 +3287,23 @@
   </div>
 </div>
 
-<!-- ======================================================
-     МОДАЛЬНОЕ ОКНО — ПОЛНЫЙ ПАКЕТ (оплата)
-     ====================================================== -->
+<!-- МОДАЛЬНОЕ ОКНО — ПОЛНЫЙ ПАКЕТ (оплата) -->
 <div class="modal" id="modal-full-bundle" role="dialog" aria-modal="true" aria-labelledby="modal-full-bundle-title">
   <div class="modal-overlay" id="modal-full-bundle-overlay"></div>
   <div class="modal-content">
     <button class="modal-close" id="modal-full-bundle-close" aria-label="Закрыть">✕</button>
-
     <h3 id="modal-full-bundle-title">Полный пакет — 64 шаблона</h3>
     <p class="modal-subtitle">Все кадровые документы + инструкции по применению.</p>
-
     <div class="modal-template-preview">
       <span class="modal-template-preview-icon">💼</span>
       <span class="modal-template-preview-name">Полный пакет: все 64 шаблона</span>
     </div>
-
     <div class="payment-price-block">
       <span class="payment-price-value">3 500 ₽</span>
       <span class="payment-price-note">
         <s style="color:var(--text-muted);">вместо 9 500 ₽</s> — экономия 63%
       </span>
     </div>
-
     <div class="payment-info-list">
       <div class="payment-info-item">
         <span class="payment-info-icon">📁</span>
@@ -3329,34 +3323,15 @@
       </div>
     </div>
 
-    <div class="form-group" style="margin-bottom:16px;">
-      <label class="form-label" for="bundle-pay-email">Ваш email для получения пакета *</label>
-      <input type="email" id="bundle-pay-email" class="form-input" placeholder="your@email.ru" autocomplete="email">
-    </div>
-
-    <div class="payment-methods">
-      <a href="#"
-         id="bundle-pay-btn-yumoney"
-         class="btn btn-primary"
-         target="_blank"
-         rel="noopener"
-         onclick="handleBundlePaymentClick('yumoney')">
-        💳 Оплатить через ЮMoney
-      </a>
-      <a href="#"
-         id="bundle-pay-btn-tinkoff"
-         class="btn btn-outline"
-         target="_blank"
-         rel="noopener"
-         onclick="handleBundlePaymentClick('tinkoff')">
-        🏦 Оплатить через Тинькофф
+    <!-- НОВАЯ КНОПКА ВМЕСТО EMAIL И ПЛАТЕЖЕЙ -->
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="thank-you-paid.html" class="btn btn-primary btn-lg" style="width: 100%;">
+        📞 Перейти к оплате и получению
       </a>
     </div>
-
-    <p style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:16px;line-height:1.5;">
-      После оплаты отправьте чек на
-      <a href="mailto:m.perepechay@yandex.ru" style="color:var(--accent);">m.perepechay@yandex.ru</a>
-      — пришлю архив в течение 2 часов в рабочее время.
+    <p style="font-size:0.78rem; color:var(--text-muted); text-align:center; margin-top:16px; line-height:1.5;">
+      На странице вы найдёте все способы связи (WhatsApp, Telegram, телефон, email).<br>
+      После подтверждения платежа вышлю архив в течение 2 часов + бесплатная консультация.
     </p>
   </div>
 </div>
