@@ -2856,8 +2856,9 @@
           <li>Должностные инструкции (4 шт.)</li>
           <li>+ 20 других шаблонов</li>
         </ul>
-        <button class="btn btn-primary"
-                onclick="openBundleEmailModal(); trackBundleClick('email_bundle')">
+        <button class="btn btn-primary btn-bundle" 
+                data-bundle="email_package"
+                onclick="openBundleEmailModal()">
           Получить за email
         </button>
       </div>
@@ -2880,8 +2881,9 @@
           <li>Формы воинского учёта 2024</li>
           <li>+ приоритетная поддержка по применению</li>
         </ul>
-        <button class="btn btn-outline"
-                onclick="openFullBundlePayModal(); trackBundleClick('full_bundle')">
+        <button class="btn btn-outline btn-bundle"
+                data-bundle="full_package"
+                onclick="trackBundleClick('full_package'); openFullBundlePayModal()">
           Купить за 3 500 ₽
         </button>
       </div>
@@ -4059,6 +4061,46 @@ function handleBundlePaymentClick(method) {
   return true;
 }
 
+// === ОТСЛЕЖИВАНИЕ ЦЕЛЕЙ ЯНДЕКС.МЕТРИКА ===
+// Бесплатные шаблоны
+document.querySelectorAll('.btn-template-free').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    if (typeof ym !== 'undefined') {
+      ym(108237323, 'reachGoal', 'template_free_download');
+    }
+  });
+});
+
+// Шаблоны за email
+document.querySelectorAll('.btn-template-email').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    if (typeof ym !== 'undefined') {
+      ym(108237323, 'reachGoal', 'template_email_lead');
+    }
+  });
+});
+
+// Платные шаблоны
+document.querySelectorAll('.btn-template-paid').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    if (typeof ym !== 'undefined') {
+      ym(108237323, 'reachGoal', 'template_paid_click');
+    }
+  });
+});
+
+// Пакетные предложения
+document.querySelectorAll('.btn-bundle').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    if (typeof ym !== 'undefined') {
+      ym(108237323, 'reachGoal', 'bundle_click', {
+        bundle: this.dataset.bundle || 'unknown'
+      });
+    }
+  });
+});
+// === /ОТСЛЕЖИВАНИЕ ЦЕЛЕЙ ===
+  
 </script>
 
 </body>
