@@ -68,6 +68,12 @@
   </url>
   <url>
     <loc>https://kadry-pro.ru/contact.html</loc>
+    <url>
+  <loc>https://kadry-pro.ru/trudovoy-spor.html</loc>
+  <lastmod>2025-01-01</lastmod>
+  <changefreq>monthly</changefreq>
+  <priority>0.8</priority>
+</url>
     <lastmod>2025-04-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
