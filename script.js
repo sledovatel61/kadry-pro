@@ -205,18 +205,24 @@ document.addEventListener('DOMContentLoaded', function() {
     if (tabBtn) tabBtn.click();
   }
 
-  var accHeaders = document.querySelectorAll('.accordion-header');
-  for (var i = 0; i < accHeaders.length; i++) {
-    accHeaders[i].addEventListener('click', function() {
-      var item = this.parentElement;
-      var isActive = item.classList.contains('active');
-      var siblings = item.parentElement.querySelectorAll('.accordion-item');
-      for (var j = 0; j < siblings.length; j++) {
-        siblings[j].classList.remove('active');
-      }
-      if (!isActive) item.classList.add('active');
+  // 🟢 АККОРДЕОН (FAQ)
+document.querySelectorAll('.accordion-header').forEach(function(header) {
+  header.addEventListener('click', function(e) {
+    e.preventDefault(); // Останавливаем стандартное поведение кнопки
+    const item = this.closest('.accordion-item'); // Находим ближайшего родителя-обёртку
+    const isActive = item.classList.contains('active');
+
+    // Закрываем все открытые вопросы на странице
+    document.querySelectorAll('.accordion-item.active').forEach(function(openItem) {
+      openItem.classList.remove('active');
     });
-  }
+
+    // Если кликнутый вопрос был закрыт, открываем его
+    if (!isActive) {
+      item.classList.add('active');
+    }
+  });
+});
 
   var phoneInputs = document.querySelectorAll('input[data-mask="phone"]');
   for (var i = 0; i < phoneInputs.length; i++) {
