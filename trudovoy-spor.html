@@ -2591,6 +2591,42 @@ document.querySelectorAll('.accordion-header').forEach(function(btn) {
 });
 
 </script>
+<script>
+  (function() {
+    // Ждём полной загрузки элементов
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', runAccordion);
+    } else {
+      runAccordion();
+    }
 
+    function runAccordion() {
+      var headers = document.querySelectorAll('.accordion-header');
+      for (var i = 0; i < headers.length; i++) {
+        headers[i].addEventListener('click', function(e) {
+          e.preventDefault(); // Отменяем стандартное поведение кнопки
+          
+          var item = this.closest('.accordion-item');
+          var isActive = item.classList.contains('active');
+          
+          // Закрываем все остальные вопросы
+          var allItems = document.querySelectorAll('.accordion-item');
+          for (var j = 0; j < allItems.length; j++) {
+            allItems[j].classList.remove('active');
+          }
+          
+          // Если кликнутый был закрыт — открываем его
+          if (!isActive) {
+            item.classList.add('active');
+            this.setAttribute('aria-expanded', 'true');
+          } else {
+            this.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+    }
+  })();
+</script>
+</body>
 </body>
 </html>
