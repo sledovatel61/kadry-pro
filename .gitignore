@@ -5,6 +5,7 @@ _backup_seo/
 
 # Дампы от внешних AI-агентов (рабочие материалы)
 agent_result/
+LLM/
 
 # Экспорты чатов
 kimi-export-*.md

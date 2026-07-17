@@ -87,7 +87,16 @@
 
   <meta property="og:image" content="https://kadry-pro.ru/logo.png">
   <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630"></head>
+  <meta property="og:image:height" content="630">
+  <!-- Google Analytics (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-76SCLJTYNF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-76SCLJTYNF');
+  </script>
+</head>
 <body>
 
 <div id="bg-decor"></div>
@@ -100,11 +109,11 @@
   <!-- Navigation -->
   <nav class="nav" role="navigation" aria-label="Главная навигация">
     <div class="nav-inner">
-      <a href="index.html" class="nav-logo">
+      <a href="/" class="nav-logo">
         <img src="logo.png" alt="Kadry-Pro - кадровый аутсорсинг" class="logo">
       </a>
       <div class="nav-links">
-        <a href="index.html" class="active">Главная</a>
+        <a href="/" class="active">Главная</a>
         <a href="services.html">Услуги и цены</a>
         <a href="podbor.html">Подбор кадров</a>
         <a href="about.html">Обо мне</a>
@@ -122,7 +131,7 @@
 
   <!-- Mobile Menu -->
   <div class="mobile-menu" role="dialog" aria-label="Мобильное меню">
-    <a href="index.html">Главная</a>
+    <a href="/">Главная</a>
     <a href="services.html">Услуги и цены</a>
     <a href="podbor.html">Подбор кадров</a>
     <a href="about.html">Обо мне</a>

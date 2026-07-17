@@ -38,17 +38,48 @@
   <meta property="og:locale" content="ru_RU">
   <meta property="og:site_name" content="Кадры-Про">
   <meta name="robots" content="index, follow">
+
+  <!-- Organization schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Кадры-Про",
+    "url": "https://kadry-pro.ru/",
+    "logo": "https://kadry-pro.ru/logo.png",
+    "image": "https://kadry-pro.ru/logo.png",
+    "description": "Кадровый аутсорсинг для малого бизнеса: абонентское обслуживание, разработка ЛНА, СОУТ, подбор персонала, подготовка к проверкам ГИТ. Ростов-на-Дону, работа по всей России.",
+    "telephone": "+7-961-302-21-12",
+    "email": "m.perepechay@yandex.ru",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Ростов-на-Дону",
+      "addressRegion": "Ростовская область",
+      "addressCountry": "RU"
+    },
+    "areaServed": { "@type": "Country", "name": "Россия" }
+  }
+  </script>
+
+  <!-- Google Analytics (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-76SCLJTYNF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-76SCLJTYNF');
+  </script>
 </head>
 <body>
 
   <!-- НАВИГАЦИЯ -->
   <nav class="nav">
     <div class="nav-inner">
-      <a href="index.html" class="nav-logo">
+      <a href="/" class="nav-logo">
         <img src="logo.png" alt="Kadry-Pro - кадровый аутсорсинг" class="logo">
       </a>
       <div class="nav-links">
-        <a href="index.html">Главная</a>
+        <a href="/">Главная</a>
         <a href="services.html">Услуги и цены</a>
         <a href="podbor.html">Подбор</a>
         <a href="about.html">Обо мне</a>
@@ -62,7 +93,7 @@
     </div>
   </nav>
   <div class="mobile-menu">
-    <a href="index.html">Главная</a>
+    <a href="/">Главная</a>
     <a href="services.html">Услуги и цены</a>
     <a href="podbor.html">Подбор</a>
     <a href="about.html">Обо мне</a>
