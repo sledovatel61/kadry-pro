@@ -1,3 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /thank-you.html
+Disallow: /thank-you-paid.html
+Disallow: /bundle-download.html
 Sitemap: https://kadry-pro.ru/sitemap.xml
