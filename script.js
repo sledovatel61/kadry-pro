@@ -123,9 +123,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var savingsYear = document.getElementById('savings-year');
 
     function getTierPrice(count) {
-      if (count <= 10) return 12000;
-      if (count <= 30) return 18000;
-      return 25000;
+      if (count <= 10) return 14000;
+      if (count <= 30) return 24000;
+      return 36000;
     }
 
     function getTierName(count) {
