@@ -183,7 +183,7 @@
         <p class="hero-subtitle anim anim-delay-3">
           От <strong class="price-highlight">14&nbsp;000&nbsp;₽/мес</strong> вместо штатного кадровика за&nbsp;75&nbsp;000&nbsp;₽.
           <span class="experience-badge">14&nbsp;лет опыта</span>, 
-          <span class="guarantee-badge">0&nbsp;штрафов</span> при проверках ГИТ, ПФР, ФСС.
+          <span class="guarantee-badge">0&nbsp;штрафов</span> при проверках ГИТ, военкомата, ПФР и&nbsp;ФСС (ныне СФР).
         </p>
         
         <div class="hero-actions anim anim-delay-4">
@@ -254,7 +254,7 @@
           <div class="pvs-item"><span class="pvs-icon good">✓</span><p>Полный комплект ЛНА за 2–4 недели</p></div>
           <div class="pvs-item"><span class="pvs-icon good">✓</span><p>Подготовлю к любой проверке заблаговременно</p></div>
           <div class="pvs-item"><span class="pvs-icon good">✓</span><p>Полный кадровый цикл — от приёма до увольнения</p></div>
-          <div class="pvs-item"><span class="pvs-icon good">✓</span><p>Воинский учёт, СОУТ, охрана труда — всё включено</p></div>
+          <div class="pvs-item"><span class="pvs-icon good">✓</span><p>Воинский учёт, СОУТ, охрана труда — в одном договоре</p></div>
         </div>
       </div>
     </div>
@@ -277,9 +277,10 @@
             </div>
             <input type="range" id="salary-slider" min="35000" max="80000" value="45000" step="5000" aria-label="Зарплата кадровика">
           </div>
-          <div class="calc-detail"><span>Страховые взносы (~30,2%)</span><span id="salary-tax">13 590 ₽</span></div>
+          <div class="calc-detail"><span>Зарплата до вычета НДФЛ (13%)</span><span id="salary-gross">51 724 ₽</span></div>
+          <div class="calc-detail"><span>Страховые взносы (~30,2%)</span><span id="salary-tax">15 621 ₽</span></div>
           <div class="calc-detail"><span>Рабочее место, ПК, 1С</span><span id="salary-workplace">5 000 ₽</span></div>
-          <div class="calc-detail" style="border-bottom:none;padding-top:12px;"><span><strong>Итого для работодателя</strong></span><span style="color:var(--danger);font-weight:700;" id="salary-total">63 590 ₽</span></div>
+          <div class="calc-detail" style="border-bottom:none;padding-top:12px;"><span><strong>Итого для работодателя</strong></span><span style="color:var(--danger);font-weight:700;" id="salary-total">72 345 ₽</span></div>
         </div>
 
         <div class="card calc-card anim anim-delay-1">
@@ -299,8 +300,8 @@
 
         <div class="card calc-result anim anim-delay-2">
           <h3>💰 Ваша экономия</h3>
-          <div class="calc-savings"><span id="savings-month">49 590</span> ₽/мес</div>
-          <div class="calc-savings-year"><span id="savings-year">595 080 ₽ в год</span></div>
+          <div class="calc-savings"><span id="savings-month">58 345</span> ₽/мес</div>
+          <div class="calc-savings-year"><span id="savings-year">700 140 ₽ в год</span></div>
         </div>
       </div>
     </div>
@@ -577,6 +578,6 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=2"></script>
 </body>
 </html>
