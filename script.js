@@ -215,6 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if (salarySlider && staffSlider) {
     var salaryValue = document.getElementById('salary-value');
+    var salaryGross = document.getElementById('salary-gross');
     var salaryTax = document.getElementById('salary-tax');
     var salaryTotal = document.getElementById('salary-total');
     var salaryWorkplace = document.getElementById('salary-workplace');
@@ -253,12 +254,15 @@ document.addEventListener('DOMContentLoaded', function() {
       var staff = parseInt(staffSlider.value);
       var taxRate = 0.302;
       var workplaceCost = 5000;
-      var tax = Math.round(salary * taxRate);
-      var totalEmployer = salary + tax + workplaceCost;
+      // Ползунок — зарплата «на руки»; взносы начисляются на сумму до вычета НДФЛ 13%
+      var gross = Math.round(salary / 0.87);
+      var tax = Math.round(gross * taxRate);
+      var totalEmployer = gross + tax + workplaceCost;
       var tierPrice = getTierPrice(staff);
       var savings = totalEmployer - tierPrice;
 
       if (salaryValue) salaryValue.textContent = formatNumber(salary);
+      if (salaryGross) salaryGross.textContent = formatNumber(gross) + ' \u0440\u0443\u0431.';
       if (salaryTax) salaryTax.textContent = formatNumber(tax) + ' \u0440\u0443\u0431.';
       if (salaryTotal) salaryTotal.textContent = formatNumber(totalEmployer) + ' \u0440\u0443\u0431.';
       if (salaryWorkplace) salaryWorkplace.textContent = formatNumber(workplaceCost) + ' \u0440\u0443\u0431.';
