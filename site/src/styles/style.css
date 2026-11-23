@@ -1624,7 +1624,7 @@ input[type="range"]::-moz-range-thumb {
   text-shadow: none;
 }
 
-/* Бейджи доверия («14 лет опыта», «0 штрафов») — на компаньоне, а не на
+/* Бейджи доверия («16 лет опыта», «0 штрафов») — на компаньоне, а не на
    кобальте: два разных смысловых слоя вместо одного синего пятна. */
 .experience-badge, .guarantee-badge {
   background: var(--accent-secondary-glow);
@@ -2212,7 +2212,7 @@ input[type="range"]::-moz-range-thumb {
     font-size: 0.9rem;
   }
 
-  /* Бейджи «14 лет опыта» и «0 штрафов» — не наезжают друг на друга */
+  /* Бейджи «16 лет опыта» и «0 штрафов» — не наезжают друг на друга */
   .experience-badge,
   .guarantee-badge {
     display: inline-block;
