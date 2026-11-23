@@ -10,6 +10,7 @@
  *    (/privacy.html и /consent.html — страницы Агента 02).
  */
 import { OWNER, SITE } from '../data/site.ts';
+import Logo from './Logo.astro';
 const year = 2026;
 ---
 
@@ -18,7 +19,7 @@ const year = 2026;
     <div class="footer-grid">
       <div class="footer-brand">
         <div class="nav-logo" style="margin-bottom:12px;">
-          <img src="/img/logo.svg" alt={`${SITE.name} — кадровый аутсорсинг`} class="logo">
+          <Logo height={40} label={`${SITE.name} — кадровый аутсорсинг`} />
         </div>
         <p>Кадровый аутсорсинг для малого бизнеса. 14 лет опыта, 0 штрафов, {SITE.priceFrom}.</p>
 
@@ -41,19 +42,19 @@ const year = 2026;
       <div class="footer-col">
         <h4>Услуги</h4>
         <a href="/services.html?tab=tab-subscription">Абонентское</a>
-        <a href="/lna.html" style="color: var(--accent);">Разработка ЛНА →</a>
-        <a href="/sout.html" style="color: var(--accent);">СОУТ →</a>
-        <a href="/shtrafy-git.html" style="color: var(--accent);">Штрафы ГИТ 2026 →</a>
-        <a href="/voinskiy-uchet.html" style="color: var(--accent);">Воинский учёт →</a>
+        <a href="/lna.html" style="color: var(--accent-text);">Разработка ЛНА →</a>
+        <a href="/sout.html" style="color: var(--accent-text);">СОУТ →</a>
+        <a href="/shtrafy-git.html" style="color: var(--accent-text);">Штрафы ГИТ 2026 →</a>
+        <a href="/voinskiy-uchet.html" style="color: var(--accent-text);">Воинский учёт →</a>
         <a href="/audit.html">Аудит кадрового учёта</a>
         <a href="/podbor.html">Подбор персонала</a>
-        <a href="/shablony.html" style="color: var(--accent);">Шаблоны документов →</a>
+        <a href="/shablony.html" style="color: var(--accent-text);">Шаблоны документов →</a>
       </div>
 
       <div class="footer-col">
         <h4>Компания</h4>
         <a href="/about.html">Обо мне</a>
-        <a href="/trudovoy-spor.html" style="color:var(--accent);">Трудовой спор →</a>
+        <a href="/trudovoy-spor.html" style="color:var(--accent-text);">Трудовой спор →</a>
         <a href="/cases.html">Кейсы</a>
         <a href="/articles.html">Полезное: разборы законов</a>
         <a href="/contact.html">Контакты</a>

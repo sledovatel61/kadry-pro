@@ -1,10 +1,17 @@
 /**
- * Стили раздела «Полезное» (список статей и страница статьи).
+ * Стили раздела «Полезное» (список статей и страница статьи) — Агент 03.
  *
- * Страницы Агента 03 ссылались на старый корневой /style.css — в сборке site/
- * его нет, поэтому классы оформлены здесь и подключаются импортом в самих
- * страницах articles/. Палитра — фирменная: #0a0a0a + #4ade80, шрифты те же,
- * что в fonts.css (подключаются каркасом Base.astro).
+ * Никаких собственных цветов: только переменные темы из style.css с fallback-
+ * значениями. Это важно, потому что блоки статей стоят на разных фонах —
+ * карточка (--bg-card), тёмный фон страницы (--bg-primary) и полупрозрачные
+ * плашки. Один и тот же зелёный #4ade80 на подложке «зелёный на 6%» даёт
+ * «зелёное на зелёном», поэтому:
+ *
+ *   • --accent        — крупные цифры, иконки, рамки, ссылки на тёмном фоне;
+ *   • --accent-text   — текст внутри полупрозрачных акцентных плашек и бейджей
+ *                       (светлее акцента, читается на зелёной подложке);
+ *   • --on-accent     — текст на плотной заливке (кнопка, активный чип): всегда
+ *                       тёмный, меняется только вместе с --accent.
  */
 
 /* --- Хлебные крошки --- */
@@ -13,18 +20,19 @@
   flex-wrap: wrap;
   gap: 6px;
   padding: 24px 0 4px;
-  color: var(--text-muted, #8b948c);
+  /* Разделители «/» тоже текст: #777 на #0a0a0a — 4.42:1, берём светлее. */
+  color: var(--text-secondary, #aaaaaa);
   font-size: 0.85rem;
 }
 .crumbs a {
-  color: var(--text-secondary, #b7c2ba);
+  color: var(--text-secondary, #aaaaaa);
   text-decoration: none;
 }
 .crumbs a:hover {
   color: var(--accent, #4ade80);
 }
 
-/* --- Список статей --- */
+/* --- Фильтр по категориям --- */
 .articles-filter {
   display: flex;
   flex-wrap: wrap;
@@ -37,25 +45,51 @@
   gap: 6px;
   min-height: 38px;
   padding: 0 14px;
-  border: 1px solid #354238;
+  border: 1px solid var(--border-color, #333333);
   border-radius: 999px;
-  color: #d4ddd6;
-  background: #141a16;
+  color: var(--text-secondary, #aaaaaa);
+  background: var(--bg-card, #1a1a1a);
   font-size: 0.85rem;
   font-weight: 600;
   text-decoration: none;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
 }
 .chip span {
-  opacity: 0.7;
+  opacity: 0.75;
 }
-.chip[aria-current='page'],
 .chip:hover {
+  border-color: var(--accent-border, rgba(74, 222, 128, 0.6));
+  color: var(--text-primary, #ffffff);
+  background: var(--bg-card-hover, #222222);
+}
+
+/* Активный чип — плотная заливка, значит текст строго --on-accent. */
+.chip[aria-current='page'] {
   border-color: var(--accent, #4ade80);
-  color: var(--accent, #4ade80);
+  background: var(--accent, #4ade80);
+  color: var(--on-accent, #0a0a0a);
 }
+.chip[aria-current='page']:hover {
+  background: var(--accent-dark, #22c55e);
+  border-color: var(--accent-dark, #22c55e);
+  color: var(--on-accent, #0a0a0a);
+}
+.chip[aria-current='page'] span {
+  opacity: 0.8;
+}
+
+/* RSS — отдельный, но тоже читаемый: акцентный текст на спокойной рамке. */
 .chip-rss {
-  color: #f5b942;
+  color: var(--accent-text, #86efac);
+  border-color: var(--accent-border, rgba(74, 222, 128, 0.4));
 }
+.chip-rss:hover {
+  color: var(--accent-text, #86efac);
+  border-color: var(--accent, #4ade80);
+  background: var(--accent-glow, rgba(74, 222, 128, 0.12));
+}
+
+/* --- Сетка карточек --- */
 .articles-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -66,21 +100,30 @@
   display: flex;
   flex-direction: column;
   padding: 22px;
-  border: 1px solid #28342c;
+  border: 1px solid var(--border-color, #333333);
   border-radius: 17px;
-  background: linear-gradient(160deg, #171d19, #101411);
-  transition: transform 0.2s, border-color 0.2s;
+  background: var(--bg-card, #1a1a1a);
+  transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .article-card:hover {
   transform: translateY(-4px);
-  border-color: #4ade8073;
+  border-color: var(--accent-border, rgba(74, 222, 128, 0.6));
+  background: var(--bg-card-hover, #222222);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
 }
 .article-card-link {
   color: inherit;
   text-decoration: none;
 }
+.article-card-link:focus-visible {
+  outline: 2px solid var(--accent, #4ade80);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+/* Категория над заголовком: мелкий капс — берём акцентный текст, не сам акцент. */
 .article-card-cat {
-  color: #6ee795;
+  color: var(--accent-text, #86efac);
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -90,11 +133,11 @@
   margin: 8px 0;
   font-size: 1.15rem;
   line-height: 1.35;
-  color: #f2f6f2;
+  color: var(--text-primary, #ffffff);
 }
 .article-card p {
   margin: 0;
-  color: #9eaaa1;
+  color: var(--text-secondary, #aaaaaa);
   font-size: 0.9rem;
   line-height: 1.55;
 }
@@ -103,24 +146,34 @@
   gap: 8px;
   margin-top: auto;
   padding-top: 14px;
-  color: var(--text-muted, #8b948c);
+  color: var(--text-muted, #888888);
   font-size: 0.8rem;
 }
+
 .articles-empty {
   padding: 30px;
-  border: 1px dashed #46534a;
+  border: 1px dashed var(--border-light, #444444);
   border-radius: 14px;
-  color: #c9d3cb;
+  color: var(--text-secondary, #aaaaaa);
   text-align: center;
 }
+.articles-empty a { color: var(--accent-text, #86efac); }
+
+/* --- Призывы к действию: своя плашка на акцентной подложке --- */
 .articles-cta,
 .article-cta {
   margin: 26px 0 60px;
   padding: 24px;
-  border: 1px solid #304434;
+  border: 1px solid var(--accent-border, rgba(74, 222, 128, 0.28));
   border-radius: 18px;
-  background: #131a15;
+  background: var(--accent-glow, rgba(74, 222, 128, 0.12));
+  color: var(--text-primary, #ffffff);
 }
+.articles-cta p,
+.article-cta p { margin: 0 0 6px; }
+.articles-cta b,
+.article-cta b { color: var(--accent-text, #86efac); }
+
 .article-cta-links {
   display: flex;
   flex-wrap: wrap;
@@ -141,38 +194,53 @@
   align-items: center;
   gap: 10px;
   margin-top: 18px;
-  color: var(--text-muted, #8b948c);
+  /* #777 на #0a0a0a даёт 4.42:1 — чуть ниже нормы для мелкого текста,
+     поэтому дата и «6 мин чтения» берут более светлый --text-secondary. */
+  color: var(--text-secondary, #aaaaaa);
   font-size: 0.85rem;
 }
+.article-meta time { color: var(--text-secondary, #aaaaaa); }
+
+/* Плашка категории: подложка акцентная полупрозрачная — текст --accent-text. */
 .news-cat {
   padding: 4px 10px;
+  border: 1px solid var(--accent-border, rgba(74, 222, 128, 0.28));
   border-radius: 999px;
-  background: #183e26;
-  color: #6ee795;
+  background: var(--accent-glow, rgba(74, 222, 128, 0.12));
+  color: var(--accent-text, #86efac);
   font-size: 0.72rem;
   font-weight: 700;
   text-decoration: none;
 }
+.news-cat:hover {
+  border-color: var(--accent, #4ade80);
+  color: var(--text-primary, #ffffff);
+}
+
 .article-main h1 {
   margin: 12px 0;
   font-size: clamp(1.7rem, 4vw, 2.5rem);
   line-height: 1.15;
+  color: var(--text-primary, #ffffff);
 }
 .article-lead {
-  color: #bdc8bf;
+  color: var(--text-secondary, #aaaaaa);
   font-size: 1.08rem;
   line-height: 1.65;
 }
+
+/* --- Оглавление --- */
 .article-toc {
   margin: 22px 0;
   padding: 18px 20px;
-  border: 1px solid #2c3a30;
+  border: 1px solid var(--border-color, #333333);
   border-radius: 14px;
-  background: #121714;
+  background: var(--bg-card, #1a1a1a);
 }
 .article-toc-title {
   margin: 0 0 8px;
   font-weight: 700;
+  color: var(--text-primary, #ffffff);
 }
 .article-toc ol {
   margin: 0;
@@ -182,24 +250,29 @@
   margin: 6px 0;
 }
 .article-toc a {
-  color: #cfe6d5;
+  color: var(--text-secondary, #aaaaaa);
   text-decoration: none;
 }
 .article-toc a:hover {
-  color: var(--accent, #4ade80);
+  color: var(--accent-text, #86efac);
+  text-decoration: underline;
 }
+
+/* --- Текст статьи --- */
 .article-body {
   line-height: 1.75;
-  color: var(--text-primary, #e8ece9);
+  color: var(--text-primary, #ffffff);
 }
 .article-body h2 {
   margin: 34px 0 12px;
   font-size: 1.45rem;
   scroll-margin-top: 90px;
+  color: var(--text-primary, #ffffff);
 }
 .article-body h3 {
   margin: 26px 0 10px;
   font-size: 1.15rem;
+  color: var(--text-primary, #ffffff);
 }
 .article-body p {
   margin: 12px 0;
@@ -212,21 +285,29 @@
   margin: 7px 0;
 }
 .article-body a {
+  color: var(--accent-text, #86efac);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.article-body a:hover {
   color: var(--accent, #4ade80);
 }
+.article-body strong { color: var(--text-primary, #ffffff); }
 .article-body blockquote {
   margin: 18px 0;
   padding: 12px 18px;
   border-left: 3px solid var(--accent, #4ade80);
-  background: #131a15;
-  color: #cdd8d0;
+  background: var(--accent-glow, rgba(74, 222, 128, 0.1));
+  color: var(--text-primary, #ffffff);
 }
 .article-body code {
   padding: 2px 6px;
   border-radius: 6px;
-  background: #1a211c;
+  background: var(--bg-card-hover, #222222);
+  border: 1px solid var(--border-color, #333333);
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.85em;
+  color: var(--text-primary, #ffffff);
 }
 .article-body table {
   width: 100%;
@@ -236,27 +317,48 @@
 .article-body th,
 .article-body td {
   padding: 9px 12px;
-  border: 1px solid #2c3a30;
+  border: 1px solid var(--border-color, #333333);
   text-align: left;
 }
 .article-body th {
-  background: #16211a;
+  background: var(--bg-card-hover, #222222);
+  color: var(--text-primary, #ffffff);
 }
+.article-body td { color: var(--text-secondary, #aaaaaa); }
+
+/* Цена из прайса: акцентный текст на обычном фоне — читается, но не «горит». */
+.article-body .price-token {
+  color: var(--accent-text, #86efac);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .hint {
-  color: var(--text-muted, #8b948c);
+  color: var(--text-muted, #888888);
   font-size: 0.82rem;
 }
+
+/* В зелёной плашке серый #777 садится на подложку и даёт 2.63:1 — там
+   подпись обязана быть светлее. */
+.articles-cta .hint,
+.article-cta .hint,
+.article-meta .hint {
+  color: var(--text-secondary, #aaaaaa);
+}
+
+/* --- Другие разборы --- */
 .article-others {
   align-self: start;
   margin-top: 60px;
   padding: 18px;
-  border: 1px solid #28342c;
+  border: 1px solid var(--border-color, #333333);
   border-radius: 14px;
-  background: #121714;
+  background: var(--bg-card, #1a1a1a);
 }
 .article-others-title {
   margin: 0 0 10px;
   font-weight: 700;
+  color: var(--text-primary, #ffffff);
 }
 .article-others ul {
   margin: 0;
@@ -267,23 +369,39 @@
   margin: 12px 0;
 }
 .article-others a {
-  color: #d7e6db;
+  color: var(--text-secondary, #aaaaaa);
   text-decoration: none;
 }
 .article-others a:hover {
-  color: var(--accent, #4ade80);
+  color: var(--accent-text, #86efac);
+  text-decoration: underline;
 }
+/* Подсказка под ссылкой стоит на карточке #1a1a1a: #777 даёт там 3.89:1,
+   поэтому внутри «Других разборов» подпись светлее. */
+.article-others .hint { display: block; margin-top: 2px; color: var(--text-secondary, #aaaaaa); }
 
-/* Кнопки Agent 03 используют модификатор --primary; в style.css — без дефиса */
-.btn--primary {
-  background: var(--accent, #4ade80);
-  color: #06200d;
-  border-color: var(--accent, #4ade80);
-}
+/* --- Кнопки --- */
+/* .btn--primary живёт в reviews.css: articles.css подключается только на
+   страницах статей, а эта кнопка нужна ещё и форме отзыва на главной,
+   «Обо мне» и «Кейсах». Здесь — только размер. */
 .btn.small {
   min-height: 34px;
   padding: 0 12px;
   font-size: 0.82rem;
+}
+
+/* Кнопка «по умолчанию» внутри CTA-плашки: рамка светлее обычной,
+   чтобы не тонула в зелёной подложке. */
+.article-cta .btn:not(.btn--primary),
+.articles-cta .btn:not(.btn--primary) {
+  border: 1px solid var(--border-light, #444444);
+  background: var(--bg-primary, #0a0a0a);
+  color: var(--text-primary, #ffffff);
+}
+.article-cta .btn:not(.btn--primary):hover,
+.articles-cta .btn:not(.btn--primary):hover {
+  border-color: var(--accent, #4ade80);
+  color: var(--text-primary, #ffffff);
 }
 
 @media (max-width: 980px) {

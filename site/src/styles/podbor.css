@@ -1,5 +1,12 @@
-/* Стили страницы «Подбор кадров» — вынесены из podbor.html во время переезда
-   на Astro (раньше инлайн-блок на 2,3 КБ ехал внутри каждой загрузки страницы). */
+/* Стили страницы «Подбор кадров» — Агент 03.
+
+   Раньше блок ехал инлайном из podbor.html; при переезде на Astro вынесен сюда.
+   Цвета — только переменные темы с fallback-значениями. Два места, где раньше
+   был «зелёный на зелёном»:
+     • .guarantee-block h4 стоял на собственной подложке — ок, но теперь
+       акцентный текст, чтобы читался и на hover-фоне;
+     • .step-number — круг акцентной подложкой и --accent внутри неё; буква
+       мелкая, поэтому текст здесь --accent-text, а не сам акцент. */
 .podbor-types {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -30,7 +37,7 @@
       margin-bottom: 12px;
     }
     .guarantee-block h4 {
-      color: var(--accent);
+      color: var(--accent-text, #86efac);
       margin-bottom: 8px;
       font-size: 1rem;
     }
@@ -44,21 +51,23 @@
       font-size: 0.85rem;
     }
     .breadcrumb-nav a {
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
     }
-    .breadcrumb-nav a:hover {
-      color: var(--accent);
-    }
+    /* Разделитель и текущая крошка — тоже текст, а не декор: держим их
+       на том же --text-secondary, иначе #777 на #0a0a0a даёт 4.42:1. */
     .breadcrumb-sep {
       margin: 0 8px;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
+    }
+    .breadcrumb-nav a:hover {
+      color: var(--accent-text, #86efac);
     }
     .breadcrumb-current {
-      color: var(--accent);
+      color: var(--accent-text, #86efac);
     }
     .spec-card-accent {
-      border-color: rgba(74,222,128,0.3) !important;
-      background: linear-gradient(135deg, rgba(74,222,128,0.08), var(--bg-card)) !important;
+      border-color: var(--accent-border, rgba(74,222,128,0.3)) !important;
+      background: linear-gradient(135deg, var(--accent-glow, rgba(74,222,128,0.08)), var(--bg-card, #1a1a1a)) !important;
     }
     .step-number {
       width: 36px;
@@ -71,20 +80,20 @@
       font-weight: 700;
       flex-shrink: 0;
       margin-top: 2px;
-      background: var(--accent-glow);
-      color: var(--accent);
+      background: var(--accent-glow, rgba(74,222,128,0.15));
+      color: var(--accent-text, #86efac);
     }
     .step-time {
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       font-weight: 400;
       font-size: 0.85rem;
     }
     .comparison-good {
-      color: var(--accent);
+      color: var(--accent-text, #86efac);
       font-weight: 500;
     }
     .comparison-bad {
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
     }
     @media (max-width: 1024px) {
       .podbor-specs {

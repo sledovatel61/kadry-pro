@@ -4,7 +4,7 @@
    в подвале и мобильном меню, реквизиты оператора, карточка
    шаблонов на «Услугах», портрет на «Обо мне», связка
    калькулятора с заявкой.
-   Палитра прежняя: #0a0a0a + #4ade80.
+   Палитра — из переменных темы (см. style.css): меняется через html[data-theme].
    ============================================================ */
 
 /* --- Логотип в шапке: только векторный logo.svg (знак + слово Kadry-Pro
@@ -73,9 +73,9 @@
   text-align: center;
   line-height: 1.2;
 }
-.mobile-menu-btn--tg { border-color: rgba(74, 222, 128, 0.45); color: var(--accent) !important; }
-.mobile-menu-btn--max { border-color: rgba(74, 222, 128, 0.25); }
-.mobile-menu-btn--call { border-color: rgba(74, 222, 128, 0.6); background: rgba(74, 222, 128, 0.1); color: var(--accent) !important; font-weight: 600; }
+.mobile-menu-btn--tg { border-color: var(--accent-border); color: var(--accent-text) !important; }
+.mobile-menu-btn--max { border-color: var(--accent-border); }
+.mobile-menu-btn--call { border-color: var(--accent-border); background: var(--accent-glow); color: var(--accent-text) !important; font-weight: 600; }
 
 /* --- Подвал: мессенджеры и реквизиты --- */
 .footer-messengers {
@@ -105,10 +105,10 @@
   transform: translateY(-1px);
 }
 .footer-messenger-icon { font-size: 1.05rem; }
-.footer-messenger--tg { border-color: rgba(74, 222, 128, 0.4); }
-.footer-messenger--tg .footer-messenger-icon { color: #4ade80; }
-.footer-messenger--wa .footer-messenger-icon { color: #4ade80; }
-.footer-messenger--max { border-color: rgba(74, 222, 128, 0.28); }
+.footer-messenger--tg { border-color: var(--accent-border); }
+.footer-messenger--tg .footer-messenger-icon { color: var(--accent-text); }
+.footer-messenger--wa .footer-messenger-icon { color: var(--accent-text); }
+.footer-messenger--max { border-color: var(--accent-border); }
 
 .footer-requisites {
   display: flex;
@@ -146,27 +146,27 @@
   padding: 7px 2px;
   border-radius: 9px;
   color: var(--text-secondary);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   line-height: 1.1;
   text-align: center;
 }
 .dock-btn:active { background: var(--bg-card); }
 .dock-icon { font-size: 1.15rem; line-height: 1; }
 .dock-label { font-weight: 500; letter-spacing: 0.01em; }
-.dock-btn--accent { background: var(--accent); color: #06210f; font-weight: 600; }
-.dock-btn--accent .dock-icon { filter: saturate(0.9); }
+.dock-btn--accent { background: var(--accent); color: var(--on-accent) !important; font-weight: 700; }
+.dock-btn--accent .dock-icon { filter: none; }
+.dock-btn--accent:hover,
+.dock-btn--accent:focus { background: var(--accent-dark); color: var(--on-accent) !important; }
 @media (max-width: 768px) {
   .dock { display: flex; }
   /* освобождаем место под плашку, чтобы она не закрывала подвал */
   body { padding-bottom: 68px; }
   .fixed-call { display: none !important; }
-  /* куки-баннер поднимаем над доком */
-  .cookie-banner { bottom: 74px; }
-  .cookie-panel { bottom: 74px; }
 }
 
 /* --- Быстрая форма заявки на продающих страницах --- */
-.quick-lead { padding: 72px 0; background: rgba(26, 26, 26, 0.5); }
+.quick-lead { padding: 72px 0; background: color-mix(in srgb, var(--bg-card) 50%, transparent); }
+.quick-lead-title strong, .quick-lead-title b { color: var(--accent-text); }
 .quick-lead--compact { padding: 48px 0; }
 .quick-lead-card {
   display: grid;
@@ -176,7 +176,7 @@
   border: 1px solid var(--border-color);
   border-radius: 18px;
   background:
-    radial-gradient(ellipse at 0% 0%, rgba(74, 222, 128, 0.07), transparent 55%),
+    radial-gradient(ellipse at 0% 0%, var(--accent-glow), transparent 55%),
     var(--bg-card);
 }
 .quick-lead-title {
@@ -216,17 +216,17 @@
   pointer-events: none;
 }
 .quick-lead-consent { align-items: flex-start; font-size: 0.82rem; color: var(--text-secondary); }
-.quick-lead-consent a { color: var(--accent); text-decoration: underline; }
+.quick-lead-consent a { color: var(--accent-text); text-decoration: underline; }
 .quick-lead-status {
   margin-top: 4px;
   padding: 12px 14px;
-  border: 1px solid rgba(74, 222, 128, 0.4);
+  border: 1px solid var(--accent-border);
   border-radius: 10px;
-  background: rgba(74, 222, 128, 0.07);
+  background: var(--accent-glow);
   color: var(--text-primary);
   font-size: 0.88rem;
 }
-.quick-lead-status a { color: var(--accent); text-decoration: underline; }
+.quick-lead-status a { color: var(--accent-text); text-decoration: underline; }
 .quick-lead-form .form-success { display: none; }
 .quick-lead-form .form-success.visible { display: block; }
 
@@ -252,13 +252,13 @@
   text-align: center;
 }
 .templates-cross-item--accent {
-  border-color: rgba(74, 222, 128, 0.5);
-  background: rgba(74, 222, 128, 0.07);
+  border-color: var(--accent-border);
+  background: var(--accent-glow);
 }
 .templates-cross-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   margin-bottom: 6px;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
@@ -283,7 +283,7 @@
   width: 100%;
   height: auto;
   border-radius: 16px;
-  border: 1px solid rgba(74, 222, 128, 0.35);
+  border: 1px solid var(--accent-border);
   display: block;
 }
 .about-intro-caption {
@@ -301,7 +301,7 @@
 .about-intro-facts li {
   padding: 11px 14px;
   border-left: 2px solid var(--accent);
-  background: rgba(74, 222, 128, 0.05);
+  background: var(--accent-glow);
   border-radius: 0 8px 8px 0;
   color: var(--text-secondary);
   font-size: 0.92rem;
@@ -324,3 +324,112 @@
 
 /* --- Кнопка «Заявка» в доке и подсветка цели --- */
 #lead-form, #contact-form { scroll-margin-top: 90px; }
+
+/* ============================================================
+   ПЛАШКА ПРЕДПРОСМОТРА ПАЛИТР (временный инструмент)
+   Живёт над нижним .dock на телефоне и в правом нижнем углу
+   на компьютере. Удаляется вместе с ThemePreviewBar.astro.
+   ============================================================ */
+.theme-bar {
+  position: fixed;
+  z-index: 1060;
+  /* Слева внизу: справа стоит кнопка «Настройки cookie» (Агент 02, z-index 999),
+     и перекрывать её нельзя. */
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 0.78rem;
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.theme-bar::-webkit-scrollbar { display: none; }
+.theme-bar-label { padding: 0 4px; font-size: 0.95rem; flex-shrink: 0; }
+
+.theme-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+.theme-bar-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+  border-color: var(--border-color);
+}
+.theme-bar-btn[aria-pressed='true'] {
+  color: var(--text-primary);
+  background: var(--accent-glow);
+  border-color: var(--accent-border);
+  font-weight: 600;
+}
+.theme-bar-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+/* точки — ровно акцентные цвета пяти палитр */
+.theme-bar-dot--sage { background: #5ec28f; }
+.theme-bar-dot--gold { background: #e2b86b; }
+.theme-bar-dot--cobalt { background: #58a6ff; }
+.theme-bar-dot--amber { background: #efaa4a; }
+.theme-bar-dot--teal { background: #48b8b0; }
+
+/* На компьютере баннер куки занимает низ экрана во всю ширину — поднимаем его
+   над плашкой палитр, чтобы текст не оказался под ней. */
+.cookie-consent { bottom: 78px !important; }
+
+/* Узкий экран: подписи палитр остаются читаемыми, плашка прокручивается
+   по горизонтали (overflow-x в .theme-bar) — на смартфоне владелец сразу
+   видит «Шалфей · Золото · Кобальт · Янтарь · Бирюза» */
+@media (max-width: 560px) {
+  .theme-bar { left: 8px; bottom: 8px; padding: 5px; gap: 2px; }
+  .theme-bar-btn { padding: 6px 9px; font-size: 0.72rem; gap: 5px; }
+  .theme-bar-btn .theme-bar-dot { width: 14px; height: 14px; }
+}
+
+/* ---------------------------------------------------------------
+   ТЕЛЕФОН: вертикальная стопка снизу вверх, ничего не перекрывается
+     .dock ...................... 0 … 68px   (звонок, Telegram, MAX, Заявка)
+     плашка палитр .............. 76px
+     баннер куки / его кнопка ... 126px
+   --------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .theme-bar {
+    left: 8px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  .cookie-consent {
+    inset: auto 8px calc(126px + env(safe-area-inset-bottom)) 8px !important;
+  }
+  .cookie-consent__manage {
+    right: 8px !important;
+    bottom: calc(126px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* --- Логотип --- */
+.logo { display: block; height: auto; width: auto; flex-shrink: 0; }
+.nav-logo .logo { height: 34px; }
+.footer-brand .logo { height: 40px; }

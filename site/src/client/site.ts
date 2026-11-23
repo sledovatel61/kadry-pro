@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var max = parseFloat(slider.max);
       var val = parseFloat(slider.value);
       var pct = ((val - min) / (max - min)) * 100;
-      slider.style.background = 'linear-gradient(to right, #4ade80 0%, #4ade80 ' + pct + '%, #333333 ' + pct + '%, #333333 100%)';
+      slider.style.background = 'linear-gradient(to right, var(--accent) 0%, var(--accent) ' + pct + '%, var(--border-color) ' + pct + '%, var(--border-color) 100%)';
     }
 
     function updateCalculator() {

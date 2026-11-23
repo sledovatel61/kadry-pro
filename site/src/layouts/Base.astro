@@ -16,6 +16,7 @@
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import Dock from '../components/Dock.astro';
+import ThemePreviewBar from '../components/ThemePreviewBar.astro';
 import { SITE, OWNER } from '../data/site.ts';
 /* Стили: сначала локальные шрифты, потом общая тема, потом новые блоки каркаса. */
 import '../styles/fonts.css';
@@ -65,7 +66,7 @@ const paragraphs = jsonLd.filter(Boolean);
 ---
 
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="sage">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -98,7 +99,24 @@ const paragraphs = jsonLd.filter(Boolean);
     <meta name="twitter:description" content={description}>
     <meta name="twitter:image" content={ogImageUrl}>
 
-    <meta name="theme-color" content="#0a0a0a">
+    <meta name="theme-color" content="#0f1412">
+
+    {/* Палитра применяется ДО первой отрисовки: иначе при перезагрузке
+        секунду видна тема по умолчанию, а потом страница «перекрашивается». */}
+    <script is:inline>
+      (function () {
+        try {
+          var t = localStorage.getItem('kadrypro-preview-theme');
+          if (t && ['sage', 'gold', 'cobalt', 'amber', 'teal'].indexOf(t) !== -1) {
+            document.documentElement.setAttribute('data-theme', t);
+          } else {
+            document.documentElement.setAttribute('data-theme', 'sage');
+          }
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'sage');
+        }
+      })();
+    </script>
 
     <!-- Шрифты: локальные файлы, два главных сабсета грузим заранее -->
     <link rel="preload" href="/fonts/inter-cyrillic-400.woff2" as="font" type="font/woff2" crossorigin>
@@ -126,6 +144,7 @@ const paragraphs = jsonLd.filter(Boolean);
     <Footer />
     <Dock />
 
+    <ThemePreviewBar />
     {ConsentBanner && <ConsentBanner />}
 
     <script>
@@ -135,6 +154,9 @@ const paragraphs = jsonLd.filter(Boolean);
       import '../client/leads-form.ts';
       import '../client/reviews-live.ts';
       import '../client/review-form.ts';
+      /* Временный переключатель палитр (ThemePreviewBar): выбор запоминается
+         в localStorage. Перед публикацией убирается вместе с плашкой. */
+      import '../client/theme.ts';
     </script>
   </body>
 </html>
