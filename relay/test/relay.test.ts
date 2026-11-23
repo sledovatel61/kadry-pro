@@ -347,6 +347,42 @@ test('зависший Telegram прерывается таймаутом и н�
   }
 });
 
+test('зависший апстрим: воркер отвечает ДО таймаута клиента 12 с', async () => {
+  /* Ровно случай владельца: Telegram и почта принимают соединение и молчат.
+     Задеплоенный раунд-4 воркер в этом сценарии не отвечал вовсе, клиент
+     сдавался на 12 с и показывал «Не получилось отправить заявку» — без причины.
+     Здесь проверяем, что ответ приходит раньше клиентского таймаута. */
+  resetMemoryStore();
+  const saved = globalThis.fetch;
+  globalThis.fetch = (async () => await new Promise<Response>(() => {})) as typeof fetch;
+  try {
+    const t0 = Date.now();
+    const res = await worker
+      .fetch(
+        new Request('https://relay.test/leads', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', origin: ORIGIN },
+          body: JSON.stringify(freshBody()),
+        }),
+        baseEnv({ BREVO_API_KEY: 'x' }),
+      )
+      .then((r) => ({ ok: true as const, r }), (e) => ({ ok: false as const, e }));
+    const spent = Date.now() - t0;
+    assert.ok(spent < 12_000, `воркер молчал ${spent} мс — клиент уже сдался бы`);
+    if (res.ok) assert.equal(res.r.status, 502, 'доставить некуда — честная ошибка');
+  } finally {
+    globalThis.fetch = saved;
+  }
+});
+
+test('живые каналы не ждут таймеров: ответ за десятки миллисекунд', async () => {
+  mockFetch();
+  const t0 = Date.now();
+  const res = await post('/leads', freshBody(), baseEnv({ BREVO_API_KEY: 'x' }));
+  assert.equal(res.status, 201);
+  assert.ok(Date.now() - t0 < 2000, 'таймаут не должен замедлять успешную доставку');
+});
+
 test('повторная отправка с тем же ключом не дублирует уведомление', async () => {
   const fake = mockFetch();
   const env = baseEnv();

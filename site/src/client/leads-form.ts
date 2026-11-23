@@ -17,6 +17,7 @@
 import {
   CONSENT_VERSION,
   LEADS_BASE,
+  LEADS_TIMEOUT_MS,
   absoluteLeadsUrl,
   collectCalcSummary,
   leadsFetch,
@@ -314,13 +315,26 @@ function pageSlug(): string {
 }
 
 /** Собираем тело заявки из полей формы. */
+/**
+ * Потолки полей — те же, что в `relay/src/validate.ts`.
+ *
+ * Раньше клиент отправлял значение как есть, а воркер отвергал всё, что длиннее
+ * (например honeypot > 200: автозаполнение вписывает туда длинную строку).
+ * Ответ 400 приходил с ошибкой поля, у которого на странице НЕТ блока вывода —
+ * человек видел пустоту или общий «не получилось». Ужимаем на клиенте: длинный
+ * текст лучше обрежется, чем потеряет заявку.
+ */
+const LIMIT = { name: 60, email: 120, company: 120, service: 80, message: 2000, honeypot: 200 } as const;
+
+const clip = (value: string, max: number): string => (value.length > max ? value.slice(0, max) : value);
+
 export function buildPayload(form: HTMLFormElement, startedAt: number, idem: string): Record<string, unknown> {
-  const name = fieldValue(form, 'name');
+  const name = clip(fieldValue(form, 'name'), LIMIT.name);
   const phone = normalizePhone(fieldValue(form, 'phone')).replace(/^\+/, '');
-  const email = fieldValue(form, 'email');
-  const company = fieldValue(form, 'company');
-  const service = fieldValue(form, 'service');
-  const message = fieldValue(form, 'message') || fieldValue(form, 'comment');
+  const email = clip(fieldValue(form, 'email'), LIMIT.email);
+  const company = clip(fieldValue(form, 'company'), LIMIT.company);
+  const service = clip(fieldValue(form, 'service'), LIMIT.service);
+  const message = clip(fieldValue(form, 'message') || fieldValue(form, 'comment'), LIMIT.message);
   const kind = (form.dataset.leadKind as LeadKind) || 'consult';
 
   const base: Record<string, unknown> = {
@@ -334,10 +348,12 @@ export function buildPayload(form: HTMLFormElement, startedAt: number, idem: str
     idempotency_key: idem,
     /* Ловушка ботов: имя может приходить из data-honeypot формы, а формы
        Агентов 01/02 используют company_website / _gotcha / honeypot. */
-    honeypot:
+    honeypot: clip(
       fieldValue(form, form.dataset.honeypot || 'honeypot')
       || fieldValue(form, '_gotcha')
       || fieldValue(form, 'company_website'),
+      LIMIT.honeypot,
+    ),
     /* Флаг нужен воркеру: заполненная офскрин-ловушка — это, скорее всего,
        автозаполнение, а не бот. Доставляем, но с пометкой «проверить». */
     honeypot_hidden: isReallyHidden(honeypotField(form)),
@@ -543,6 +559,9 @@ export function wireLeadForms(options: WireOptions = {}): void {
             return;
           }
 
+          /* Тело ответа не разобралось как JSON: обычно это страница-заглушка
+             вместо API (не тот адрес) либо блокировка CORS. Молчать нельзя —
+             иначе «Не получилось отправить» без единой зацепки. */
           const failure = parseApiFailure(data);
           if (res.status === 429) {
             const wait = retryAfterSeconds(res.headers.get('retry-after')) ?? 60;
@@ -564,11 +583,18 @@ export function wireLeadForms(options: WireOptions = {}): void {
             showError(form, texts, failure.message || texts.error);
             return;
           }
-          showError(form, texts);
+          /* Ответ пришёл, но разобрать его не вышло: показываем код, чтобы
+             причину было видно без консоли разработчика. */
+          showError(form, texts, data === null
+            ? `${texts.error} (ответ сервиса ${res.status}, не JSON)`
+            : texts.error);
         } catch (err) {
-          /* Таймаут и сеть — один экран: человеку важен телефон, а не имя ошибки. */
+          /* Таймаут и сеть — человеку важен телефон, но и причину скрывать
+             незачем: «network» и «timeout» различимы и не содержат его данных. */
           const name = (err as Error)?.name;
-          showError(form, texts, name === 'AbortError' ? texts.error : texts.error);
+          showError(form, texts, name === 'AbortError'
+            ? `${texts.error} (таймаут ${Math.round(LEADS_TIMEOUT_MS / 1000)} с)`
+            : `${texts.error} (сеть)`);
         } finally {
           busy = false;
           if (button) {
