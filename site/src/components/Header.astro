@@ -21,8 +21,9 @@ const { page = '' } = Astro.props;
 <nav class="nav" id="site-nav" role="navigation" aria-label="Главная навигация">
   <div class="nav-inner">
     <a href="/" class="nav-logo" aria-label={`${SITE.name} — на главную`}>
+      {/* В logo.svg уже отрисованы знак и слово Kadry-Pro — текстовый дубль
+          «Кадры-Про» рядом только съедал ~110px ширины шапки */}
       <img src="/img/logo.svg" alt="" class="logo" width="170" height="34">
-      <span class="nav-logo-text">{SITE.name}</span>
     </a>
 
     <div class="nav-links">

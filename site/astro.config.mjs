@@ -9,6 +9,12 @@ export default defineConfig({
   site: 'https://kadry-pro.ru',
   output: 'static',
   trailingSlash: 'never',
+  /* База сборки: по умолчанию '/' (боевой корень kadry-pro.ru).
+     Превью в подпапке собирается с ASTRO_BASE=/preview — тогда Astro сама
+     проставляет префикс у бандлов и служебных URL. Переменная задаётся
+     только на время сборки, поэтому в коде ничего не «зашито» и после
+     сборки конфиг остаётся чистым. */
+  base: process.env.ASTRO_BASE || '/',
   build: {
     format: 'file',
     // Папка бандлов — assets/ вместо _astro/: Jekyll на GitHub Pages режет
