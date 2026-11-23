@@ -1,0 +1,31 @@
+---
+/**
+ * Нижняя мобильная плашка: 4 кнопки — Позвонить · Telegram · MAX · Заявка.
+ *
+ * Раньше на телефоне внизу висела одна длинная полоса «Позвонить», и связаться
+ * в мессенджере можно было только через шапку. Теперь до Марии один тап
+ * в любом удобном канале; на десктопе плашка скрыта.
+ */
+import { OWNER } from '../data/site.ts';
+---
+
+<div class="dock" id="dock" aria-label="Быстрая связь">
+  <a class="dock-btn" href={OWNER.phoneHref} data-track="call_click">
+    <span class="dock-icon" aria-hidden="true">📞</span>
+    <span class="dock-label">Позвонить</span>
+  </a>
+  <a class="dock-btn" href={OWNER.telegram} target="_blank" rel="noopener" data-track="telegram_click">
+    <span class="dock-icon" aria-hidden="true">✈️</span>
+    <span class="dock-label">Telegram</span>
+  </a>
+  <a class="dock-btn" href={OWNER.max} target="_blank" rel="noopener" data-track="max_click">
+    <span class="dock-icon" aria-hidden="true">Ⓜ️</span>
+    <span class="dock-label">MAX</span>
+  </a>
+  {/* Без JS ведём на страницу контактов (там форма точно есть). С JS скрипт
+      сам докручивает к форме на текущей странице — она есть почти везде. */}
+  <a class="dock-btn dock-btn--accent" href="/contact.html" data-dock-lead>
+    <span class="dock-icon" aria-hidden="true">📝</span>
+    <span class="dock-label">Заявка</span>
+  </a>
+</div>

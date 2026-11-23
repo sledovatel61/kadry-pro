@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Кадры-Про — Полезное</title>
+    <link>https://kadry-pro.ru/articles.html</link>
+    <description>Разборы законов, кадровых ситуаций и требований проверяющих органов. Мария Перепечай.</description>
+    <language>ru</language>
+    <lastBuildDate>Sat, 21 Nov 2026 09:00:00 GMT</lastBuildDate>
+    <item>
+      <title>Давление «по собственному»: инструкция защиты</title>
+      <link>https://kadry-pro.ru/articles/rabotodatel-trebuet-po-sobstvennomu.html</link>
+      <guid isPermaLink="true">https://kadry-pro.ru/articles/rabotodatel-trebuet-po-sobstvennomu.html</guid>
+      <description>Личная история HR-специалиста: меня пытались уволить незаконно — я отказалась и получила 300 000 ₽. Пошаговая инструкция: отзыв заявления, докладные, жалоба в ГИТ и прокуратуру.</description>
+      <pubDate>Tue, 02 Jun 2026 07:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Штрафы ГИТ за кадровые документы в 2026</title>
+      <link>https://kadry-pro.ru/articles/shtrafy-git-2026.html</link>
+      <guid isPermaLink="true">https://kadry-pro.ru/articles/shtrafy-git-2026.html</guid>
+      <description>Полный список штрафов трудовой инспекции в 2026 году: до 200 000 ₽ за кадровые нарушения, до 500 000 ₽ за воинский учёт. Чек-лист подготовки к проверке ГИТ.</description>
+      <pubDate>Wed, 18 Mar 2026 06:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

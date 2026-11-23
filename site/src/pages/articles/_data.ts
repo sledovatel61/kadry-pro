@@ -9,17 +9,40 @@
  * Имя начинается с подчёркивания — Astro не считает файл маршрутом.
  * Модуль серверный (node:fs), в клиентскую сборку не попадает.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArticlesFile, type ArticlesFile, type ArticleItem } from '../../shared/articles-schema.ts';
 import { type PriceLookup, priceLookup } from './_markdown.ts';
 
-const ARTICLES_URL = new URL('../../../content/articles.json', import.meta.url);
-const PRICES_URL = new URL('../../../content/prices.json', import.meta.url);
+/**
+ * Путь к content/*.json при любом способе запуска.
+ *
+ * `new URL(..., import.meta.url)` надёжен в `astro dev`, но после `astro build`
+ * модуль лежит уже в `dist/chunks/`, и относительный путь уезжает. Поэтому
+ * перебираем кандидатов: рядом с исходником, от cwd (сборка из site/) и от
+ * корня репозитория (сборка из него). Работает в dev, build и в тестах.
+ */
+function contentPath(name: string): string {
+  const candidates = [
+    fileURLToPath(new URL(`../../../content/${name}`, import.meta.url)),
+    join(process.cwd(), 'content', name),
+    join(process.cwd(), 'site', 'content', name),
+    join(process.cwd(), '..', 'content', name),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return candidates[0];
+}
+
+const ARTICLES_PATH = contentPath('articles.json');
+const PRICES_PATH = contentPath('prices.json');
 
 /** Файл статей; битый файл — пустой, но валидный набор (сборка не падает). */
 export function readArticles(): ArticlesFile {
   try {
-    return parseArticlesFile(JSON.parse(readFileSync(ARTICLES_URL, 'utf8'))).file;
+    return parseArticlesFile(JSON.parse(readFileSync(ARTICLES_PATH, 'utf8'))).file;
   } catch {
     return { version: 1, updated_at: '', items: [] };
   }
@@ -38,7 +61,7 @@ export function publishedArticles(): ArticleItem[] {
  */
 export function readPrices(): PriceLookup {
   try {
-    return priceLookup(readFileSync(PRICES_URL, 'utf8'));
+    return priceLookup(readFileSync(PRICES_PATH, 'utf8'));
   } catch {
     return { price: () => null, title: (id: string) => id };
   }

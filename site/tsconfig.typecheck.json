@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/shared/*.ts",
+    "src/client/leads-form.ts",
+    "src/client/manage.ts",
+    "src/client/review-form.ts",
+    "src/client/reviews-live.ts",
+    "tests/*.test.ts"
+  ]
+}
