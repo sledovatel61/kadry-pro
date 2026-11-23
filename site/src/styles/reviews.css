@@ -8,13 +8,33 @@
  * Главное правило контраста:
  *   • фон заливки — --accent, текст на нём — --on-accent (тёмный, читаемый);
  *   • надпись внутри полупрозрачной плашки — --accent-text, а не --accent:
- *     на тонкой зелёной подложке сам --accent даёт «зелёное на зелёном»;
+ *     на тонкой акцентной подложке сам --accent даёт «акцент на акценте»;
  *   • неактивные звёзды — не #3a3a3a на тёмном, а видимая рамка/оттенок
  *     --text-muted: их должно быть видно, иначе человек не понимает, сколько
  *     звёзд можно нажать.
+ *
+ * ОБЪЁМ И ВТОРОЙ АКЦЕНТ (тема «Кобальт»).
+ * Плоская тёмная карточка на тёмном фоне выглядит как дырка. Поэтому у карточек,
+ * сводки и модалки: диагональная поверхность --grad-card, верхний световой кант
+ * (inset 0 1px 0) и глубокая мягкая тень. Рейтинг — звёзды и средний балл —
+ * уходит во второй акцент --accent-secondary (тёплое золото): на кобальтовом
+ * стекле это читается как «оценка», не спорит с синими ссылками и сразу
+ * отделяет отзывы от остальных блоков.
+ *
+ * Контраст проверен на фактических парах: золото #eab968 на стекле #1a2740
+ * даёт 7.6:1, текст на градиентной кнопке --on-accent — 8.4:1.
  */
 
-.rev-section { padding-top: 8px; }
+/* Кобальтовые токены объёма. В style.css их пока нет, поэтому объявляем здесь
+   с fallback: если Агент 01 добавит --grad-card/--grad-btn в :root, эти строки
+   просто подхватят его значения, а без них блок всё равно объёмный. */
+.rev-section {
+  padding-top: 8px;
+  --grad-card: linear-gradient(165deg, rgba(26, 39, 64, 0.9), rgba(14, 21, 36, 0.96));
+  --grad-btn: linear-gradient(135deg, #2563eb, #1d4ed8);
+  --card-edge: inset 0 1px 0 rgba(186, 220, 255, 0.1);
+  --card-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
 
 .rev-head {
   display: flex;
@@ -36,8 +56,9 @@
   gap: 14px;
   align-items: center;
   padding: 12px 16px;
-  border: 1px solid var(--accent-border, rgba(74, 222, 128, .28));
-  background: var(--accent-glow, rgba(74, 222, 128, .12));
+  border: 1px solid var(--accent-secondary-border, rgba(234, 185, 104, 0.34));
+  background: var(--grad-card, linear-gradient(165deg, rgba(26, 39, 64, 0.9), rgba(14, 21, 36, 0.96)));
+  box-shadow: var(--card-edge, inset 0 1px 0 rgba(186, 220, 255, 0.1)), var(--card-shadow, 0 18px 40px -18px rgba(0, 0, 0, 0.75));
   border-radius: 14px;
   margin-bottom: 16px;
 }
@@ -46,12 +67,19 @@
 
 .rev-summary-num { display: flex; align-items: baseline; gap: 4px; }
 
-/* Крупная цифра среднего балла — обычный акцент, фон здесь тёмный. */
-.rev-summary-num b { font-size: 30px; color: var(--accent, #4ade80); }
+/* Крупная цифра среднего балла — второй акцент (золото). На кобальтовом
+   стекле #eab968 даёт 7.6:1: это акцент, а не украшение, поэтому читается
+   как основной текст. */
+.rev-summary-num b {
+  font-size: 30px;
+  color: var(--accent-secondary, #eab968);
+}
 
 .rev-summary-num small { color: var(--text-secondary, #aaaaaa); font-size: 13px; }
 
 .rev-summary-line { margin: 0; font-weight: 600; color: var(--text-primary, #ffffff); }
+
+/* Подпись «на основе N отзывов» — на стекле, значит обычный вторичный цвет. */
 /* Подсказка сводки лежит на зелёной подложке: серый #777 давал там 2.63:1,
    поэтому внутри сводки подпись принудительно светлее. */
 .rev-summary-body .hint { margin: 2px 0 0; color: var(--text-secondary, #aaaaaa); }
@@ -71,7 +99,18 @@
   padding: 16px;
   border: 1px solid var(--border-color, #333333);
   border-radius: 14px;
-  background: var(--bg-card, #1a1a1a);
+  background: var(--grad-card, linear-gradient(165deg, rgba(26, 39, 64, 0.9), rgba(14, 21, 36, 0.96)));
+  box-shadow: var(--card-edge, inset 0 1px 0 rgba(186, 220, 255, 0.1)), var(--card-shadow, 0 18px 40px -18px rgba(0, 0, 0, 0.75));
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Наведение: карточка чуть приподнимается, кант теплеет золотом — глубина
+   без «прыжков» и без смены цвета текста. */
+.rev-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-secondary-border, rgba(234, 185, 104, 0.34));
+  box-shadow: var(--card-edge, inset 0 1px 0 rgba(186, 220, 255, 0.1)),
+    0 24px 48px -20px rgba(0, 0, 0, 0.8), 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .rev-stars { display: inline-flex; gap: 2px; }
@@ -83,7 +122,7 @@
   fill: var(--text-muted, #777777);
 }
 
-.rev-stars svg.is-on { fill: var(--accent, #4ade80); }
+.rev-stars svg.is-on { fill: var(--accent-secondary, #eab968); }
 
 /* Текст отзыва — явный цвет: без него браузер брал чёрный по умолчанию,
    и на карточке #1a1a1a получалось 1.21:1. */
@@ -118,9 +157,9 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--accent-glow, rgba(74, 222, 128, .14));
-  border: 1px solid var(--accent-border, rgba(74, 222, 128, .3));
-  color: var(--accent-text, #86efac);
+  background: var(--accent-secondary-glow, rgba(234, 185, 104, 0.12));
+  border: 1px solid var(--accent-secondary-border, rgba(234, 185, 104, 0.34));
+  color: var(--accent-secondary-text, #fde4b8);
   font-weight: 700;
   font-size: 14px;
 }
@@ -128,8 +167,8 @@
 /* ---------- ответ владельца ---------- */
 
 .rev-reply {
-  border-left: 3px solid var(--accent, #4ade80);
-  background: var(--accent-glow, rgba(74, 222, 128, .1));
+  border-left: 3px solid var(--accent-secondary, #eab968);
+  background: var(--accent-secondary-glow, rgba(234, 185, 104, 0.12));
   border-radius: 0 8px 8px 0;
   padding: 8px 10px;
   font-size: 14px;
@@ -138,8 +177,8 @@
   overflow-wrap: anywhere;
 }
 
-/* «Ответ Марии:» — на зелёной подложке акцентный текст, а не --accent. */
-.rev-reply b { color: var(--accent-text, #86efac); }
+/* «Ответ Марии:» — на тёплой подложке берём золотой текст, а не сам акцент. */
+.rev-reply b { color: var(--accent-secondary-text, #fde4b8); }
 
 /* ---------- пустое состояние ---------- */
 
@@ -147,6 +186,8 @@
   padding: 22px;
   border: 1px dashed var(--border-light, #444444);
   border-radius: 14px;
+  background: var(--grad-card, linear-gradient(165deg, rgba(26, 39, 64, 0.9), rgba(14, 21, 36, 0.96)));
+  box-shadow: var(--card-edge, inset 0 1px 0 rgba(186, 220, 255, 0.1));
   color: var(--text-secondary, #aaaaaa);
 }
 
@@ -161,7 +202,8 @@
 .review-modal {
   border: 1px solid var(--border-color, #333333);
   border-radius: 16px;
-  background: var(--bg-card, #1a1a1a);
+  background: var(--grad-card, linear-gradient(165deg, rgba(26, 39, 64, 0.9), rgba(14, 21, 36, 0.96)));
+  box-shadow: var(--card-edge, inset 0 1px 0 rgba(186, 220, 255, 0.1)), 0 30px 70px -20px rgba(0, 0, 0, 0.85);
   color: var(--text-primary, #ffffff);
   padding: 0;
   width: min(560px, calc(100vw - 24px));
@@ -204,16 +246,27 @@
    живёт здесь: reviews.css подключён каркасом на всех страницах. Текст на
    заливке — --on-accent в обычном состоянии и при наведении. */
 .btn--primary {
-  background: var(--accent, #4ade80);
-  color: var(--on-accent, #0a0a0a);
-  border: 1px solid var(--accent, #4ade80);
+  background: var(--grad-btn, linear-gradient(135deg, #2563eb, #1d4ed8));
+  /* Текст на синем градиенте — светлый. Тёмный --on-accent годится для
+     сплошной акцентной заливки кобальта, но на #2563eb он даёт 3.62:1,
+     а светлый #f8fbff — 4.98:1 на верхней точке и 6.46:1 ниже. */
+  color: #f8fbff;
+  border: 1px solid rgba(120, 170, 255, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(200, 225, 255, 0.35),
+    0 10px 24px -10px rgba(37, 99, 235, 0.7);
   font-weight: 600;
 }
 
 .btn--primary:hover {
-  background: var(--accent-dark, #22c55e);
-  border-color: var(--accent-dark, #22c55e);
-  color: var(--on-accent, #0a0a0a);
+  /* Затемняем, а не осветляем: на осветлённом фоне белый текст падал
+     до 4.38:1, на затемнённом держится 6.46:1. */
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  border-color: rgba(150, 195, 255, 0.65);
+  color: #f8fbff;
+  box-shadow:
+    inset 0 1px 0 rgba(200, 225, 255, 0.45),
+    0 14px 30px -10px rgba(37, 99, 235, 0.85);
 }
 
 .btn--primary:focus-visible { outline: 2px solid var(--accent, #4ade80); outline-offset: 3px; }
@@ -252,14 +305,14 @@
 
 /* Выбранная звезда — заливка акцентом; никакого текста поверх неё нет,
    поэтому контраст «акцент на акценте» здесь не возникает. */
-.review-star.is-on { color: var(--accent, #4ade80); }
+.review-star.is-on { color: var(--accent-secondary, #eab968); }
 
 .review-star:hover,
-.review-star:focus-visible { color: var(--accent-dark, #22c55e); }
+.review-star:focus-visible { color: var(--accent-secondary-text, #fde4b8); }
 
 .review-star:hover { transform: scale(1.06); }
 
-.review-star:focus-visible { outline: 2px solid var(--accent, #4ade80); outline-offset: 2px; }
+.review-star:focus-visible { outline: 2px solid var(--accent-secondary, #eab968); outline-offset: 2px; }
 
 /* Внутри диалога звёзды получают тёмную подложку — чтобы серые «пустые»
    не сливались с карточкой, когда модалка стоит на светлом фоне. */
