@@ -162,7 +162,7 @@ function updateSliderFill(id, min, max) {
   var slider = document.getElementById(id);
   if (!slider) return;
   var pct = ((slider.value - min) / (max - min)) * 100;
-  slider.style.background = 'linear-gradient(to right, #4ade80 0%, #4ade80 ' + pct + '%, #333333 ' + pct + '%, #333333 100%)';
+  slider.style.background = 'linear-gradient(to right, var(--accent) 0%, var(--accent) ' + pct + '%, var(--border-color) ' + pct + '%, var(--border-color) 100%)';
 }
 
 // Инициализация калькулятора при загрузке

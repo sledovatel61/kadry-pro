@@ -400,10 +400,12 @@
    над плашкой палитр, чтобы текст не оказался под ней. */
 .cookie-consent { bottom: 78px !important; }
 
-/* Узкий экран: остаются только точки, подписи уходят (title и aria остаются) */
+/* Узкий экран: подписи палитр остаются читаемыми, плашка прокручивается
+   по горизонтали (overflow-x в .theme-bar) — на смартфоне владелец сразу
+   видит «Шалфей · Золото · Кобальт · Янтарь · Бирюза» */
 @media (max-width: 560px) {
   .theme-bar { left: 8px; bottom: 8px; padding: 5px; gap: 2px; }
-  .theme-bar-btn { padding: 8px; font-size: 0; gap: 0; }
+  .theme-bar-btn { padding: 6px 9px; font-size: 0.72rem; gap: 5px; }
   .theme-bar-btn .theme-bar-dot { width: 14px; height: 14px; }
 }
 
