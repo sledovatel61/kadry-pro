@@ -7,13 +7,23 @@
  * и надпись на странице красятся переменными темы. Меняется палитра —
  * логотип перекрашивается вместе с ней, без второй копии файла.
  *
- *   знак «цветок»  → fill / stroke: var(--accent)
+ *   знак «цветок»  → деликатный градиент по диагонали: светлый кобальт →
+ *                    рабочий --accent → ювелирный компаньон темы. Плоская
+ *                    заливка выглядела как наклейка; градиент даёт знаку объём.
+ *                    ID градиента уникален для каждого экземпляра (шапка и
+ *                    подвал рендерят логотип дважды — дублировать id нельзя).
  *   «Kadry»        → fill: var(--text-primary)
  *   «-Pro»         → fill: var(--accent-text)  (осветлённый акцент: на тёмном
  *                    фоне обычный акцент в мелком кегле читается хуже)
  *
  * Геометрия ровно та же, что в public/img/logo.svg: viewBox 0 0 299 62.
  */
+/* Astro пересобирает frontmatter для КАЖДОГО экземпляра компонента, поэтому
+   локальный счётчик обнулялся и шапка с подвалом получали одинаковый id.
+   Держим счётчик в globalThis — он живёт всё время сборки. */
+const seq = ((globalThis as unknown as Record<string, number>).__kpLogoSeq ?? 0) + 1;
+(globalThis as unknown as Record<string, number>).__kpLogoSeq = seq;
+
 interface Props {
   /** Высота в пикселях: в шапке 34, в подвале 40. */
   height?: number;
@@ -23,6 +33,9 @@ interface Props {
 }
 const { height = 34, label = '', class: className = 'logo' } = Astro.props;
 const width = Math.round((height * 299) / 62);
+
+/* Два логотипа на странице получают разные id градиента. */
+const gradId = `kp-logo-mark-${seq}`;
 ---
 
 <svg
@@ -36,8 +49,19 @@ const width = Math.round((height * 299) / 62);
   focusable="false"
 >
   {label && <title>{label}</title>}
-    <g fill="var(--accent)">
-  <g fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round">
+  <defs>
+    {/* Три остановки: светлый кобальт → рабочий акцент → компаньон темы.
+        Все три — переменные палитры, поэтому знак перекрашивается вместе с
+        темой. Никакого color-mix: он не нужен, а в старых движках молча
+        выключил бы остановку и знак стал бы прозрачным. */}
+    <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="2" y1="4" x2="66" y2="58">
+      <stop offset="0%" stop-color="var(--accent-text)"/>
+      <stop offset="52%" stop-color="var(--accent)"/>
+      <stop offset="100%" stop-color="var(--accent-secondary)"/>
+    </linearGradient>
+  </defs>
+    <g fill={`url(#${gradId})`}>
+  <g fill="none" stroke={`url(#${gradId})`} stroke-width="9" stroke-linecap="round">
   <line x1="34" y1="28" x2="34" y2="19"/>
   <line x1="30" y1="32" x2="21" y2="26"/>
   <line x1="38" y1="32" x2="47" y2="26"/>

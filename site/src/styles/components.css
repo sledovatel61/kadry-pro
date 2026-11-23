@@ -153,10 +153,18 @@
 .dock-btn:active { background: var(--bg-card); }
 .dock-icon { font-size: 1.15rem; line-height: 1; }
 .dock-label { font-weight: 500; letter-spacing: 0.01em; }
-.dock-btn--accent { background: var(--accent); color: var(--on-accent) !important; font-weight: 700; }
+/* Главная кнопка нижней плашки — та же драгоценная заливка, что у .btn-primary.
+   Плоский --accent здесь давал 2:1 для белого текста, поэтому только градиент
+   из общего контракта (--grad-btn), см. блок «ОБЪЁМ И ГРАДИЕНТЫ» в style.css. */
+.dock-btn--accent {
+  background: var(--grad-btn);
+  color: var(--on-accent) !important;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
 .dock-btn--accent .dock-icon { filter: none; }
 .dock-btn--accent:hover,
-.dock-btn--accent:focus { background: var(--accent-dark); color: var(--on-accent) !important; }
+.dock-btn--accent:focus { background: var(--grad-btn-hover); color: var(--on-accent) !important; }
 @media (max-width: 768px) {
   .dock { display: flex; }
   /* освобождаем место под плашку, чтобы она не закрывала подвал */
@@ -378,8 +386,9 @@
 }
 .theme-bar-btn[aria-pressed='true'] {
   color: var(--text-primary);
-  background: var(--accent-glow);
+  background: linear-gradient(135deg, var(--accent-glow), var(--accent-secondary-glow));
   border-color: var(--accent-border);
+  box-shadow: var(--card-highlight);
   font-weight: 600;
 }
 .theme-bar-dot {
@@ -390,11 +399,21 @@
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
 /* точки — ровно акцентные цвета пяти палитр */
-.theme-bar-dot--sage { background: #5ec28f; }
-.theme-bar-dot--gold { background: #e2b86b; }
-.theme-bar-dot--cobalt { background: #58a6ff; }
-.theme-bar-dot--amber { background: #efaa4a; }
-.theme-bar-dot--teal { background: #48b8b0; }
+/* Три вариации кобальта: точка показывает ЮВЕЛИРНОГО КОМПАНЬОНА на фоне
+   кобальтового стекла — так разница между Шампанью, Авророй и Платиной
+   видна мгновенно, а не по подписи. */
+.theme-bar-dot--champagne {
+  background: radial-gradient(circle at 30% 25%, #fde4b8 0%, #eab968 45%, #a8762c 100%);
+  box-shadow: 0 0 0 1px rgba(234, 185, 104, 0.35);
+}
+.theme-bar-dot--aurora {
+  background: radial-gradient(circle at 30% 25%, #b9f6ef 0%, #4fd1c5 45%, #256b8f 100%);
+  box-shadow: 0 0 0 1px rgba(79, 209, 197, 0.35);
+}
+.theme-bar-dot--platinum {
+  background: radial-gradient(circle at 30% 25%, #ffffff 0%, #cbd5e1 45%, #7b8798 100%);
+  box-shadow: 0 0 0 1px rgba(203, 213, 225, 0.35);
+}
 
 /* На компьютере баннер куки занимает низ экрана во всю ширину — поднимаем его
    над плашкой палитр, чтобы текст не оказался под ней. */

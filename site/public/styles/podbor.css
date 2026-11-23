@@ -6,7 +6,31 @@
      • .guarantee-block h4 стоял на собственной подложке — ок, но теперь
        акцентный текст, чтобы читался и на hover-фоне;
      • .step-number — круг акцентной подложкой и --accent внутри неё; буква
-       мелкая, поэтому текст здесь --accent-text, а не сам акцент. */
+       мелкая, поэтому текст здесь --accent-text, а не сам акцент.
+
+   ОБЪЁМ (тема «Кобальт»): карточки подбора и гарантий получили стеклянную
+   поверхность, верхний световой кант и мягкую тень; важные выводы — «выгода»
+   в сравнении и подсвеченный тариф — окрашены вторым акцентом (золото), а
+   обычные шаги остались в сланцево-серебристом тоне, чтобы страница не
+   превращалась в сплошной синий. */
+
+/* ----------------------------------------------------------------------------
+   СЛОЙ ОБЪЁМА — тема «Кобальт».
+   Плоские поверхности заменены на стекло: диагональный градиент, верхний
+   световой кант и глубокая тень. Токены объявлены локально с fallback, чтобы
+   файл работал и без style.css; когда --grad-card появится в :root, значения
+   подхватятся автоматически. Второй акцент (золото) — только для оценок,
+   выгод и ключевых цифр; обычные шаги и рамки остаются серебристо-сланцевыми,
+   чтобы кобальт не превращался в сплошной синий.
+   ---------------------------------------------------------------------------- */
+:root {
+  --grad-card: linear-gradient(165deg, rgba(26, 39, 64, 0.9), rgba(14, 21, 36, 0.96));
+  --grad-btn: linear-gradient(135deg, #2563eb, #1d4ed8);
+  --grad-heading: linear-gradient(100deg, #f2f6fb 0%, #b6daff 55%, #eab968 100%);
+  --card-edge: inset 0 1px 0 rgba(186, 220, 255, 0.1);
+  --card-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --card-edge-strong: inset 0 1px 0 rgba(186, 220, 255, 0.16);
+}
 .podbor-types {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -24,20 +48,25 @@
     }
     .guarantee-block {
       padding: 24px;
-      background: rgba(0,0,0,0.2);
+      background: var(--grad-card, linear-gradient(165deg, rgba(26,39,64,0.9), rgba(14,21,36,0.96)));
+      border: 1px solid var(--border-color, rgba(255,255,255,0.15));
       border-radius: 12px;
+      box-shadow: var(--card-edge, inset 0 1px 0 rgba(186,220,255,0.1)), var(--card-shadow, 0 18px 40px -18px rgba(0,0,0,0.75));
       transition: var(--transition);
     }
     .guarantee-block:hover {
-      background: rgba(0,0,0,0.35);
+      border-color: var(--accent-secondary-border, rgba(234,185,104,0.34));
       transform: translateY(-4px);
+      box-shadow: var(--card-edge, inset 0 1px 0 rgba(186,220,255,0.1)),
+        0 26px 50px -20px rgba(0,0,0,0.8);
     }
     .guarantee-block-icon {
       font-size: 2rem;
       margin-bottom: 12px;
     }
+    /* Гарантия — это выгода, поэтому второй акцент (золото), а не синий. */
     .guarantee-block h4 {
-      color: var(--accent-text, #86efac);
+      color: var(--accent-secondary-text, #fde4b8);
       margin-bottom: 8px;
       font-size: 1rem;
     }
@@ -60,14 +89,20 @@
       color: var(--text-secondary, #aaaaaa);
     }
     .breadcrumb-nav a:hover {
-      color: var(--accent-text, #86efac);
+      color: var(--accent-text, #b6daff);
     }
     .breadcrumb-current {
-      color: var(--accent-text, #86efac);
+      color: var(--text-primary, #f2f6fb);
     }
+    /* Подсвеченный тариф — «важное предложение»: золотая рамка и тёплый
+       верхний кант на кобальтовом стекле. */
     .spec-card-accent {
-      border-color: var(--accent-border, rgba(74,222,128,0.3)) !important;
-      background: linear-gradient(135deg, var(--accent-glow, rgba(74,222,128,0.08)), var(--bg-card, #1a1a1a)) !important;
+      border-color: var(--accent-secondary-border, rgba(234,185,104,0.34)) !important;
+      background:
+        linear-gradient(165deg, rgba(234,185,104,0.14), transparent 55%),
+        var(--grad-card, linear-gradient(165deg, rgba(26,39,64,0.9), rgba(14,21,36,0.96))) !important;
+      box-shadow: inset 0 1px 0 rgba(253,228,184,0.18),
+        0 20px 44px -18px rgba(0,0,0,0.8) !important;
     }
     .step-number {
       width: 36px;
@@ -80,17 +115,21 @@
       font-weight: 700;
       flex-shrink: 0;
       margin-top: 2px;
-      background: var(--accent-glow, rgba(74,222,128,0.15));
-      color: var(--accent-text, #86efac);
+      /* Обычный шаг — нейтральный сланец: синий на каждом круге превращал
+         страницу в однотонную. */
+      background: var(--bg-card-hover, #1d2836);
+      border: 1px solid var(--border-light, rgba(255,255,255,0.28));
+      color: var(--text-primary, #f2f6fb);
     }
     .step-time {
       color: var(--text-secondary, #aaaaaa);
       font-weight: 400;
       font-size: 0.85rem;
     }
+    /* «Выгода» в сравнении — главный вывод таблицы, поэтому золото. */
     .comparison-good {
-      color: var(--accent-text, #86efac);
-      font-weight: 500;
+      color: var(--accent-secondary-text, #fde4b8);
+      font-weight: 600;
     }
     .comparison-bad {
       color: var(--text-secondary, #aaaaaa);
@@ -111,3 +150,46 @@
         grid-template-columns: 1fr;
       }
     }
+
+/* ---- объёмные главные кнопки (.btn-primary из style.css) ----
+   Страницы Агента 03 используют модификатор без дефиса. style.css красит такую
+   кнопку сплошным --accent и текстом --on-accent; в кобальте это тёмный
+   #08131f на синем #2563eb — 3.62:1, ниже нормы. Здесь кнопка получает
+   градиент и светлый текст (#f8fbff даёт 4.98:1 на верхней точке и 6.46:1
+   ниже). В hover-правиле style.css стоит color: … !important, поэтому и здесь
+   без !important не обойтись — иначе светлый текст перебьётся тёмным. */
+.btn-primary {
+  background: var(--grad-btn, linear-gradient(135deg, #2563eb, #1d4ed8));
+  color: #f8fbff;
+  border: 1px solid rgba(120, 170, 255, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(200, 225, 255, 0.35),
+    0 10px 24px -10px rgba(37, 99, 235, 0.65);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:visited {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  color: #f8fbff !important;
+  border-color: rgba(150, 195, 255, 0.65);
+}
+
+/* ---- читаемость кнопок мессенджеров на «Подборе» ----
+   .messenger-btn живёт в style.css (зона Агента 01) и красит Telegram в
+   #0088cc: на кобальтовой карточке это 3.65:1. У себя на странице поднимаем
+   тон до #5bb8e8 (5.4:1) и чуть уплотняем подложку — цвет бренда сохраняется,
+   читаемость приходит в норму. Глобальный файл не трогаем. */
+/* Двойной класс нужен из-за порядка подключения: style.css собран позже
+   public-файла страницы и при равной специфичности перебивает одиночный
+   .messenger-telegram. */
+.messenger-btn.messenger-telegram {
+  color: #5bb8e8;
+  background: rgba(0, 136, 204, 0.16);
+  border-color: rgba(91, 184, 232, 0.45);
+}
+.messenger-btn.messenger-telegram:hover {
+  color: #8fd2f2;
+  border-color: #5bb8e8;
+}
+.messenger-btn.messenger-telegram .messenger-icon { color: #5bb8e8; }

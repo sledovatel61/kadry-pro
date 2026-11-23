@@ -30,8 +30,16 @@
   --mg-on-accent: var(--on-accent, #0a0a0a);
   --mg-accent-text: var(--accent-text, #86efac);
   --mg-accent-border: var(--accent-border, rgba(74, 222, 128, .4));
-  /* Мягкая зелёная подложка — тот же токен, что у остальных блоков. */
+  /* Мягкая подложка — тот же токен, что у остальных блоков. */
   --mg-glow: var(--accent-glow, rgba(74, 222, 128, .08));
+
+  /* Слой объёма (тема «Кобальт»): тот же стеклянный градиент и кант, что на
+     сайте. Объявлено здесь же, чтобы кабинет оставался самодостаточным: он
+     подключает только этот файл. */
+  --grad-card: linear-gradient(165deg, rgba(26, 39, 64, 0.9), rgba(14, 21, 36, 0.96));
+  --grad-btn: linear-gradient(135deg, #2563eb, #1d4ed8);
+  --card-edge: inset 0 1px 0 rgba(186, 220, 255, 0.1);
+  --card-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.35);
   --danger: #f87171;
   --warn: #fbbf24;
   --radius: 14px;
@@ -125,9 +133,10 @@ a:hover { text-decoration: underline; }
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   padding: 8px;
-  background: var(--panel);
+  background: var(--grad-card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  box-shadow: var(--card-edge), 0 8px 20px -12px rgba(0, 0, 0, 0.8);
   margin-bottom: 16px;
 }
 
@@ -154,9 +163,11 @@ a:hover { text-decoration: underline; }
 .manage-tabs button[aria-selected="true"] {
   background: var(--mg-glow);
   border-color: var(--mg-accent-border);
-  /* Активная вкладка стоит на зелёной подложке: сам --accent здесь давал
-     «зелёное на зелёном». Берём светлый --accent-text. */
-  color: var(--mg-accent-text);
+  /* Активная вкладка стоит на акцентной подложке: сам --accent здесь дал бы
+     «акцент на акценте». Берём светлый акцентный текст темы, а fallback —
+     кобальтовый #b6daff, а не старый зелёный (кабинет самодостаточен и
+     открывается без style.css). */
+  color: var(--accent-text, #b6daff);
   font-weight: 600;
 }
 
@@ -165,12 +176,12 @@ a:hover { text-decoration: underline; }
 .manage-panel[hidden] { display: none; }
 
 .card {
-  background: var(--panel);
+  background: var(--grad-card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 14px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--card-edge), var(--card-shadow);
 }
 
 .card h2 {
@@ -262,13 +273,25 @@ button.btn {
 button.btn:hover { border-color: var(--mg-accent); }
 
 button.btn.primary {
-  background: var(--mg-accent);
-  color: var(--mg-on-accent);
-  border-color: var(--mg-accent);
+  background: var(--grad-btn);
+  /* На синем градиенте тёмный --mg-on-accent (он для акцентной заливки)
+     давал бы 3.6:1, поэтому здесь свой светлый текст — 4.98–6.46:1. */
+  color: #f8fbff;
+  border-color: rgba(120, 170, 255, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(200, 225, 255, 0.35),
+    0 10px 22px -10px rgba(37, 99, 235, 0.65);
   font-weight: 600;
 }
 
-button.btn.primary:hover { background: var(--mg-accent-dark); }
+button.btn.primary:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  border-color: rgba(150, 195, 255, 0.65);
+  color: #f8fbff;
+}
+
+/* Кнопка в кабинете — навигация по разделам, поэтому и текст на ней
+   остаётся --on-accent: синий градиент тёмный, белый текст читается. */
 
 button.btn.quiet { background: transparent; color: var(--muted); }
 
@@ -329,7 +352,8 @@ button.btn:disabled { opacity: .5; cursor: not-allowed; }
   border-radius: 12px;
   padding: 12px 14px;
   margin-bottom: 10px;
-  background: var(--panel-2);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01));
+  box-shadow: inset 0 1px 0 rgba(186, 220, 255, 0.07);
 }
 
 .item-head {
@@ -360,13 +384,15 @@ button.btn:disabled { opacity: .5; cursor: not-allowed; }
 }
 
 .badge.live { color: var(--mg-accent-text); border-color: var(--mg-accent-border); }
+/* Черновик/скрытый — статусы, а не акценты: цвета предупреждения и ошибки
+   уже заданы ниже, здесь только убеждаемся, что они не на акцентной подложке. */
 .badge.draft { color: var(--warn); border-color: rgba(251, 191, 36, .4); }
 .badge.hidden { color: var(--danger); border-color: rgba(248, 113, 113, .4); }
 
 .item .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 
 .stars {
-  color: var(--mg-accent);
+  color: var(--accent-secondary, #eab968);
   letter-spacing: 2px;
   font-size: 14px;
 }
@@ -480,8 +506,8 @@ button.btn:disabled { opacity: .5; cursor: not-allowed; }
   left: -9999px;
   top: 0;
   z-index: 100;
-  background: var(--mg-accent);
-  color: var(--mg-on-accent);
+  background: var(--grad-btn);
+  color: var(--on-accent);
   padding: 10px 16px;
   border-radius: 0 0 10px 0;
   font-weight: 600;

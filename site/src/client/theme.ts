@@ -11,22 +11,51 @@
 
 export const THEME_KEY = 'kadrypro-preview-theme';
 
-/** Пять утверждённых палитр. Порядок = порядок кнопок в плашке. */
-export const THEMES = ['sage', 'gold', 'cobalt', 'amber', 'teal'] as const;
+/**
+ * Три вариации кобальта. Порядок = порядок кнопок в плашке.
+ *
+ * Базовая тема — кобальт: глубокий ночной сапфир, кобальтовый свет и один
+ * ювелирный компаньон. Вариации отличаются только компаньоном:
+ *   cobalt           — шампань (тёплое золото), основная;
+ *   cobalt-aurora    — индиго и морская бирюза, прохладнее и звонче;
+ *   cobalt-platinum  — серебристая платина, самый строгий вариант.
+ */
+export const THEMES = ['cobalt', 'cobalt-aurora', 'cobalt-platinum'] as const;
 export type ThemeName = (typeof THEMES)[number];
+
+/**
+ * Старое имя основной темы. У владельца мог остаться выбор 'cobalt-champagne'
+ * в localStorage — приводим его к актуальному, чтобы не сбрасывать палитру.
+ */
+const ALIASES: Record<string, ThemeName> = {
+  'cobalt-champagne': 'cobalt',
+  // палитры из первой волны предпросмотра — их больше нет, отправляем на базу
+  sage: 'cobalt',
+  gold: 'cobalt',
+  amber: 'cobalt',
+  teal: 'cobalt',
+};
 
 export function isTheme(value: unknown): value is ThemeName {
   return typeof value === 'string' && (THEMES as readonly string[]).includes(value);
 }
 
+/** Приводит старый или неполный выбор к имени из THEMES. */
+export function normalizeTheme(value: unknown): ThemeName | null {
+  if (isTheme(value)) return value;
+  if (typeof value === 'string' && ALIASES[value]) return ALIASES[value];
+  return null;
+}
+
 export function readTheme(): ThemeName {
   try {
     const saved = localStorage.getItem(THEME_KEY);
-    if (isTheme(saved)) return saved;
+    const normalized = normalizeTheme(saved);
+    if (normalized) return normalized;
   } catch {
     /* приватный режим или запрет хранилища — просто остаёмся на теме по умолчанию */
   }
-  return 'sage';
+  return 'cobalt';
 }
 
 export function applyTheme(name: ThemeName): void {
@@ -59,9 +88,8 @@ function init(): void {
 
   /* Кнопки могли отрисоваться раньше, чем сработал THEME_INIT в <head>,
      поэтому синхронизируем подсветку ещё раз */
-  const current = isTheme(document.documentElement.getAttribute('data-theme'))
-    ? (document.documentElement.getAttribute('data-theme') as ThemeName)
-    : readTheme();
+  const current =
+    normalizeTheme(document.documentElement.getAttribute('data-theme')) ?? readTheme();
   for (const btn of bar.querySelectorAll<HTMLButtonElement>('[data-theme-set]')) {
     btn.setAttribute('aria-pressed', btn.dataset.themeSet === current ? 'true' : 'false');
   }
@@ -69,8 +97,8 @@ function init(): void {
   bar.addEventListener('click', (event) => {
     const btn = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-theme-set]');
     if (!btn) return;
-    const next = btn.dataset.themeSet;
-    if (isTheme(next)) applyTheme(next);
+    const next = normalizeTheme(btn.dataset.themeSet);
+    if (next) applyTheme(next);
   });
 }
 

@@ -14,6 +14,24 @@
  *                       тёмный, меняется только вместе с --accent.
  */
 
+/* ----------------------------------------------------------------------------
+   СЛОЙ ОБЪЁМА — тема «Кобальт».
+   Плоские поверхности заменены на стекло: диагональный градиент, верхний
+   световой кант и глубокая тень. Токены объявлены локально с fallback, чтобы
+   файл работал и без style.css; когда --grad-card появится в :root, значения
+   подхватятся автоматически. Второй акцент (золото) — только для оценок,
+   выгод и ключевых цифр; обычные шаги и рамки остаются серебристо-сланцевыми,
+   чтобы кобальт не превращался в сплошной синий.
+   ---------------------------------------------------------------------------- */
+:root {
+  --grad-card: linear-gradient(165deg, rgba(26, 39, 64, 0.9), rgba(14, 21, 36, 0.96));
+  --grad-btn: linear-gradient(135deg, #2563eb, #1d4ed8);
+  --grad-heading: linear-gradient(100deg, #f2f6fb 0%, #b6daff 55%, #eab968 100%);
+  --card-edge: inset 0 1px 0 rgba(186, 220, 255, 0.1);
+  --card-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --card-edge-strong: inset 0 1px 0 rgba(186, 220, 255, 0.16);
+}
+
 /* --- Хлебные крошки --- */
 .crumbs {
   display: flex;
@@ -63,16 +81,18 @@
   background: var(--bg-card-hover, #222222);
 }
 
-/* Активный чип — плотная заливка, значит текст строго --on-accent. */
+/* Активный чип — плотная заливка глубоким градиентом кнопки, текст строго
+   --on-accent (светлый #f8fbff под --grad-btn), сверху тонкий блик. */
 .chip[aria-current='page'] {
-  border-color: var(--accent, #4ade80);
-  background: var(--accent, #4ade80);
-  color: var(--on-accent, #0a0a0a);
+  border-color: var(--accent-border);
+  background: var(--grad-btn);
+  color: var(--on-accent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.24);
 }
 .chip[aria-current='page']:hover {
-  background: var(--accent-dark, #22c55e);
-  border-color: var(--accent-dark, #22c55e);
-  color: var(--on-accent, #0a0a0a);
+  background: var(--grad-btn-hover);
+  border-color: var(--accent-border);
+  color: var(--on-accent);
 }
 .chip[aria-current='page'] span {
   opacity: 0.8;
@@ -80,11 +100,11 @@
 
 /* RSS — отдельный, но тоже читаемый: акцентный текст на спокойной рамке. */
 .chip-rss {
-  color: var(--accent-text, #86efac);
-  border-color: var(--accent-border, rgba(74, 222, 128, 0.4));
+  color: var(--accent-text, #b6daff);
+  border-color: var(--accent-border, rgba(88, 166, 255, 0.4));
 }
 .chip-rss:hover {
-  color: var(--accent-text, #86efac);
+  color: var(--accent-text, #b6daff);
   border-color: var(--accent, #4ade80);
   background: var(--accent-glow, rgba(74, 222, 128, 0.12));
 }
@@ -102,14 +122,15 @@
   padding: 22px;
   border: 1px solid var(--border-color, #333333);
   border-radius: 17px;
-  background: var(--bg-card, #1a1a1a);
+  background: var(--grad-card, linear-gradient(165deg, rgba(26,39,64,0.9), rgba(14,21,36,0.96)));
+  box-shadow: var(--card-edge, inset 0 1px 0 rgba(186,220,255,0.1)), var(--card-shadow, 0 18px 40px -18px rgba(0,0,0,0.75));
   transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .article-card:hover {
   transform: translateY(-4px);
-  border-color: var(--accent-border, rgba(74, 222, 128, 0.6));
-  background: var(--bg-card-hover, #222222);
-  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+  border-color: var(--accent-secondary-border, rgba(234,185,104,0.34));
+  box-shadow: var(--card-edge, inset 0 1px 0 rgba(186,220,255,0.1)),
+    0 26px 52px -20px rgba(0,0,0,0.82);
 }
 .article-card-link {
   color: inherit;
@@ -123,7 +144,7 @@
 
 /* Категория над заголовком: мелкий капс — берём акцентный текст, не сам акцент. */
 .article-card-cat {
-  color: var(--accent-text, #86efac);
+  color: var(--accent-text, #b6daff);
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -157,22 +178,35 @@
   color: var(--text-secondary, #aaaaaa);
   text-align: center;
 }
-.articles-empty a { color: var(--accent-text, #86efac); }
+.articles-empty a { color: var(--accent-text, #b6daff); }
 
 /* --- Призывы к действию: своя плашка на акцентной подложке --- */
 .articles-cta,
 .article-cta {
+  position: relative;
   margin: 26px 0 60px;
-  padding: 24px;
-  border: 1px solid var(--accent-border, rgba(74, 222, 128, 0.28));
+  padding: 26px;
+  border: 1px solid var(--accent-border, rgba(88,166,255,0.32));
   border-radius: 18px;
-  background: var(--accent-glow, rgba(74, 222, 128, 0.12));
+  background: var(--grad-card, linear-gradient(165deg, rgba(26,39,64,0.9), rgba(14,21,36,0.96)));
+  box-shadow: var(--card-edge-strong, inset 0 1px 0 rgba(186,220,255,0.16)),
+    0 22px 46px -20px rgba(0,0,0,0.8);
   color: var(--text-primary, #ffffff);
+  overflow: hidden;
+}
+/* Полоска акцента по верхней грани CTA — синий переходит в золото. */
+.articles-cta::before,
+.article-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent, #58a6ff) 30%, var(--accent-secondary, #eab968) 72%, transparent);
 }
 .articles-cta p,
 .article-cta p { margin: 0 0 6px; }
 .articles-cta b,
-.article-cta b { color: var(--accent-text, #86efac); }
+.article-cta b { color: var(--accent-secondary-text, #fde4b8); }
 
 .article-cta-links {
   display: flex;
@@ -207,7 +241,7 @@
   border: 1px solid var(--accent-border, rgba(74, 222, 128, 0.28));
   border-radius: 999px;
   background: var(--accent-glow, rgba(74, 222, 128, 0.12));
-  color: var(--accent-text, #86efac);
+  color: var(--accent-text, #b6daff);
   font-size: 0.72rem;
   font-weight: 700;
   text-decoration: none;
@@ -235,7 +269,8 @@
   padding: 18px 20px;
   border: 1px solid var(--border-color, #333333);
   border-radius: 14px;
-  background: var(--bg-card, #1a1a1a);
+  background: var(--grad-card, linear-gradient(165deg, rgba(26,39,64,0.9), rgba(14,21,36,0.96)));
+  box-shadow: var(--card-edge, inset 0 1px 0 rgba(186,220,255,0.1));
 }
 .article-toc-title {
   margin: 0 0 8px;
@@ -254,7 +289,7 @@
   text-decoration: none;
 }
 .article-toc a:hover {
-  color: var(--accent-text, #86efac);
+  color: var(--accent-text, #b6daff);
   text-decoration: underline;
 }
 
@@ -285,7 +320,7 @@
   margin: 7px 0;
 }
 .article-body a {
-  color: var(--accent-text, #86efac);
+  color: var(--accent-text, #b6daff);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -293,17 +328,21 @@
   color: var(--accent, #4ade80);
 }
 .article-body strong { color: var(--text-primary, #ffffff); }
+/* Врезка (callout): стеклянная поверхность с кобальтовой полоской слева.
+   Текст остаётся --text-primary — на стекле это 15:1, длинный текст читается. */
 .article-body blockquote {
   margin: 18px 0;
-  padding: 12px 18px;
-  border-left: 3px solid var(--accent, #4ade80);
-  background: var(--accent-glow, rgba(74, 222, 128, 0.1));
+  padding: 14px 20px;
+  border-left: 3px solid var(--accent, #58a6ff);
+  background: var(--grad-card, linear-gradient(165deg, rgba(26,39,64,0.9), rgba(14,21,36,0.96)));
+  box-shadow: var(--card-edge, inset 0 1px 0 rgba(186,220,255,0.1));
+  border-radius: 0 10px 10px 0;
   color: var(--text-primary, #ffffff);
 }
 .article-body code {
   padding: 2px 6px;
   border-radius: 6px;
-  background: var(--bg-card-hover, #222222);
+  background: rgba(9, 14, 24, 0.75);
   border: 1px solid var(--border-color, #333333);
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.85em;
@@ -328,7 +367,7 @@
 
 /* Цена из прайса: акцентный текст на обычном фоне — читается, но не «горит». */
 .article-body .price-token {
-  color: var(--accent-text, #86efac);
+  color: var(--accent-text, #b6daff);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -353,7 +392,8 @@
   padding: 18px;
   border: 1px solid var(--border-color, #333333);
   border-radius: 14px;
-  background: var(--bg-card, #1a1a1a);
+  background: var(--grad-card, linear-gradient(165deg, rgba(26,39,64,0.9), rgba(14,21,36,0.96)));
+  box-shadow: var(--card-edge, inset 0 1px 0 rgba(186,220,255,0.1));
 }
 .article-others-title {
   margin: 0 0 10px;
@@ -373,7 +413,7 @@
   text-decoration: none;
 }
 .article-others a:hover {
-  color: var(--accent-text, #86efac);
+  color: var(--accent-text, #b6daff);
   text-decoration: underline;
 }
 /* Подсказка под ссылкой стоит на карточке #1a1a1a: #777 даёт там 3.89:1,
@@ -395,7 +435,7 @@
 .article-cta .btn:not(.btn--primary),
 .articles-cta .btn:not(.btn--primary) {
   border: 1px solid var(--border-light, #444444);
-  background: var(--bg-primary, #0a0a0a);
+  background: rgba(9, 14, 24, 0.55);
   color: var(--text-primary, #ffffff);
 }
 .article-cta .btn:not(.btn--primary):hover,
@@ -420,3 +460,46 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---- объёмные главные кнопки (.btn-primary из style.css) ----
+   Страницы Агента 03 используют модификатор без дефиса. style.css красит такую
+   кнопку сплошным --accent и текстом --on-accent; в кобальте это тёмный
+   #08131f на синем #2563eb — 3.62:1, ниже нормы. Здесь кнопка получает
+   градиент и светлый текст (#f8fbff даёт 4.98:1 на верхней точке и 6.46:1
+   ниже). В hover-правиле style.css стоит color: … !important, поэтому и здесь
+   без !important не обойтись — иначе светлый текст перебьётся тёмным. */
+.btn-primary {
+  background: var(--grad-btn, linear-gradient(135deg, #2563eb, #1d4ed8));
+  color: #f8fbff;
+  border: 1px solid rgba(120, 170, 255, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(200, 225, 255, 0.35),
+    0 10px 24px -10px rgba(37, 99, 235, 0.65);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:visited {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  color: #f8fbff !important;
+  border-color: rgba(150, 195, 255, 0.65);
+}
+
+/* ---- читаемость кнопок мессенджеров на «Подборе» ----
+   .messenger-btn живёт в style.css (зона Агента 01) и красит Telegram в
+   #0088cc: на кобальтовой карточке это 3.65:1. У себя на странице поднимаем
+   тон до #5bb8e8 (5.4:1) и чуть уплотняем подложку — цвет бренда сохраняется,
+   читаемость приходит в норму. Глобальный файл не трогаем. */
+/* Двойной класс нужен из-за порядка подключения: style.css собран позже
+   public-файла страницы и при равной специфичности перебивает одиночный
+   .messenger-telegram. */
+.messenger-btn.messenger-telegram {
+  color: #5bb8e8;
+  background: rgba(0, 136, 204, 0.16);
+  border-color: rgba(91, 184, 232, 0.45);
+}
+.messenger-btn.messenger-telegram:hover {
+  color: #8fd2f2;
+  border-color: #5bb8e8;
+}
+.messenger-btn.messenger-telegram .messenger-icon { color: #5bb8e8; }

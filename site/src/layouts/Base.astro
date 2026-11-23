@@ -66,7 +66,7 @@ const paragraphs = jsonLd.filter(Boolean);
 ---
 
 <!DOCTYPE html>
-<html lang="ru" data-theme="sage">
+<html lang="ru" data-theme="cobalt">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -99,21 +99,32 @@ const paragraphs = jsonLd.filter(Boolean);
     <meta name="twitter:description" content={description}>
     <meta name="twitter:image" content={ogImageUrl}>
 
-    <meta name="theme-color" content="#0f1412">
+    <meta name="theme-color" content="#080d17">
 
     {/* Палитра применяется ДО первой отрисовки: иначе при перезагрузке
         секунду видна тема по умолчанию, а потом страница «перекрашивается». */}
     <script is:inline>
       (function () {
+        /* Три вариации кобальта + старые имена из первой волны предпросмотра:
+           если у посетителя в localStorage остался 'sage' или 'cobalt-champagne',
+           не сбрасываем выбор на базу молча, а переводим в актуальное имя. */
+        var ALIAS = {
+          'cobalt-champagne': 'cobalt',
+          sage: 'cobalt',
+          gold: 'cobalt',
+          amber: 'cobalt',
+          teal: 'cobalt',
+        };
+        var KNOWN = ['cobalt', 'cobalt-aurora', 'cobalt-platinum'];
         try {
           var t = localStorage.getItem('kadrypro-preview-theme');
-          if (t && ['sage', 'gold', 'cobalt', 'amber', 'teal'].indexOf(t) !== -1) {
-            document.documentElement.setAttribute('data-theme', t);
-          } else {
-            document.documentElement.setAttribute('data-theme', 'sage');
-          }
+          if (t && ALIAS[t]) t = ALIAS[t];
+          document.documentElement.setAttribute(
+            'data-theme',
+            t && KNOWN.indexOf(t) !== -1 ? t : 'cobalt',
+          );
         } catch (e) {
-          document.documentElement.setAttribute('data-theme', 'sage');
+          document.documentElement.setAttribute('data-theme', 'cobalt');
         }
       })();
     </script>
