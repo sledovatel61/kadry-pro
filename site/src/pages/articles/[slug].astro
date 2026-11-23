@@ -1,0 +1,171 @@
+---
+/**
+ * Страница статьи раздела «Полезное» — `/articles/<slug>.html` (Агент 03).
+ *
+ * Источник — `site/content/articles.json`. Мария пишет и публикует статьи в
+ * `/manage/` (вкладка «Полезное»), здесь они превращаются в страницы:
+ *   • текст из Markdown, заголовки второго уровня получают якоря и оглавление;
+ *   • токены `{{price:id}}` заменяются числами из `prices.json` — цена живёт в одном месте;
+ *   • SEO: title/description/canonical, Open Graph и разметка BlogPosting;
+ *   • «другие разборы» внизу — чтобы читатель не уходил в тупик.
+ *
+ * Черновики страниц не получают: их просто нет в сборке.
+ */
+import { articleToc, articleUrl, categoryTitle, type ArticleItem } from '../../shared/articles-schema.ts';
+import { mdToHtml, plainText } from './_markdown.ts';
+import { publishedArticles, readPrices, fmtDateRu, isoMoscow } from './_data.ts';
+
+export const prerender = true;
+
+/* Данные читаются один раз на сборку: файл один, страниц много. */
+const PUBLISHED = publishedArticles();
+const PRICES = readPrices();
+
+export function getStaticPaths() {
+  /* Внутри getStaticPaths видны только импорты — читаем файл ещё раз (он мал). */
+  return publishedArticles().map((article) => ({ params: { slug: article.slug }, props: { article } }));
+}
+
+interface Props {
+  article: ArticleItem;
+}
+
+const { article } = Astro.props;
+const body = mdToHtml(article.body_md, PRICES);
+const toc = articleToc(article.body_md);
+const others = PUBLISHED.filter((a) => a.slug !== article.slug).slice(0, 3);
+const site = (Astro.site?.href ?? 'https://kadry-pro.ru/').replace(/\/+$/, '');
+const canonical = `${site}${articleUrl(article.slug)}`;
+const title = article.seo_title ?? article.title;
+const description = article.excerpt;
+const publishedIso = isoMoscow(article.published_at);
+const modifiedIso = isoMoscow(article.updated_at ?? article.published_at);
+const minutes = Math.max(3, Math.round(plainText(article.body_md).split(' ').length / 180));
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: article.title,
+  description,
+  datePublished: publishedIso,
+  dateModified: modifiedIso,
+  inLanguage: 'ru-RU',
+  mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+  author: {
+    '@type': 'Person',
+    name: 'Перепечай Мария Павловна',
+    jobTitle: 'кадровый специалист',
+    url: `${site}/about.html`,
+  },
+  publisher: { '@type': 'Organization', name: 'Кадры-Про', url: site },
+};
+---
+
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:locale" content="ru_RU" />
+  <meta property="og:site_name" content="Кадры-Про" />
+  <meta property="article:published_time" content={publishedIso} />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="alternate" type="application/rss+xml" title="Кадры-Про — Полезное" href="/articles/rss.xml" />
+  <link rel="stylesheet" href="/style.css" />
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)}></script>
+</head>
+<body>
+  <a class="skip-link" href="#article-main">Перейти к тексту</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="/">Кадры<span>-Про</span></a>
+      <nav class="nav" aria-label="Основное меню">
+        <a href="/services.html">Услуги</a>
+        <a href="/shablony.html">Шаблоны</a>
+        <a href="/cases.html">Кейсы</a>
+        <a href="/articles.html">Полезное</a>
+        <a href="/contact.html">Контакты</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="article-main">
+    <nav class="crumbs container" aria-label="Хлебные крошки">
+      <a href="/">Главная</a><span aria-hidden="true"> / </span>
+      <a href="/articles.html">Полезное</a><span aria-hidden="true"> / </span>
+      <span aria-current="page">{article.title}</span>
+    </nav>
+
+    <article class="container article-layout">
+      <div class="article-main">
+        <div class="article-meta">
+          <a class="news-cat" href={`/articles.html?cat=${article.category}`}>{categoryTitle(article.category)}</a>
+          <time datetime={publishedIso}>{fmtDateRu(article.published_at)}</time>
+          <span class="hint">· {minutes} мин чтения</span>
+        </div>
+
+        <h1>{article.title}</h1>
+        <p class="article-lead">{article.excerpt}</p>
+
+        {toc.length > 2 && (
+          <nav class="article-toc" aria-label="Содержание">
+            <p class="article-toc-title">Содержание</p>
+            <ol>
+              {toc.map((item) => (<li><a href={`#${item.id}`}>{item.text}</a></li>))}
+            </ol>
+          </nav>
+        )}
+
+        <div class="article-body" set:html={body} />
+
+        <aside class="article-cta">
+          <p><b>Нужна помощь по этому вопросу?</b> Разберу вашу ситуацию и скажу, что делать — по телефону или в Telegram.</p>
+          <p class="article-cta-links">
+            <a class="btn btn--primary" href="tel:+79613022112">+7 (961) 302-21-12</a>
+            <a class="btn" href="https://t.me/Mariya061" target="_blank" rel="noopener">Написать в Telegram</a>
+          </p>
+          <p class="hint">
+            Перепечай Мария Павловна · ИНН 613400944153 · самозанятая, г. Ростов-на-Дону.
+            <a href="/privacy.html">Политика обработки данных</a>
+          </p>
+        </aside>
+      </div>
+
+      {others.length > 0 && (
+        <aside class="article-others" aria-label="Другие разборы">
+          <p class="article-others-title">Другие разборы</p>
+          <ul>
+            {others.map((other) => (
+              <li>
+                <a href={articleUrl(other.slug)}>{other.title}</a>
+                <span class="hint">{categoryTitle(other.category)} · {fmtDateRu(other.published_at)}</span>
+              </li>
+            ))}
+          </ul>
+          <p><a class="btn small" href="/articles/rss.xml">Подписаться на RSS</a></p>
+        </aside>
+      )}
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>© 2026 Кадры-Про · Перепечай Мария Павловна · ИНН 613400944153</p>
+      <p>
+        <a href="/privacy.html">Политика обработки данных</a> ·
+        <a href="/consent.html">Согласие</a> ·
+        <a href="/articles.html">Полезное</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
