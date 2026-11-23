@@ -11,6 +11,9 @@ export default defineConfig({
   trailingSlash: 'never',
   build: {
     format: 'file',
+    // Папка бандлов — assets/ вместо _astro/: Jekyll на GitHub Pages режет
+    // каталоги с подчёркиванием, а корень репозитория отдаётся как есть.
+    assets: 'assets',
     inlineStylesheets: 'auto',
   },
   server: {
