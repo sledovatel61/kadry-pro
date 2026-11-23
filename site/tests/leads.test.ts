@@ -24,7 +24,7 @@ import {
   parseLeadsEndpoint,
   retryAfterSeconds,
 } from '../src/shared/leads-endpoint.ts';
-import { buildPayload, validateForm, DEFAULT_TEXTS } from '../src/client/leads-form.ts';
+import { buildPayload, validateForm, DEFAULT_TEXTS, successText } from '../src/client/leads-form.ts';
 import { fieldText, FIELD_TEXTS } from '../src/client/review-form.ts';
 import { pickNew, reviewKey, plural as livePlural, formatDayMonth } from '../src/client/reviews-live.ts';
 
@@ -82,6 +82,169 @@ function makeForm(fields: Record<string, FakeEl>, dataset: Record<string, string
   form.querySelectorAll = () => [];
   return form as unknown as HTMLFormElement;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Автозаполнение и скрытая ловушка                                   */
+/* ------------------------------------------------------------------ */
+
+test('заполненная офскрин-ловушка не теряет заявку: honeypot уходит, флаг hidden=false', () => {
+  /* Воспроизводим баг владельца: автозаполнение вписало «ООО Ромашка» в
+     company_website. Поле видимо для браузера (офскрин), значит это не бот —
+     заявка должна уйти, а флаг сообщить воркеру правду. */
+  const form = makeForm(
+    {
+      name: el({ value: 'Иван Петров' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      company_website: el({ value: 'ООО Ромашка', hidden: false }),
+    },
+    { page: 'contact', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 60_000, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot, 'ООО Ромашка');
+  assert.equal(payload.honeypot_hidden, false, 'офскрин-поле не должно считаться скрытым');
+  assert.equal(payload.phone, '79613022112');
+});
+
+test('по-настоящему скрытая ловушка помечается hidden=true', () => {
+  const hiddenField = el({ value: 'spam', hidden: true });
+  const form = makeForm(
+    {
+      name: el({ value: 'Бот' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      honeypot: hiddenField,
+    },
+    { page: 'contact', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 60_000, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot_hidden, true);
+});
+
+test('пустая ловушка — hidden=false, обычная заявка не помечается', () => {
+  const form = makeForm(
+    {
+      name: el({ value: 'Иван' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      company_website: el({ value: '', hidden: false }),
+    },
+    { page: 'contact', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 60_000, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot, '');
+  assert.equal(payload.honeypot_hidden, false);
+});
+
+/* ------------------------------------------------------------------ */
+/*  K-1123: регрессия «две ловушки на одной форме»                      */
+/* ------------------------------------------------------------------ */
+
+test('K-1123: две ловушки, автозаполнение заполнило офскрин — заявка не считается ботом', () => {
+  /* Форма как на /trudovoy-spor.html: офскрин company_website И display:none
+     _gotcha. Автозаполнение вписало «ООО Ромашка» в офскрин, а _gotcha остался
+     пустым (display:none браузер не заполняет). Раньше флаг hidden считался от
+     _gotcha как первого НАЙДЕННОГО поля, а значение шло из company_website —
+     и воркер молча выбрасывал живую заявку, отвечая 201 с талоном: посетитель
+     видел «Заявка ушла» и номер, Мария — тишину. */
+  const form = makeForm(
+    {
+      name: el({ value: 'Иван Петров' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      company_website: el({ value: 'ООО Ромашка', hidden: false }),
+      _gotcha: el({ value: '', hidden: true }),
+    },
+    { page: 'trudovoy-spor', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 60_000, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot, 'ООО Ромашка');
+  assert.equal(
+    payload.honeypot_hidden,
+    false,
+    'флаг должен описывать поле, ЧЬЁ ЗНАЧЕНИЕ ушло в запрос, а не первое найденное',
+  );
+});
+
+test('K-1123: слишком быстрая отправка с автозаполнением — тоже не бот', () => {
+  /* Тот же сценарий, но человек отправил форму сразу: автозаполнение заполнило
+     всё разом, заполнение заняло секунды. too-fast не должен превращаться в
+     молчаливый выброс: воркер доставит с пометками hidden-field + too-fast. */
+  const form = makeForm(
+    {
+      name: el({ value: 'Иван Петров' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      company_website: el({ value: 'ООО Ромашка', hidden: false }),
+      _gotcha: el({ value: '', hidden: true }),
+    },
+    { page: 'trudovoy-spor', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 800, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot, 'ООО Ромашка');
+  assert.equal(payload.honeypot_hidden, false);
+  /* form_started_at уходит в запрос — воркер пометит too-fast и доставит. */
+  assert.equal(typeof payload.form_started_at, 'number');
+});
+
+test('K-1123: значение пришло из display:none-ловушки — это бот', () => {
+  /* Обе ловушки заполнены: значение по приоритету берётся из _gotcha, и флаг
+     должен описывать его же (display:none человек заполнить не мог). */
+  const form = makeForm(
+    {
+      name: el({ value: 'Бот' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      company_website: el({ value: 'http://spam.example', hidden: false }),
+      _gotcha: el({ value: 'buy now', hidden: true }),
+    },
+    { page: 'trudovoy-spor', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 60_000, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot, 'buy now', 'значение по приоритету: _gotcha раньше company_website');
+  assert.equal(payload.honeypot_hidden, true);
+});
+
+/* ------------------------------------------------------------------ */
+/*  Текст результата: он должен совпадать с тем, что реально произошло  */
+/* ------------------------------------------------------------------ */
+
+test('оба канала подтверждены — обещаем Telegram и почту', () => {
+  const t = successText({ telegram: true, email: true }, DEFAULT_TEXTS.success);
+  assert.match(t.title, /Telegram/);
+  assert.match(t.title, /почт/i);
+});
+
+test('только Telegram — про почту не говорим ни слова', () => {
+  const t = successText({ telegram: true, email: false }, DEFAULT_TEXTS.success);
+  assert.match(t.title, /Telegram/);
+  assert.doesNotMatch(t.title, /почт/i);
+});
+
+test('только почта — не обещаем Telegram, просим продублировать звонком', () => {
+  const t = successText({ telegram: false, email: true }, DEFAULT_TEXTS.success);
+  assert.doesNotMatch(t.title, /Telegram/, 'нельзя обещать Telegram, если дошло письмо');
+  assert.match(t.title, /почт/i);
+  assert.match(t.note, /\+7 \(961\) 302-21-12/, 'человеку нужен телефон, а не объяснение');
+});
+
+test('ни один канал не подтверждён — честно говорим и даём телефон', () => {
+  const t = successText({ telegram: false, email: false }, DEFAULT_TEXTS.success);
+  assert.match(t.title, /подтверждения доставки нет/i);
+  assert.match(t.note, /\+7 \(961\) 302-21-12/);
+});
+
+test('старая сборка воркера без delivered — нейтральный текст, без обещаний канала', () => {
+  const t = successText(undefined, 'Заявка принята — Мария ответит в рабочее время.');
+  assert.equal(t.title, 'Заявка принята — Мария ответит в рабочее время.');
+  assert.doesNotMatch(t.title, /Telegram|почт/i);
+});
+
+test('шаблонный текст по умолчанию не обещает Telegram', () => {
+  /* Именно эта строка показывалась владельцу вместе с талоном, хотя заявка
+     никуда не ушла. Теперь такой формулировки по умолчанию быть не должно. */
+  assert.doesNotMatch(DEFAULT_TEXTS.success, /Telegram/);
+});
 
 /* ------------------------------------------------------------------ */
 /*  Адрес приёмника                                                    */

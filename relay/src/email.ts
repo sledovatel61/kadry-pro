@@ -171,6 +171,19 @@ export interface SentEmail {
   to: string;
 }
 
+/**
+ * Адрес для «Ответить» в письме-копии.
+ *
+ * Раньше здесь стоял адрес получателя копии, то есть Мария, — и ответ на письмо
+ * уходил ей же самой вместо клиента. Отвечать имеет смысл только клиенту, а он
+ * оставляет почту не всегда. Нет почты — поля не будет вовсе: почтовый клиент
+ * возьмёт From, что честнее, чем «ответить самому себе».
+ */
+function replyToFor(leadEmail: string | null | undefined, siteName: string) {
+  const email = (leadEmail ?? '').trim();
+  return email ? { email, name: siteName } : undefined;
+}
+
 export function emailFrom(env: EmailEnv, to: string): string {
   const own = (env.EMAIL_FROM ?? '').trim();
   if (own) return own;
@@ -188,14 +201,32 @@ async function postWithRetry(
   provider: EmailProvider,
 ): Promise<void> {
   let lastErr = 'unknown';
+  /* Свой таймаут на попытку: клиент сдаётся через 12 с, и зависший апстрим
+     без таймаута превращается в «ошибку у посетителя» при реально ушедшей
+     заявке. 4 с — с запасом на p95 Brevo/Resend. */
+  const ATTEMPT_MS = 4000;
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 500));
     let res: Response;
+    const ctrl = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    /* См. telegram.ts: сигнала мало, нужна гонка с таймером. */
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        ctrl.abort();
+        reject(new Error('timeout'));
+      }, ATTEMPT_MS);
+    });
     try {
-      res = await doFetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+      res = await Promise.race([
+        doFetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal }),
+        timeout,
+      ]);
     } catch (e) {
       lastErr = `network:${(e as Error)?.name ?? 'error'}`;
       continue;
+    } finally {
+      if (timer) clearTimeout(timer);
     }
     if (res.ok) return;
     lastErr = `http:${res.status}`;
@@ -211,6 +242,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<SentEmail> {
 
   const to = (args.env.EMAIL_TO ?? args.opts.to ?? DEFAULT_EMAIL_TO).trim();
   const from = emailFrom(args.env, to);
+  const leadEmail = 'email' in args.lead ? args.lead.email : null;
   const { subject, text, html } = composeEmail(args.lead, args.ticket, args.opts);
   const doFetch = args.fetchImpl ?? fetch;
 
@@ -228,7 +260,8 @@ export async function sendEmail(args: SendEmailArgs): Promise<SentEmail> {
     }, {
       sender: { name: senderName, email: senderEmail },
       to: [{ email: to }],
-      replyTo: { email: to, name: args.opts.siteName },
+      /* Ответ на копию должен идти клиенту, а не нам самим. */
+      ...(replyToFor(leadEmail, args.opts.siteName) ? { replyTo: replyToFor(leadEmail, args.opts.siteName)! } : {}),
       subject,
       htmlContent: html,
       textContent: text,
@@ -332,7 +365,7 @@ export async function sendReviewEmail(args: SendReviewEmailArgs): Promise<{ prov
     }, {
       sender: { name: senderName, email: senderEmail },
       to: [{ email: to }],
-      replyTo: { email: to, name: args.opts.siteName },
+      /* У отзыва нет почты автора: без replyTo ответ уйдёт на From, а не нам самим. */
       subject,
       htmlContent: html,
       textContent: text,

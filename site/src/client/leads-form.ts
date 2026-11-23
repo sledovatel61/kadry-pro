@@ -17,6 +17,7 @@
 import {
   CONSENT_VERSION,
   LEADS_BASE,
+  LEADS_TIMEOUT_MS,
   absoluteLeadsUrl,
   collectCalcSummary,
   leadsFetch,
@@ -30,6 +31,49 @@ import {
 
 export type LeadKind = 'consult' | 'calculator' | 'template' | 'subscribe';
 
+/**
+ * Текст экрана успеха под РЕАЛЬНЫЙ результат доставки.
+ *
+ * Воркер отвечает полем `delivered` — какие каналы подтвердили приём. Обещать
+ * «Мария увидит в Telegram», когда Telegram не сработал, нельзя: человек
+ * расслабится и не позвонит. Поэтому формулировка выбирается по факту:
+ * оба канала — так и говорим; только почта — говорим про почту; только
+ * Telegram — про Telegram; ни одного (или поле не пришло от старой сборки
+ * воркера) — честно просим продублировать звонком. */
+export function successText(
+  delivered: { telegram?: boolean; email?: boolean } | undefined,
+  fallback: string,
+): { title: string; note: string } {
+  const tg = delivered?.telegram === true;
+  const mail = delivered?.email === true;
+  if (tg && mail) {
+    return {
+      title: 'Заявка ушла — Мария увидит её в Telegram, копия отправлена на почту.',
+      note: 'Ответит в рабочее время.',
+    };
+  }
+  if (tg) {
+    return {
+      title: 'Заявка ушла — Мария увидит её в Telegram.',
+      note: 'Ответит в рабочее время.',
+    };
+  }
+  if (mail) {
+    return {
+      title: 'Заявка отправлена на почту Марии.',
+      note: 'Дублируйте звонком, если вопрос срочный: +7 (961) 302-21-12.',
+    };
+  }
+  if (delivered) {
+    return {
+      title: 'Заявка принята, но подтверждения доставки нет.',
+      note: 'Чтобы не потеряться — позвоните: +7 (961) 302-21-12.',
+    };
+  }
+  /* Старая сборка воркера: поля `delivered` в ответе нет. Не врём про каналы. */
+  return { title: fallback, note: '' };
+}
+
 export interface LeadFormTexts {
   sending: string;
   success: string;
@@ -42,7 +86,9 @@ export interface LeadFormTexts {
 
 export const DEFAULT_TEXTS: LeadFormTexts = {
   sending: 'Отправляем…',
-  success: 'Заявка ушла — Мария увидит её в Telegram и ответит в рабочее время.',
+  /* Нейтральная формулировка по умолчанию: канал доставки подтверждает ответ
+     воркера, а не наши предположения. Конкретику подставляет showSuccess. */
+  success: 'Заявка принята — Мария ответит в рабочее время.',
   ticket: 'Номер заявки',
   error: 'Не получилось отправить заявку. Позвоните, пожалуйста: +7 (961) 302-21-12.',
   phoneHint: 'Позвоните: +7 (961) 302-21-12 — или напишите в Telegram @Mariya061.',
@@ -51,6 +97,57 @@ export const DEFAULT_TEXTS: LeadFormTexts = {
 };
 
 const PHONE_RE = /^\d{11}$/;
+
+/**
+ * Скрыто ли поле по-настоящему: `display:none`, `visibility:hidden` или атрибут
+ * `hidden`. Только такое поле человек заполнить не может.
+ *
+ * Офскрин-ловушка (`position:absolute; left:-9999px`, класс `.quick-lead-hp`)
+ * сюда НЕ попадает: в ней поле видимо для браузера, и автозаполнение телефона
+ * охотно вписывает туда «ООО Ромашка» из профиля. Раньше такая запись
+ * означала «бот» и заявка молча терялась при ответе 201.
+ */
+function isReallyHidden(el: HTMLElement | null): boolean {
+  if (!el) return false;
+  if (el.hidden === true) return true;
+  /* В тестах и в окружениях без CSSOM getComputedStyle может отсутствовать:
+     тогда считаем поле видимым (безопасная сторона — доставить заявку). */
+  if (typeof getComputedStyle !== 'function') return false;
+  try {
+    const style = getComputedStyle(el);
+    return style.display === 'none' || style.visibility === 'hidden';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Поле-ловушка, из которого пришло ЗНАЧЕНИЕ `honeypot`, — в том же порядке
+ * приоритета, что и значение: первое НЕПУСТОЕ поле. Флаг `honeypot_hidden`
+ * должен описывать именно этот элемент, а не первый попавшийся.
+ *
+ * Регрессия K-1123: на формах с двумя ловушками (офскрин `company_website`
+ * и `display:none` `_gotcha`) значение приходило из офскрина (его заполнило
+ * автозаполнение), а флаг считался от `_gotcha` как первого найденного —
+ * `hidden=true`. Воркер считал такую заявку ботом, молча выбрасывал её и
+ * отвечал 201 с талоном: человек видел успех, заявка не доходила.
+ */
+function honeypotSource(form: HTMLElement): HTMLElement | null {
+  const names = [form.dataset.honeypot || 'honeypot', '_gotcha', 'company_website'];
+  const byName = (name: string): (HTMLElement & { value?: string }) | null =>
+    form.querySelector<HTMLElement>(`[name="${name}"]`);
+  for (const name of names) {
+    const el = byName(name);
+    if (el && typeof el.value === 'string' && el.value) return el;
+  }
+  /* Ловушки пусты — для флага берём первую существующую (значение всё равно
+     пустое, и воркер от него ничего не решает). */
+  for (const name of names) {
+    const el = byName(name);
+    if (el) return el;
+  }
+  return null;
+}
 
 /** Значение поля по имени (первое совпадение внутри формы). */
 function fieldValue(form: HTMLElement, name: string): string {
@@ -105,13 +202,36 @@ function hidden(form: HTMLElement, name: string): HTMLInputElement {
   return el;
 }
 
-/** Текст «Спасибо» и номер заявки: блок с `[data-lead-success]` либо подмена формы. */
-function showSuccess(form: HTMLElement, ticket: string, texts: LeadFormTexts, download?: string): void {
+/**
+ * Текст «Спасибо» и номер заявки: блок с `[data-lead-success]` либо подмена формы.
+ *
+ * `delivered` — подтверждение каналов от воркера. Текст подбирается по нему,
+ * а не по нашим ожиданиям: обещать Telegram, когда он не сработал, значит
+ * оставить человека без ответа в уверенности, что заявка дошла.
+ */
+function showSuccess(
+  form: HTMLElement,
+  ticket: string,
+  texts: LeadFormTexts,
+  download?: string,
+  delivered?: { telegram?: boolean; email?: boolean },
+): void {
+  clearStrayStatus(form);
+  const { title, note } = successText(delivered, texts.success);
   const box = form.parentElement?.querySelector<HTMLElement>('[data-lead-success]')
     ?? document.querySelector<HTMLElement>(`[data-lead-success="${form.id}"]`);
   if (box) {
     box.hidden = false;
     box.classList.add('visible');
+    /* Заголовок блока мог быть свёрстан под «Мария увидит в Telegram»:
+       заменяем его на подтверждённый канал, если разметка это позволяет. */
+    const head = box.querySelector<HTMLElement>('[data-success-title]');
+    if (head) head.textContent = title;
+    const noteEl = box.querySelector<HTMLElement>('[data-success-note]');
+    if (noteEl) {
+      noteEl.textContent = note;
+      noteEl.hidden = !note;
+    }
     const no = box.querySelector<HTMLElement>('[data-ticket]');
     if (no) no.textContent = `${texts.ticket}: ${ticket}`;
     const link = box.querySelector<HTMLAnchorElement>('[data-download]');
@@ -122,11 +242,20 @@ function showSuccess(form: HTMLElement, ticket: string, texts: LeadFormTexts, do
     form.hidden = true;
     return;
   }
-  /* Разметка без блока успеха (формы Агента 01/02): сообщение вставляем сами. */
+  /* Разметка без блока успеха (формы Агента 01/02): сообщение вставляем сами.
+     Текст собираем через textContent — данные пришли из сети, innerHTML с ними
+     недопустим. */
   const fallback = document.createElement('div');
   fallback.className = 'lead-success';
   fallback.setAttribute('role', 'status');
-  fallback.innerHTML = `<p><b>${texts.success}</b></p><p class="hint">${texts.ticket}: ${ticket}</p>`;
+  const line = document.createElement('p');
+  const strong = document.createElement('b');
+  strong.textContent = title;
+  line.append(strong);
+  const hint = document.createElement('p');
+  hint.className = 'hint';
+  hint.textContent = note ? `${note} ${texts.ticket}: ${ticket}` : `${texts.ticket}: ${ticket}`;
+  fallback.append(line, hint);
   if (download) {
     const a = document.createElement('a');
     a.className = 'btn btn--primary';
@@ -137,7 +266,24 @@ function showSuccess(form: HTMLElement, ticket: string, texts: LeadFormTexts, do
   form.replaceWith(fallback);
 }
 
+/**
+ * Гасим посторонние сообщения под формой.
+ *
+ * `site.ts` в старой версии писал в `.quick-lead-status` текст «Заявка почти
+ * ушла — позвоните». Если такой блок остался на странице, он переживёт и
+ * успех, и ошибку — человек увидит одновременно «отправлена» и «позвоните».
+ * Поэтому перед своим сообщением чистим чужое.
+ */
+function clearStrayStatus(form: HTMLElement): void {
+  const stray = form.querySelector<HTMLElement>('.quick-lead-status');
+  if (stray) {
+    stray.textContent = '';
+    stray.hidden = true;
+  }
+}
+
 function showError(form: HTMLElement, texts: LeadFormTexts, message?: string, waitSec?: number): void {
+  clearStrayStatus(form);
   const box = form.parentElement?.querySelector<HTMLElement>('[data-lead-error]')
     ?? document.querySelector<HTMLElement>(`[data-lead-error="${form.id}"]`);
   const text = message ?? texts.error;
@@ -184,13 +330,26 @@ function pageSlug(): string {
 }
 
 /** Собираем тело заявки из полей формы. */
+/**
+ * Потолки полей — те же, что в `relay/src/validate.ts`.
+ *
+ * Раньше клиент отправлял значение как есть, а воркер отвергал всё, что длиннее
+ * (например honeypot > 200: автозаполнение вписывает туда длинную строку).
+ * Ответ 400 приходил с ошибкой поля, у которого на странице НЕТ блока вывода —
+ * человек видел пустоту или общий «не получилось». Ужимаем на клиенте: длинный
+ * текст лучше обрежется, чем потеряет заявку.
+ */
+const LIMIT = { name: 60, email: 120, company: 120, service: 80, message: 2000, honeypot: 200 } as const;
+
+const clip = (value: string, max: number): string => (value.length > max ? value.slice(0, max) : value);
+
 export function buildPayload(form: HTMLFormElement, startedAt: number, idem: string): Record<string, unknown> {
-  const name = fieldValue(form, 'name');
+  const name = clip(fieldValue(form, 'name'), LIMIT.name);
   const phone = normalizePhone(fieldValue(form, 'phone')).replace(/^\+/, '');
-  const email = fieldValue(form, 'email');
-  const company = fieldValue(form, 'company');
-  const service = fieldValue(form, 'service');
-  const message = fieldValue(form, 'message') || fieldValue(form, 'comment');
+  const email = clip(fieldValue(form, 'email'), LIMIT.email);
+  const company = clip(fieldValue(form, 'company'), LIMIT.company);
+  const service = clip(fieldValue(form, 'service'), LIMIT.service);
+  const message = clip(fieldValue(form, 'message') || fieldValue(form, 'comment'), LIMIT.message);
   const kind = (form.dataset.leadKind as LeadKind) || 'consult';
 
   const base: Record<string, unknown> = {
@@ -204,10 +363,15 @@ export function buildPayload(form: HTMLFormElement, startedAt: number, idem: str
     idempotency_key: idem,
     /* Ловушка ботов: имя может приходить из data-honeypot формы, а формы
        Агентов 01/02 используют company_website / _gotcha / honeypot. */
-    honeypot:
+    honeypot: clip(
       fieldValue(form, form.dataset.honeypot || 'honeypot')
       || fieldValue(form, '_gotcha')
       || fieldValue(form, 'company_website'),
+      LIMIT.honeypot,
+    ),
+    /* Флаг нужен воркеру: заполненная офскрин-ловушка — это, скорее всего,
+       автозаполнение, а не бот. Доставляем, но с пометкой «проверить». */
+    honeypot_hidden: isReallyHidden(honeypotSource(form)),
     form_started_at: startedAt,
   };
 
@@ -385,16 +549,34 @@ export function wireLeadForms(options: WireOptions = {}): void {
             body: JSON.stringify(buildPayload(form, startedAt, idem)),
           });
           const data = await res.json().catch(() => null) as
-            | { ticket?: string; duplicate?: boolean; download?: string }
+            | {
+                ticket?: string;
+                duplicate?: boolean;
+                download?: string;
+                /** Подтверждение каналов от воркера. Может отсутствовать
+                 *  у старых сборок — тогда текст остаётся нейтральным. */
+                delivered?: { telegram?: boolean; email?: boolean };
+              }
             | null;
 
           if ((res.status === 201 || res.status === 200) && data?.ticket) {
-            showSuccess(form, data.ticket, texts, data.download);
+            /* Повторная отправка (`duplicate`) доставку не повторяет: заявка
+               уже ушла раньше. Показываем тот же экран, но не обещаем каналы. */
+            showSuccess(
+              form,
+              data.ticket,
+              texts,
+              data.download,
+              data.duplicate ? undefined : data.delivered,
+            );
             idem = makeIdempotencyKey();
             form.reset();
             return;
           }
 
+          /* Тело ответа не разобралось как JSON: обычно это страница-заглушка
+             вместо API (не тот адрес) либо блокировка CORS. Молчать нельзя —
+             иначе «Не получилось отправить» без единой зацепки. */
           const failure = parseApiFailure(data);
           if (res.status === 429) {
             const wait = retryAfterSeconds(res.headers.get('retry-after')) ?? 60;
@@ -416,11 +598,22 @@ export function wireLeadForms(options: WireOptions = {}): void {
             showError(form, texts, failure.message || texts.error);
             return;
           }
-          showError(form, texts);
+          /* Ответ пришёл, но разобрать его не вышло: показываем код, чтобы
+             причину было видно без консоли разработчика. */
+          showError(form, texts, data === null
+            ? `${texts.error} (ответ сервиса ${res.status}, не JSON)`
+            : texts.error);
         } catch (err) {
-          /* Таймаут и сеть — один экран: человеку важен телефон, а не имя ошибки. */
+          /* Таймаут и сеть — человеку важен телефон, но и причину скрывать
+             незачем: «network» и «timeout» различимы и не содержат его данных. */
           const name = (err as Error)?.name;
-          showError(form, texts, name === 'AbortError' ? texts.error : texts.error);
+          /* Таймаут не значит, что заявка потерялась: запрос мог дойти, а ответ —
+             нет. Повтор с тем же ключом идемпотентности дублей не создаёт,
+             поэтому честно говорим и про возможность успеха, и про безопасность
+             повтора. Сеть — случай обратный: запрос почти наверняка не ушёл. */
+          showError(form, texts, name === 'AbortError'
+            ? `Ответ не пришёл за ${Math.round(LEADS_TIMEOUT_MS / 1000)} с (таймаут): возможно, заявка уже ушла. Повторная отправка безопасна — дубликатов не будет. Если срочно: +7 (961) 302-21-12.`
+            : `${texts.error} (сеть)`);
         } finally {
           busy = false;
           if (button) {

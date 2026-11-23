@@ -129,6 +129,21 @@ async function tooMany(env: Env, ipHash: string): Promise<{ ok: boolean; retry: 
   return { ok: true, retry: 0 };
 }
 
+/**
+ * Возврат списанной попытки, когда доставка не удалась.
+ *
+ * Лимит — защита от спама, а не наказание за сбой на нашей стороне. Раньше
+ * счётчик рос до отправки: пять 502 от лежащего Telegram/почты — и живой
+ * человек получал 429 на шестой попытке, хотя ни одна заявка не дошла.
+ */
+async function releaseLeadSlot(env: Env, ipHash: string): Promise<void> {
+  const key = `rl:${ipHash}`;
+  const raw = await kvGet(env, key);
+  const n = raw ? Number(raw) || 0 : 0;
+  if (n <= 0) return;
+  await kvPut(env, key, String(n - 1), LEAD_LIMIT.windowSec);
+}
+
 /* ---------- заявка ---------- */
 
 /** Тело заявки: больше 64 КБ — это не заявка, а попытка что-то залить. */
@@ -151,13 +166,50 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
   }
   const lead: LeadPayload = v.value;
 
-  // Бот: отвечаем как при успехе, но ничего не отправляем (защита от перебора).
-  if (lead.honeypot.trim() !== '') {
-    return json({ ticket: makeTicket(), status: 'accepted', duplicate: false }, 201);
+  /* ---------- ловушки: что молчим, а что доставляем ----------
+
+     Раньше любое непустое скрытое поле означало «бот»: ответ 201 с талоном,
+     а доставки нет вообще. На телефоне автозаполнение (и менеджер паролей)
+     охотно вписывает в скрытое поле `company_website` название компании или
+     вообще что попало — и живая заявка исчезала, при этом человек видел
+     «Заявка ушла». Владелец получил ровно это: талон K-1123-7857 и тишину.
+
+     Теперь два разных случая:
+
+     1. honeypot_hidden === true — клиент сам пометил поле как скрытое
+        (`display:none` / `hidden`). Такое поле человек заполнить не может
+        физически, поэтому это бот: молчим и ничего не отправляем.
+
+     2. honeypot заполнен, но поле НЕ скрыто (офскрин-ловушка, которую видит
+        автозаполнение). Считаем заявку подозрительной, но НЕ выбрасываем:
+        доставляем её с явной пометкой, чтобы Мария сразу видела источник.
+        Ложная отправка спама дороже, чем человек, который не дождался ответа.
+
+     Отдельно: `form_started_at` остаётся, но у него теперь есть пометка.
+     Быстрая отправка бывает не только у ботов (браузер восстановил черновик,
+     автозаполнение заполнило всё разом), поэтому и здесь доставляем, а не
+     молчим. Спам-защита стоит на подтверждённом телефоне, лимите по IP и
+     ловушке из пункта 1 — они не ослаблены.
+
+     Важно про текст ответа: `delivered` теперь заполняется ВСЕГДА, когда
+     заявка реально доставлена. Раньше в ветке ловушки его не было вовсе, и
+     клиент не мог отличить реальную доставку от тишины. */
+
+  if (lead.honeypot_hidden === true && lead.honeypot.trim() !== '') {
+    /* Боту отвечаем формальным успехом, но БЕЗ обещаний доставки: клиент по
+       `delivered: false/false` покажет «подтверждения доставки нет» с телефоном,
+       а не ложное «Мария ответит». Так и бот не отличим от «оба канала легли»
+       (та же форма ответа), и живой человек, чьё автозаполнение умудрилось
+       заполнить display:none-ловушку, получит шанс позвонить. */
+    return json({
+      ticket: makeTicket(), status: 'accepted', duplicate: false,
+      delivered: { telegram: false, email: false },
+    }, 201);
   }
-  if (lead.form_started_at && Date.now() - lead.form_started_at < 4000) {
-    return json({ ticket: makeTicket(), status: 'accepted', duplicate: false }, 201);
-  }
+
+  const suspicious: string[] = [];
+  if (lead.honeypot.trim() !== '') suspicious.push('hidden-field');
+  if (lead.form_started_at && Date.now() - lead.form_started_at < 4000) suspicious.push('too-fast');
   if (env.CONSENT_VERSION && lead.consent_version !== env.CONSENT_VERSION) {
     return err(400, 'consent_version', 'Версия согласия устарела. Обновите страницу и отправьте заявку снова.');
   }
@@ -170,6 +222,8 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
     if (hash !== (await hashIp(lead.phone))) {
       return err(409, 'conflict', 'Ключ идемпотентности уже использован');
     }
+    /* Повторная отправка: доставку не повторяем (заявка уже ушла), но и не
+       врём про неё. `delivered` неизвестен — значит его нет, а не true. */
     return json({
       ticket, status: 'accepted', duplicate: true,
       ...(download ? { download } : {}),
@@ -185,25 +239,38 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
     });
   }
 
-  if (!env.BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
-    console.error('[leads] telegram не настроен');
-    return err(502, 'telegram', 'Сервис не смог принять заявку. Позвоните нам, пожалуйста.');
+  /* Каналы считаем ДО отправки. Раньше отсутствие Telegram было фатальным:
+     воркер отдавал 502, хотя почта была настроена и жива — то есть заявка
+     терялась из-за выключенного, а не сломанного канала. Теперь решение
+     принимается ниже по факту: доставлено хотя бы куда-то — успех. */
+  const telegramOn = Boolean(env.BOT_TOKEN && env.TELEGRAM_CHAT_ID);
+  const emailOn0 = Boolean(emailProvider(env));
+  if (!telegramOn && !emailOn0) {
+    console.error('[leads] ни один канал не настроен');
+    return err(502, 'not_configured', 'Сервис не смог принять заявку. Позвоните нам, пожалуйста.');
   }
 
   const ticket = makeTicket();
-  const text = composeTelegram(lead, ticket, {
+  const composeOpts = {
     siteName: env.SITE_NAME ?? 'Кадры-Про',
     address: env.SITE_ADDRESS ?? 'Ростов-на-Дону',
-  });
+    ...(suspicious.length ? { suspicious } : {}),
+  };
+  const text = composeTelegram(lead, ticket, composeOpts);
 
   /* Доставка в два канала. Заявка считается принятой, если сработал хотя бы один:
      Марии важнее увидеть заявку хоть где-то, чем потерять её из-за чужого сбоя.
      Идём параллельно — человек не должен ждать два последовательных запроса. */
-  const tg = { token: env.BOT_TOKEN, chatId: env.TELEGRAM_CHAT_ID, apiBase: env.TELEGRAM_API_BASE };
-  const emailOn = Boolean(emailProvider(env));
+  const emailOn = emailOn0;
   const telegramJob = (async (): Promise<string | null> => {
+    if (!telegramOn) return 'telegram_not_configured';
     try {
-      await sendTelegram(text, tg);
+      /* Сужаем типы здесь: выше уже проверено, что оба значения непустые. */
+      await sendTelegram(text, {
+        token: env.BOT_TOKEN as string,
+        chatId: env.TELEGRAM_CHAT_ID as string,
+        apiBase: env.TELEGRAM_API_BASE,
+      });
       return null;
     } catch (e) {
       const msg = String((e as Error)?.message ?? e).slice(0, 120);
@@ -214,13 +281,7 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
   const emailJob = (async (): Promise<string | null> => {
     if (!emailOn) return 'email_not_configured';
     try {
-      await sendEmail({
-        lead, ticket, env,
-        opts: {
-          siteName: env.SITE_NAME ?? 'Кадры-Про',
-          address: env.SITE_ADDRESS ?? 'Ростов-на-Дону',
-        },
-      });
+      await sendEmail({ lead, ticket, env, opts: composeOpts });
       await markMailOk(env);
       return null;
     } catch (e) {
@@ -232,12 +293,13 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
     }
   })();
   const [tgErr, mailErr] = await Promise.all([telegramJob, emailJob]);
-  const delivered = { telegram: !tgErr, email: emailOn && !mailErr };
+  const delivered = { telegram: telegramOn && !tgErr, email: emailOn && !mailErr };
   if (!delivered.telegram && !delivered.email) {
-    /* Почта не настроена — это не второй канал, и код ошибки должен остаться прежним. */
-    return emailOn
-      ? err(502, 'delivery', 'Не удалось доставить заявку. Позвоните нам, пожалуйста.')
-      : err(502, 'telegram', 'Не удалось доставить заявку. Позвоните нам, пожалуйста.');
+    /* Ни один включённый канал не подтвердил приём. Отвечаем ошибкой, чтобы
+       посетитель позвонил, а не ждал ответа, которого не будет. Попытку
+       возвращаем: заявка не дошла, значит и лимит тратить было не на что. */
+    await releaseLeadSlot(env, ipHash);
+    return err(502, 'delivery', 'Не удалось доставить заявку. Позвоните нам, пожалуйста.');
   }
 
   /* Заявка на шаблон: выдаём подписанную ссылку на файл, если файл вообще есть
@@ -255,6 +317,11 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
   await kvPut(env, idemKey, `${ticket}|${await hashIp(lead.phone)}|${download ?? ''}`, 86400);
   return json({
     ticket, status: 'accepted', duplicate: false, delivered,
+    /* Какие каналы вообще были подключены на момент отправки. Клиент по этому
+       полю выбирает формулировку: нельзя обещать Telegram, если подтвердилась
+       только почта (и наоборот). */
+    channels: { telegram: telegramOn, email: emailOn },
+    ...(suspicious.length ? { flagged: suspicious } : {}),
     ...(download ? { download } : {}),
   }, 201);
 }

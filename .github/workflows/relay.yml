@@ -205,12 +205,23 @@ jobs:
             const token = process.env.BOT_TOKEN || "";
             const chat = process.env.TELEGRAM_CHAT_ID || "";
             if (!token || !chat) { console.error("Нет BOT_TOKEN или TELEGRAM_CHAT_ID"); process.exit(1); }
+            /* Берём состояние почты из /health только что развёрнутого воркера:
+               наличие ключа в секретах ещё не значит, что копии уходят
+               (например, Brevo не подтвердил отправителя). Сообщение не должно
+               обещать почту, которой нет. */
+            let mail = "";
+            try {
+              const health = await fetch(`${process.env.URL}/health`);
+              const data = await health.json();
+              if (data && data.email) mail = data.emailTo || "настроена";
+            } catch { /* сюда попадают только сбои /health — сообщение всё равно уйдёт */ }
+            const text = mail
+              ? `Прослойка заявок подключена. Заявки будут приходить в этот чат и копией на почту (${mail}).`
+              : "Прослойка заявок подключена. Заявки с сайта будут приходить в этот чат.";
             const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
               method: "POST",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify({ chat_id: chat, text: process.env.EMAIL_ON === "true"
-                ? "Прослойка заявок подключена. Заявки будут приходить в этот чат и копией на почту."
-                : "Прослойка заявок подключена. Заявки с сайта будут приходить в этот чат." }),
+              body: JSON.stringify({ chat_id: chat, text }),
             });
             console.log("HTTP " + res.status + " " + (await res.text()).slice(0, 300));
             if (!res.ok) process.exit(1);
@@ -218,7 +229,7 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          EMAIL_ON: ${{ secrets.BREVO_API_KEY != '' || secrets.RESEND_API_KEY != '' }}
+          URL: ${{ steps.deploy.outputs.url }}
 
       - name: Summary
         if: always()

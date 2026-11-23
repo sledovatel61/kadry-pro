@@ -317,48 +317,23 @@ document.querySelectorAll('.accordion-header').forEach(function(header) {
      подключён — показывает под кнопкой телефон и Telegram, чтобы человек
      точно мог связаться, а не видел «ошибка отправки». */
 
-  var leadForms = document.querySelectorAll('form[data-lead-form], form[data-validate]');
-  for (var lf = 0; lf < leadForms.length; lf++) {
-    leadForms[lf].addEventListener('submit', function (e) {
-      /* Если заявки уже отправляет leads-form.ts — не мешаем ему. */
-      if (this.dataset.leadsBound === '1') return;
-      e.preventDefault();
+  /* Формы заявок ведёт leads-form.ts, и только он показывает результат. Раньше
+     оба модуля вешали submit на одну и ту же форму (проверка флага `leadsBound`
+     не работала — в leads-form.ts он называется `leadWired`), и человек получал
+     два противоречащих сообщения: «Заявка почти ушла — позвоните» от этого
+     файла и настоящий результат следом. Такой дубль и был причиной путаницы.
+     Теперь проверка ПРАВИЛЬНОГО флага `leadWired` — в момент submit (не при
+     навешивании: порядок загрузки модулей не гарантирован). Если leads-form.ts
+     не загрузился вовсе (сеть, блокировщик) — форма без обработчика молча
+     перезагрузила бы страницу; здесь остаётся подстраховка с телефоном. */
+  var orphanForms = document.querySelectorAll('form[data-validate], form[data-lead-form]');
+  for (var lf = 0; lf < orphanForms.length; lf++) {
+    orphanForms[lf].addEventListener('submit', function (e) {
       var form = this;
-      var valid = true;
-
-      var inputs = form.querySelectorAll('.form-input, .form-textarea, .form-select');
-      for (var i = 0; i < inputs.length; i++) inputs[i].classList.remove('error');
-
-      var required = form.querySelectorAll('[required]');
-      for (var j = 0; j < required.length; j++) {
-        var field = required[j];
-        var empty = field.type === 'checkbox' ? !field.checked : !String(field.value || '').trim();
-        if (empty) {
-          field.classList.add('error');
-          valid = false;
-        }
-      }
-
-      var phoneField = form.querySelector('input[data-mask="phone"]');
-      if (phoneField && phoneField.value) {
-        var digits = phoneField.value.replace(/\D/g, '');
-        var isNick = /^@/.test(phoneField.value.trim());
-        if (!isNick && digits.length < 11) {
-          phoneField.classList.add('error');
-          valid = false;
-        }
-      }
-
-      if (!valid) {
-        var firstError = form.querySelector('.error');
-        if (firstError) firstError.focus();
-        return;
-      }
-
+      if (form.dataset.leadWired === '1') return;
+      e.preventDefault();
       var status = form.querySelector('.quick-lead-status');
       if (!status) {
-        /* На «Контактах» и в статье форма своя, без блока .quick-lead-status.
-           Создаём его на месте — иначе человек нажимает кнопку и ничего не видит. */
         status = document.createElement('p');
         status.className = 'quick-lead-status';
         status.setAttribute('role', 'status');
@@ -371,7 +346,7 @@ document.querySelectorAll('.accordion-header').forEach(function(header) {
         }
       }
       status.hidden = false;
-      status.innerHTML = 'Заявка почти ушла — остался один шаг. Напишите или позвоните напрямую: ' +
+      status.innerHTML = 'Отправка не запустилась. Напишите или позвоните напрямую: ' +
         '<a href="tel:+79613022112">+7 (961) 302-21-12</a> · ' +
         '<a href="https://t.me/Mariya061" target="_blank" rel="noopener">Telegram @Mariya061</a>';
     });
