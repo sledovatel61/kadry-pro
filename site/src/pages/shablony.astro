@@ -126,6 +126,12 @@ const itemListJsonLd = {
     transition: transform .22s ease,border-color .22s ease,box-shadow .22s ease;
   }
   .template-tile:hover { transform: translateY(-5px); border-color: var(--accent-border,rgba(88,166,255,.48)); box-shadow: var(--card-highlight,inset 0 1px 0 rgba(186,220,255,.10)),0 18px 38px -10px rgba(4,8,20,.72),0 0 24px var(--accent-glow,rgba(88,166,255,.14)); }
+  /* Spotlight Авроры: блик в точке курсора (координаты пишет site.ts) */
+  @media (hover: hover) and (pointer: fine) {
+    .template-tile {
+      background-image: radial-gradient(280px circle at var(--spot-x, 50%) var(--spot-y, 50%), rgba(79, 209, 197, 0.09) 0%, rgba(88, 166, 255, 0.08) 45%, transparent 72%), var(--grad-card, linear-gradient(165deg, rgba(26, 39, 64, .9), rgba(14, 21, 36, .97)));
+    }
+  }
   .template-tile[hidden] { display: none; }
   .template-tile__visual { position: relative; aspect-ratio: 1.12; overflow: hidden; background: #121b2a; }
   .template-tile__visual img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }

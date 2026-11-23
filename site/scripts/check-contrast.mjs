@@ -1,5 +1,6 @@
 /**
- * check-contrast.mjs — проверка контраста трёх вариаций кобальта без браузера.
+ * check-contrast.mjs — проверка контраста финальной палитры «Кобальт × Аврора»
+ * без браузера.
  *
  * Зачем: «тёмное на тёмном» и «синее на синем» глазами не отловить — на одном
  * мониторе видно, на другом нет. Здесь считаем по формуле WCAG 2.1 отношение
@@ -109,9 +110,7 @@ const REQUIRED = [
 ];
 
 const THEMES = [
-  ['cobalt (шампань)', ":root,\nhtml[data-theme='cobalt'],\nhtml[data-theme='cobalt-champagne']"],
-  ['cobalt-aurora', "html[data-theme='cobalt-aurora']"],
-  ['cobalt-platinum', "html[data-theme='cobalt-platinum']"],
+  ['Кобальт × Аврора (штатная)', ':root,' + String.fromCharCode(10) + "html[data-theme='cobalt-aurora']"],
 ];
 
 const rows = [];
@@ -211,7 +210,7 @@ for (const [name, sel] of THEMES) {
 }
 
 /* ---------- отчёт ---------- */
-console.log('Контраст по вариациям кобальта (WCAG 2.1):\n');
+console.log('Контраст палитры «Кобальт × Аврора» (WCAG 2.1):\n');
 let currentTheme = '';
 for (const r of rows) {
   if (r.name !== currentTheme) {
@@ -286,6 +285,6 @@ for (const [label, selector] of [
 }
 
 console.log(
-  problems ? `\n✗ Проблем: ${problems}` : '\n✓ Все три вариации кобальта проходят проверку контраста',
+  problems ? `\n✗ Проблем: ${problems}` : '\n✓ Палитра «Кобальт × Аврора» проходит проверку контраста',
 );
 process.exit(problems ? 1 : 0);
