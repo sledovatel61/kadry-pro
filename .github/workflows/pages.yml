@@ -39,15 +39,15 @@ jobs:
       - uses: actions/configure-pages@v5
       - run: npm ci
         working-directory: site
-      # Адрес прослойки заявок (Cloudflare Worker, relay/). Боевой адрес зашит
-      # по умолчанию, чтобы формы работали без ручной настройки; переменная
-      # репозитория PUBLIC_LEADS_ENDPOINT перекрывает его, если воркер переедет.
-      # Пустое значение — сайт остаётся честной статикой: формы показывают
-      # телефон и не отправляют данные никуда.
+      # Адрес прослойки заявок (Cloudflare Worker, relay/ — аккаунт ats439).
+      # Боевой адрес зашит по умолчанию, чтобы формы работали без ручной
+      # настройки; переменная репозитория PUBLIC_LEADS_ENDPOINT перекрывает
+      # его, если воркер переедет. Пустое значение — сайт остаётся честной
+      # статикой: формы показывают телефон и не отправляют данные никуда.
       - run: npm run build:pages
         working-directory: site
         env:
-          PUBLIC_LEADS_ENDPOINT: ${{ vars.PUBLIC_LEADS_ENDPOINT || 'https://kadry-leads.kadrypro.workers.dev' }}
+          PUBLIC_LEADS_ENDPOINT: ${{ vars.PUBLIC_LEADS_ENDPOINT || 'https://kadry-leads.ats439.workers.dev' }}
           PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
           PUBLIC_BASE_PATH: ${{ vars.PUBLIC_BASE_PATH }}
       # Проверки по конвейеру правды: прайс, страницы, отзывы, кейсы, статьи,
