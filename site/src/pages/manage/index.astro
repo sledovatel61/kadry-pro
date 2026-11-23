@@ -1,0 +1,189 @@
+---
+/**
+ * Кабинет Марии — `/manage/` (Агент 03).
+ *
+ * Четыре вкладки, всё с телефона:
+ *   1. Прайс    — числа и тарифы из `site/content/prices.json`;
+ *   2. Кейсы    — реальные проекты из `site/content/cases.json`;
+ *   3. Отзывы   — живые отзывы: скрыть, вернуть, ответить, удалить;
+ *   4. Полезное — статьи `site/content/articles.json` и RSS-лента.
+ *
+ * Как это работает без своего сервера (сайт — статика на GitHub Pages):
+ *   • вход — личный токен GitHub (fine-grained, только этот репозиторий,
+ *     Contents: Read and write). Токен живёт в этом браузере и уходит только на
+ *     api.github.com и в прослойку `relay/` — больше никуда;
+ *   • правки Прайса, Кейсов и Статей сохраняются одним коммитом в репозиторий
+ *     (тот же приём, что в АвтоТехСервисе). Сборка Pages подхватывает коммит сама;
+ *   • отзывы живут в KV прослойки, поэтому скрытие, возврат и ответы — запросы к `relay/`.
+ *
+ * Страница держит только разметку: вся логика — в `site/src/client/manage.ts`.
+ */
+import { LEADS_BASE } from '../../shared/leads-endpoint.ts';
+/* Стили кабинета — `site/src/styles/manage.css` (зона Агента 03). Подключаем как
+   обычный CSS-файл: Astro сам соберёт и вставит его в страницу, так что кабинет
+   не зависит от чужих таблиц стилей. */
+import '../../styles/manage.css';
+
+/** Ветка и репозиторий для сохранения — меняются в одном месте. */
+const MANAGE_CONFIG = {
+  repo: 'sledovatel61/kadry-pro',
+  branch: 'main',
+  leadsBase: LEADS_BASE,
+  pricesPath: 'site/content/prices.json',
+  casesPath: 'site/content/cases.json',
+  articlesPath: 'site/content/articles.json',
+};
+---
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <title>Кабинет Марии — Кадры-Про</title>
+  <link rel="icon" href="/favicon.ico" />
+</head>
+<body>
+  <a class="skip-link" href="#manage-main">Перейти к содержимому</a>
+
+  <header class="manage-top">
+    <div class="manage-top-inner">
+      <a class="manage-brand" href="/">Кадры<span>-Про</span></a>
+      <span class="manage-status" id="conn-status">Не подключено</span>
+      <span class="spacer"></span>
+      <button class="btn quiet small" type="button" id="logout" hidden>Выйти</button>
+      <a class="btn quiet small" href="/">← На сайт</a>
+    </div>
+  </header>
+
+  <main class="manage-wrap" id="manage-main">
+    <h1 class="manage-title">Кабинет</h1>
+    <p class="manage-lead">
+      Цены, кейсы, отзывы и статьи — прямо с телефона. Сохранённое уходит в репозиторий
+      и появляется на сайте после сборки, обычно за одну–две минуты.
+    </p>
+
+    <p class="manage-notice" id="notice" role="status" aria-live="polite" hidden></p>
+
+    <section class="card manage-access" id="access" aria-labelledby="access-h">
+      <h2 id="access-h">Вход</h2>
+      <p class="hint">
+        Нужен личный токен GitHub с доступом только к репозиторию
+        <b>sledovatel61/kadry-pro</b> и правом <b>Contents: Read and write</b>.
+        Токен хранится лишь в этом браузере.
+      </p>
+      <details id="help">
+        <summary>Как получить токен (2 минуты)</summary>
+        <ol>
+          <li>GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.</li>
+          <li>Repository access: Only select repositories → <b>sledovatel61/kadry-pro</b>.</li>
+          <li>Permissions → Repository permissions → <b>Contents: Read and write</b>.</li>
+          <li>Expiration — 90 дней, потом выпустить новый.</li>
+          <li>Скопировать токен (начинается с <code>github_pat_</code>) и вставить ниже.</li>
+        </ol>
+        <p><b>Токен — это доступ к текстам и ценам сайта.</b> Не пересылайте его в мессенджерах.</p>
+      </details>
+      <div class="row row-end">
+        <label class="field grow" for="token">
+          <span class="label-text">Личный токен</span>
+          <input type="password" id="token" autocomplete="off" placeholder="github_pat_…" spellcheck="false" />
+        </label>
+        <button class="btn primary" type="button" id="connect">Проверить</button>
+      </div>
+    </section>
+
+    <nav class="manage-tabs" role="tablist" aria-label="Разделы кабинета" id="tabs" hidden>
+      <button type="button" role="tab" id="tab-prices" data-tab="prices" aria-selected="true" aria-controls="panel-prices">
+        <span class="tab-ico" aria-hidden="true">₽</span><span class="tab-label">Прайс</span>
+      </button>
+      <button type="button" role="tab" id="tab-cases" data-tab="cases" aria-selected="false" aria-controls="panel-cases">
+        <span class="tab-ico" aria-hidden="true">▤</span><span class="tab-label">Кейсы</span>
+      </button>
+      <button type="button" role="tab" id="tab-reviews" data-tab="reviews" aria-selected="false" aria-controls="panel-reviews">
+        <span class="tab-ico" aria-hidden="true">★</span><span class="tab-label">Отзывы</span>
+      </button>
+      <button type="button" role="tab" id="tab-articles" data-tab="articles" aria-selected="false" aria-controls="panel-articles">
+        <span class="tab-ico" aria-hidden="true">✎</span><span class="tab-label">Полезное</span>
+      </button>
+    </nav>
+
+    <section class="manage-panel" id="panel-prices" role="tabpanel" aria-labelledby="tab-prices" hidden>
+      <div class="card">
+        <div class="row">
+          <div class="grow">
+            <h2>Прайс</h2>
+            <p class="hint">Цены на сайте. Правьте число и сохраняйте — сайт обновится сам. Пустое поле — «по запросу».</p>
+          </div>
+          <button class="btn primary" type="button" id="save-prices" disabled>Сохранить прайс</button>
+        </div>
+        <p class="hint" id="prices-meta"></p>
+        <div id="prices-body" class="empty">Загружаем прайс…</div>
+      </div>
+    </section>
+
+    <section class="manage-panel" id="panel-cases" role="tabpanel" aria-labelledby="tab-cases" hidden>
+      <div class="card">
+        <div class="row">
+          <div class="grow">
+            <h2>Кейсы</h2>
+            <p class="hint">Реальные проекты: задача, что сделано, результат. Порядок здесь — порядок на странице «Кейсы».</p>
+          </div>
+          <button class="btn" type="button" id="new-case">＋ Новый кейс</button>
+        </div>
+        <div id="case-editor" hidden></div>
+        <div id="cases-body" class="empty">Загружаем кейсы…</div>
+      </div>
+    </section>
+
+    <section class="manage-panel" id="panel-reviews" role="tabpanel" aria-labelledby="tab-reviews" hidden>
+      <div class="card">
+        <div class="row">
+          <div class="grow">
+            <h2>Отзывы</h2>
+            <p class="hint">
+              Отзывы с сайта публикуются сразу. Здесь их можно скрыть, вернуть на сайт,
+              ответить или удалить. Список обновляется при открытии вкладки.
+            </p>
+          </div>
+          <button class="btn" type="button" id="reload-reviews">Обновить</button>
+        </div>
+        <p class="hint" id="reviews-status"></p>
+        <div id="reviews-body" class="empty">Загружаем отзывы…</div>
+      </div>
+    </section>
+
+    <section class="manage-panel" id="panel-articles" role="tabpanel" aria-labelledby="tab-articles" hidden>
+      <div class="card">
+        <div class="row">
+          <div class="grow">
+            <h2>Полезное / Статьи</h2>
+            <p class="hint">
+              Разборы законов для клиентов. Опубликованная статья сразу попадает
+              в ленту RSS (/articles/rss.xml) и в список «Полезное» на сайте.
+            </p>
+          </div>
+          <button class="btn" type="button" id="new-article">＋ Новая статья</button>
+        </div>
+        <div id="article-editor" hidden></div>
+        <div id="articles-body" class="empty">Загружаем статьи…</div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="manage-foot">
+    Кабинет Кадры-Про · изменения сохраняются в репозиторий проекта
+  </footer>
+
+  {/* Конфиг — обычный JSON в разметке: модуль читает его при запуске,
+      секретов здесь нет (токен вводит сама Мария и он лежит только в браузере). */}
+  <script type="application/json" id="manage-config" set:html={JSON.stringify(MANAGE_CONFIG)}></script>
+
+  <script>
+    import { init } from '../../client/manage.ts';
+
+    init();
+  </script>
+</body>
+</html>

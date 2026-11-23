@@ -1,0 +1,141 @@
+---
+/**
+ * Список разборов «Полезное» — `/articles/` (Агент 03).
+ *
+ * Витрина статей из `site/content/articles.json`: карточки с категорией, датой и
+ * описанием, фильтр по категории (`?cat=shtrafy`), ссылка на RSS. Сюда ведёт
+ * пункт «Полезное» в меню — и с главной, и из мобильного дока.
+ *
+ * Черновики не показываем: у них нет даты публикации.
+ */
+import { articleUrl, categoryTitle, ARTICLE_CATEGORIES } from '../../shared/articles-schema.ts';
+import { plainText } from './_markdown.ts';
+import { publishedArticles, fmtDateRu } from './_data.ts';
+
+export const prerender = true;
+
+const ALL = publishedArticles();
+
+/** Категория из адреса — только известная, иначе показываем всё. */
+const queryCat = Astro.url.searchParams.get('cat') ?? '';
+const activeCat = ARTICLE_CATEGORIES.some((c) => c.slug === queryCat) ? queryCat : '';
+const items = activeCat ? ALL.filter((a) => a.category === activeCat) : ALL;
+
+const counts = new Map<string, number>();
+for (const article of ALL) counts.set(article.category, (counts.get(article.category) ?? 0) + 1);
+
+const site = (Astro.site?.href ?? 'https://kadry-pro.ru/').replace(/\/+$/, '');
+/* Сборка с `format: 'file'` кладёт список в `/articles.html`; на него и ссылаемся. */
+const LIST_URL = '/articles.html';
+const canonical = activeCat ? `${site}${LIST_URL}?cat=${activeCat}` : `${site}${LIST_URL}`;
+const title = activeCat
+  ? `${categoryTitle(activeCat)} — разборы Кадры-Про`
+  : 'Полезное: разборы законов для кадровиков и руководителей';
+const description = 'Разборы кадрового законодательства 2026 года: штрафы ГИТ, трудовые споры, воинский учёт и охрана труда. Простым языком, с расчётами и ссылками на нормы.';
+
+/** «7 мин» — по 180 слов в минуту, минимум 3. */
+const minutes = (md: string): number => Math.max(3, Math.round(plainText(md).split(' ').length / 180));
+---
+
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:locale" content="ru_RU" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="alternate" type="application/rss+xml" title="Кадры-Про — Полезное" href="/articles/rss.xml" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#articles-main">Перейти к списку</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="/">Кадры<span>-Про</span></a>
+      <nav class="nav" aria-label="Основное меню">
+        <a href="/services.html">Услуги</a>
+        <a href="/shablony.html">Шаблоны</a>
+        <a href="/cases.html">Кейсы</a>
+        <a href="/articles.html" aria-current="page">Полезное</a>
+        <a href="/contact.html">Контакты</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="articles-main" class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="/">Главная</a><span aria-hidden="true"> / </span>
+      <span aria-current="page">Полезное</span>
+    </nav>
+
+    <h1>Полезное</h1>
+    <p class="lead">
+      Разборы законов, которые касаются каждого работодателя: сколько стоит ошибка,
+      что проверяет ГИТ и как защитить себя в споре. Без юридического тумана.
+    </p>
+
+    <nav class="articles-filter" aria-label="Категории">
+      <a class="chip" href={LIST_URL} aria-current={activeCat ? undefined : 'page'}>Все разборы <span>{ALL.length}</span></a>
+      {ARTICLE_CATEGORIES.filter((c) => (counts.get(c.slug) ?? 0) > 0).map((c) => (
+        <a class="chip" href={`${LIST_URL}?cat=${c.slug}`} aria-current={activeCat === c.slug ? 'page' : undefined}>
+          {c.title} <span>{counts.get(c.slug)}</span>
+        </a>
+      ))}
+      <a class="chip chip-rss" href="/articles/rss.xml">RSS</a>
+    </nav>
+
+    {items.length === 0 ? (
+      <p class="articles-empty">
+        Разборов в этой категории пока нет. <a href="/articles.html">Показать все</a> или
+        <a href="/contact.html">написать вопрос</a> — отвечу.
+      </p>
+    ) : (
+      <div class="articles-grid">
+        {items.map((article) => (
+          <article class="article-card">
+            <a class="article-card-link" href={articleUrl(article.slug)}>
+              <span class="article-card-cat">{categoryTitle(article.category)}</span>
+              <h2>{article.title}</h2>
+              <p>{article.excerpt}</p>
+            </a>
+            <p class="article-card-meta">
+              <time datetime={`${(article.published_at ?? '').slice(0, 10)}T00:00:00+03:00`}>{fmtDateRu(article.published_at)}</time>
+              <span aria-hidden="true">·</span>
+              <span>{minutes(article.body_md)} мин</span>
+            </p>
+          </article>
+        ))}
+      </div>
+    )}
+
+    <aside class="articles-cta">
+      <p><b>Не нашли свой случай?</b> Позвоните: разберу ситуацию и скажу, что делать.</p>
+      <p class="article-cta-links">
+        <a class="btn btn--primary" href="tel:+79613022112">+7 (961) 302-21-12</a>
+        <a class="btn" href="https://t.me/Mariya061" target="_blank" rel="noopener">Telegram</a>
+        <a class="btn" href="/contact.html">Оставить заявку</a>
+      </p>
+    </aside>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>© 2026 Кадры-Про · Перепечай Мария Павловна · ИНН 613400944153 · самозанятая, г. Ростов-на-Дону</p>
+      <p>
+        <a href="/privacy.html">Политика обработки данных</a> ·
+        <a href="/consent.html">Согласие</a> ·
+        <a href="https://t.me/Mariya061" target="_blank" rel="noopener">Telegram @Mariya061</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

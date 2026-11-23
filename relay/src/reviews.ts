@@ -1,0 +1,240 @@
+/**
+ * Приём отзывов: `POST /reviews`.
+ *
+ * Отзыв публикуется СРАЗУ. Воркер проверяет текст, кладёт отзыв в KV со статусом
+ * `published` (его забирают страницы сайта) и отправляет уведомление в группу
+ * Telegram и на почту. Это уведомление, а не «модерация»: если в отзыве спам
+ * или мат, владелец скрывает или удаляет его в /manage/ → «Отзывы» одной кнопкой.
+ *
+ * Контракт (менять нельзя — на него завязаны форма сайта и админка):
+ *   201 { ok:true, status:'published', id:'<uuid>' }
+ *   400 { error:'validation', fields:{…} }
+ *   400 { error:'link_not_allowed', fields:{…} }
+ *   400 { error:'consent_version' }
+ *   403 { error:'origin' }
+ *   413 { error:'too_large' }
+ *   429 { error:'rate_limit', retryAfter:60 }
+ *   503 { error:'delivery_failed' } — только если отзыв не сохранён И уведомление не ушло;
+ *       когда отзыв уже в хранилище, ответ всегда 201: он на сайте.
+ *
+ * Приватность: в логах только id, длина текста и результат доставки. Ни текста,
+ * ни имени — они уходят исключительно в Telegram и на почту владельца.
+ */
+import { readBodyLimited } from './http.ts';
+import { validateReview, type ReviewPayload } from './reviews-validate.ts';
+import { composeReviewTelegram, sendTelegram } from './telegram.ts';
+import { emailProvider, sendReviewEmail } from './email.ts';
+import { markMailOk, markMailFailed } from './mail-status.ts';
+import { originAllowed, type OriginsEnv } from './origins.ts';
+import { publishReview } from './reviews-live.ts';
+
+/** Тело отзыва: больше 8 КБ — это уже не отзыв, а попытка что-то залить. */
+export const REVIEW_MAX_BYTES = 8 * 1024;
+/** Лимит отзывов с одного адреса: 10 минут на 3 штуки. */
+export const REVIEW_LIMIT = { max: 3, windowSec: 600 };
+
+const REVIEW_RETRY_AFTER = 60;
+
+export interface ReviewsEnv extends OriginsEnv {
+  BOT_TOKEN?: string;
+  TELEGRAM_CHAT_ID?: string;
+  TELEGRAM_API_BASE?: string;
+  SITE_NAME?: string;
+  SITE_ADDRESS?: string;
+  CONSENT_VERSION?: string;
+  BREVO_API_KEY?: string;
+  RESEND_API_KEY?: string;
+  EMAIL_TO?: string;
+  EMAIL_FROM?: string;
+  KADRY_KV?: KVLike;
+  /** Код доступа к запасному журналу отзывов (`/reviews/inbox`). Необязателен. */
+  REVIEWS_INBOX_KEY?: string;
+}
+
+export interface KVLike {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
+}
+
+/** Хранилище ключей: KV, если он подключён, иначе память изолята. */
+export interface ReviewsStore {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, ttlSec: number): Promise<void>;
+}
+
+/**
+ * Ответы у отзывов плоские (`{error:'validation'}`), в отличие от заявок
+ * (`{error:{code,message}}`). Так задано контрактом — форма читает `error` строкой.
+ */
+const reply = (data: unknown, status: number): Response =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+  });
+
+const fail = (code: string, status: number, extra: Record<string, unknown> = {}): Response =>
+  reply({ error: code, ...extra }, status);
+
+/** SHA-256 отпечаток: в KV и логах не должно быть ни имени, ни текста. */
+export async function reviewFingerprint(review: ReviewPayload): Promise<string> {
+  const data = new TextEncoder().encode(`${review.author}|${review.text}|${review.rating}`);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Счётчик по IP: инкремент только при успехе проверки, как у заявок. */
+async function takeRateLimit(store: ReviewsStore, ipHash: string): Promise<{ ok: boolean; retry: number }> {
+  const key = `rl:review:${ipHash}`;
+  const raw = await store.get(key);
+  const n = raw ? Number(raw) || 0 : 0;
+  if (n >= REVIEW_LIMIT.max) return { ok: false, retry: REVIEW_RETRY_AFTER };
+  await store.put(key, String(n + 1), REVIEW_LIMIT.windowSec);
+  return { ok: true, retry: 0 };
+}
+
+export interface HandleReviewDeps {
+  /** SHA-256 первых 8 байт от IP — тот же формат, что у заявок. */
+  hashIp(ip: string): Promise<string>;
+  store: ReviewsStore;
+}
+
+/**
+ * Обработчик `POST /reviews`. Заголовки CORS навешивает `index.ts` — здесь
+ * только логика, чтобы её можно было тестировать без воркера целиком.
+ */
+export async function handleReview(
+  req: Request,
+  env: ReviewsEnv,
+  deps: HandleReviewDeps,
+): Promise<Response> {
+  /* Origin проверяем первым: чужой сайт не должен даже узнать, что здесь есть
+     приём отзывов, и уж точно не должен тратить наш лимит. */
+  if (!originAllowed(req, env)) return fail('origin', 403);
+
+  const body = await readBodyLimited(req, REVIEW_MAX_BYTES);
+  if (!body.ok) {
+    return body.reason === 'too_large' ? fail('too_large', 413) : fail('validation', 400, { fields: { body: 'bad_body' } });
+  }
+
+  let parsed: unknown;
+  try { parsed = JSON.parse(body.text); } catch {
+    return fail('validation', 400, { fields: { body: 'bad_json' } });
+  }
+
+  const v = validateReview(parsed);
+  if (!v.ok) {
+    if (v.error === 'bad_json') return fail('validation', 400, { fields: { body: 'bad_json' } });
+    return fail(v.error, 400, { fields: v.fields });
+  }
+  const review = v.value;
+
+  /* Тихая ловушка: боту отвечаем как при успехе, но не отправляем ничего.
+     Именно поэтому здесь есть id — по ответу нельзя отличить ловушку от приёма. */
+  if (review.honeypot.trim() !== '') {
+    return reply({ ok: true, status: 'published', id: crypto.randomUUID() }, 201);
+  }
+
+  if (env.CONSENT_VERSION && review.consentVersion !== env.CONSENT_VERSION) {
+    return fail('consent_version', 400);
+  }
+
+  const ip = req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for') ?? 'unknown';
+  const ipHash = await deps.hashIp(ip);
+
+  /* Хранилище может отказать: тогда лимит считаем недоступным, а не роняем
+     приём отзыва в 500. Текст отзыва всё равно проверим и отправим. */
+  let rl = { ok: true, retry: 0 };
+  try {
+    rl = await takeRateLimit(deps.store, ipHash);
+  } catch (e) {
+    console.error('[reviews] rate limit unavailable', String((e as Error)?.message ?? e).slice(0, 120));
+  }
+  if (!rl.ok) {
+    return new Response(JSON.stringify({ error: 'rate_limit', retryAfter: rl.retry }), {
+      status: 429,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'no-store',
+        'retry-after': String(rl.retry),
+      },
+    });
+  }
+
+  const fingerprint = await reviewFingerprint(review);
+  const idemKey = `review:${fingerprint}`;
+
+  /* Дубль: уведомление уже уходило за последние сутки. Отвечаем тем же 201 —
+     человек не должен видеть ошибку из-за того, что нажал кнопку дважды. */
+  const seen = await deps.store.get(idemKey).catch(() => null);
+  if (seen) return reply({ ok: true, status: 'published', id: seen }, 201);
+
+  const id = crypto.randomUUID();
+
+  /* Публикуем сразу и до уведомления: даже если Telegram и почта подведут,
+     отзыв уже на сайте. Модерация — после публикации: спам скрывается кнопкой. */
+  const stored = await publishReview(deps.store, review, id);
+
+  const telegramOn = Boolean(env.BOT_TOKEN && env.TELEGRAM_CHAT_ID);
+  const emailOn = Boolean(emailProvider(env));
+
+  const opts = {
+    siteName: env.SITE_NAME ?? 'Кадры-Про',
+    address: env.SITE_ADDRESS ?? 'Ростов-на-Дону',
+  };
+
+  /* Каналы идут параллельно и независимо: отзыв важнее доставить хоть куда-то,
+     чем потерять из-за сбоя одного сервиса. */
+  const telegramJob = (async (): Promise<string | null> => {
+    if (!telegramOn) return 'telegram_not_configured';
+    try {
+      await sendTelegram(composeReviewTelegram(review, opts), {
+        token: env.BOT_TOKEN as string,
+        chatId: env.TELEGRAM_CHAT_ID as string,
+        apiBase: env.TELEGRAM_API_BASE,
+      });
+      return null;
+    } catch (e) {
+      const msg = String((e as Error)?.message ?? e).slice(0, 120);
+      console.error('[reviews] telegram failed', id, msg);
+      return msg;
+    }
+  })();
+
+  const emailJob = (async (): Promise<string | null> => {
+    if (!emailOn) return 'email_not_configured';
+    try {
+      await sendReviewEmail({ review, env, opts });
+      await markMailOk(env);
+      return null;
+    } catch (e) {
+      const msg = String((e as Error)?.message ?? e).slice(0, 120);
+      console.error('[reviews] email failed', id, msg);
+      /* Причину видно в /health — в дашборд Cloudflare заглядывать не нужно. */
+      await markMailFailed(env, msg);
+      return msg;
+    }
+  })();
+
+  const [tgErr, mailErr] = await Promise.all([telegramJob, emailJob]);
+  const delivered = { telegram: telegramOn && !tgErr, email: emailOn && !mailErr };
+
+  await deps.store.put(idemKey, id, 86400).catch(() => undefined);
+
+  /* 503 остаётся только на случай, когда отзыв нигде не сохранён и уведомление
+     не ушло. Если отзыв уже в хранилище — человеку говорим «опубликован», даже
+     когда Telegram и почта подвели: отзыв на сайте, ошибаться нельзя. */
+  if (!stored && !delivered.telegram && !delivered.email) {
+    console.error('[reviews] delivery failed', id, review.text.length, `tg=${tgErr ?? 'ok'}`, `mail=${mailErr ?? 'ok'}`);
+    return fail('delivery_failed', 503);
+  }
+
+  /* Лог без текста и имени: только id, длина и что сработало. */
+  console.log('[reviews] accepted', id, review.text.length, `tg=${delivered.telegram}`, `mail=${delivered.email}`, `kv=${stored}`);
+
+  return reply({ ok: true, status: 'published', id }, 201);
+}
+
+/** Что показать в `/health`: включён ли приём отзывов и переживает ли он перезапуск. */
+export function reviewsHealth(env: ReviewsEnv): { reviews: boolean; reviewsKv: boolean } {
+  return { reviews: true, reviewsKv: Boolean(env.KADRY_KV) };
+}

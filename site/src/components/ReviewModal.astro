@@ -1,0 +1,118 @@
+---
+/**
+ * Форма отзыва в модальном окне. Открывается кнопкой `[data-open-review]`
+ * (её ставит `ReviewsSection.astro`) и закрывается по Esc, клику по фону и
+ * кнопке «✕».
+ *
+ * Внутри — `<dialog>`, а не свой оверлей: браузер сам держит фокус, блокирует
+ * прокрутку страницы и закрывает окно клавишей Esc. Скрипт — `review-form.ts`,
+ * он же отправляет отзыв в прослойку.
+ *
+ * ВАЖНО: одна модалка на страницу. Если `ReviewsSection` вставлен трижды (главная,
+ * «Обо мне», «Кейсы»), этот компонент подключается один раз и ищет свою кнопку.
+ */
+import { CONSENT_VERSION, relayMode } from '../shared/leads-endpoint.ts';
+
+interface Props {
+  /** Куда приписывать отзыв: `home`, `about`, `cases`, `otzyvy`. */
+  page?: string;
+}
+const { page = 'home' } = Astro.props;
+---
+
+<dialog id="review-modal" class="review-modal" aria-labelledby="review-modal-title">
+  <div class="review-modal-body">
+    <button class="review-modal-close" type="button" data-close-review aria-label="Закрыть">✕</button>
+    <h2 id="review-modal-title">Оставить отзыв</h2>
+    <p class="review-modal-lead">
+      Напишите, что делали вместе и как всё прошло. Отзыв появится на сайте сразу —
+      я увижу его в Telegram и смогу ответить.
+    </p>
+
+    <form class="review-form" data-review-form data-page={page} data-consent-version={CONSENT_VERSION} novalidate>
+      <input type="text" name="honeypot" class="review-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+      <div class="form-group">
+        <label class="form-label" for="review-author">Имя *</label>
+        <input id="review-author" class="form-input" type="text" name="author" autocomplete="name" maxlength="40" placeholder="Как к вам обращаться" required />
+        <span class="form-error" data-review-error="author" hidden></span>
+      </div>
+
+      <div class="form-group">
+        <span class="form-label" id="review-rating-label">Оценка *</span>
+        <div class="review-stars-input" role="radiogroup" aria-labelledby="review-rating-label">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <span
+              class="review-star"
+              role="radio"
+              aria-checked="false"
+              aria-label={`${n} из 5`}
+              tabindex="0"
+              data-rating-star={String(n)}
+            >★</span>
+          ))}
+        </div>
+        <span class="form-error" data-review-error="rating" hidden></span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="review-text">Отзыв *</label>
+        <textarea id="review-text" class="form-input" name="text" rows="5" maxlength="1500" minlength="20" placeholder="Что делали, что получилось, что понравилось" required></textarea>
+        <span class="form-hint">20–1500 знаков. Ссылки уберите — их не пропустит.</span>
+        <span class="form-error" data-review-error="text" hidden></span>
+      </div>
+
+      <label class="form-checkbox">
+        <input type="checkbox" name="consent" required />
+        Согласен на обработку персональных данных и публикацию отзыва на сайте
+        (<a href="/privacy.html">политика</a>, <a href="/consent.html">согласие</a>).
+      </label>
+      <span class="form-error" data-review-error="consent" hidden></span>
+
+      <button class="btn btn--primary" type="submit">Опубликовать отзыв</button>
+      <p class="form-hint" data-review-status hidden role="status"></p>
+      {!relayMode && (
+        <p class="form-hint">Приём отзывов с сайта ещё не подключён — напишите в Telegram @Mariya061.</p>
+      )}
+    </form>
+  </div>
+</dialog>
+
+<script>
+  /* Форма отправляет отзыв в прослойку, а `reviews-live` подтягивает живые
+     отзывы в блок `[data-reviews]`. Оба импорта обязательны: без первого форма
+     «мертвая», без второго страница показывает только то, что было в статике. */
+  import '../client/review-form.ts';
+  import '../client/reviews-live.ts';
+
+  const modal = document.getElementById('review-modal') as HTMLDialogElement | null;
+  if (modal) {
+    const open = (): void => {
+      if (typeof modal.showModal === 'function') modal.showModal();
+      else modal.setAttribute('open', '');
+      const first = modal.querySelector<HTMLInputElement>('[name="author"]');
+      first?.focus();
+    };
+    const close = (): void => {
+      if (typeof modal.close === 'function') modal.close();
+      else modal.removeAttribute('open');
+    };
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest('[data-open-review]')) {
+        e.preventDefault();
+        open();
+      }
+      if (target.closest('[data-close-review]')) {
+        e.preventDefault();
+        close();
+      }
+      /* Клик по самому диалогу (вне карточки) закрывает окно. */
+      if (target === modal) close();
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) close();
+    });
+  }
+</script>
