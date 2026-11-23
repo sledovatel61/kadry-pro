@@ -136,8 +136,11 @@ test('скрытая ловушка (display:none) — бот: 201 и ни од�
   assert.equal(res.status, 201);
   const body = await res.json() as { ticket: string; delivered?: unknown };
   assert.match(body.ticket, /^K-\d{4}-\d{4}$/);
-  /* Про доставку боту ничего не обещаем: поля нет вовсе. */
-  assert.equal(body.delivered, undefined);
+  /* Боту не обещаем доставку: delivered false/false — и клиент покажет
+     «подтверждения доставки нет» с телефоном, а не ложное «Мария ответит».
+     Так живой человек (чьё автозаполнение умудрилось заполнить display:none)
+     получит шанс позвонить, и при этом ответ неотличим от «оба канала легли». */
+  assert.deepEqual(body.delivered, { telegram: false, email: false });
   assert.equal(fake.calls.length, 0);
 });
 
@@ -187,6 +190,26 @@ test('слишком быстрое заполнение доставляетс�
   const body = await res.json() as { delivered: { telegram: boolean }; flagged?: string[] };
   assert.equal(body.delivered.telegram, true);
   assert.deepEqual(body.flagged, ['too-fast']);
+  const tg = fake.calls.find((c) => c.url.includes('api.telegram.org'));
+  assert.match(tg!.body.text, /Проверить на спам/);
+});
+
+test('K-1123: автозаполнение + слишком быстрая отправка — заявка ДОСТАВЛЯЕТСЯ с двумя пометками', async () => {
+  const fake = mockFetch();
+  /* Сценарий владельца с мобильного: автозаполнение вписало компанию в
+     ловушку, и форму отправили сразу. Раньше любая заполненная ловушка была
+     приговором «бот» — 201 с талоном без доставки. Теперь это пометки
+     hidden-field + too-fast, а заявка доходит. */
+  const res = await post('/leads', freshBody({
+    honeypot: 'ООО Ромашка',
+    honeypot_hidden: false,
+    form_started_at: Date.now() - 1500,
+  }), baseEnv());
+  assert.equal(res.status, 201);
+  const body = await res.json() as { delivered: { telegram: boolean }; flagged?: string[] };
+  assert.equal(body.delivered.telegram, true, 'заявка должна уйти, а не быть выброшенной как «бот»');
+  assert.deepEqual(body.flagged, ['hidden-field', 'too-fast']);
+  assert.equal(fake.calls.filter((c) => c.url.includes('api.telegram.org')).length, 1);
   const tg = fake.calls.find((c) => c.url.includes('api.telegram.org'));
   assert.match(tg!.body.text, /Проверить на спам/);
 });

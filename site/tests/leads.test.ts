@@ -137,6 +137,75 @@ test('пустая ловушка — hidden=false, обычная заявка 
 });
 
 /* ------------------------------------------------------------------ */
+/*  K-1123: регрессия «две ловушки на одной форме»                      */
+/* ------------------------------------------------------------------ */
+
+test('K-1123: две ловушки, автозаполнение заполнило офскрин — заявка не считается ботом', () => {
+  /* Форма как на /trudovoy-spor.html: офскрин company_website И display:none
+     _gotcha. Автозаполнение вписало «ООО Ромашка» в офскрин, а _gotcha остался
+     пустым (display:none браузер не заполняет). Раньше флаг hidden считался от
+     _gotcha как первого НАЙДЕННОГО поля, а значение шло из company_website —
+     и воркер молча выбрасывал живую заявку, отвечая 201 с талоном: посетитель
+     видел «Заявка ушла» и номер, Мария — тишину. */
+  const form = makeForm(
+    {
+      name: el({ value: 'Иван Петров' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      company_website: el({ value: 'ООО Ромашка', hidden: false }),
+      _gotcha: el({ value: '', hidden: true }),
+    },
+    { page: 'trudovoy-spor', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 60_000, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot, 'ООО Ромашка');
+  assert.equal(
+    payload.honeypot_hidden,
+    false,
+    'флаг должен описывать поле, ЧЬЁ ЗНАЧЕНИЕ ушло в запрос, а не первое найденное',
+  );
+});
+
+test('K-1123: слишком быстрая отправка с автозаполнением — тоже не бот', () => {
+  /* Тот же сценарий, но человек отправил форму сразу: автозаполнение заполнило
+     всё разом, заполнение заняло секунды. too-fast не должен превращаться в
+     молчаливый выброс: воркер доставит с пометками hidden-field + too-fast. */
+  const form = makeForm(
+    {
+      name: el({ value: 'Иван Петров' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      company_website: el({ value: 'ООО Ромашка', hidden: false }),
+      _gotcha: el({ value: '', hidden: true }),
+    },
+    { page: 'trudovoy-spor', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 800, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot, 'ООО Ромашка');
+  assert.equal(payload.honeypot_hidden, false);
+  /* form_started_at уходит в запрос — воркер пометит too-fast и доставит. */
+  assert.equal(typeof payload.form_started_at, 'number');
+});
+
+test('K-1123: значение пришло из display:none-ловушки — это бот', () => {
+  /* Обе ловушки заполнены: значение по приоритету берётся из _gotcha, и флаг
+     должен описывать его же (display:none человек заполнить не мог). */
+  const form = makeForm(
+    {
+      name: el({ value: 'Бот' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      company_website: el({ value: 'http://spam.example', hidden: false }),
+      _gotcha: el({ value: 'buy now', hidden: true }),
+    },
+    { page: 'trudovoy-spor', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 60_000, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot, 'buy now', 'значение по приоритету: _gotcha раньше company_website');
+  assert.equal(payload.honeypot_hidden, true);
+});
+
+/* ------------------------------------------------------------------ */
 /*  Текст результата: он должен совпадать с тем, что реально произошло  */
 /* ------------------------------------------------------------------ */
 
