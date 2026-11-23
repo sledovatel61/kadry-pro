@@ -25,10 +25,47 @@ const itemListJsonLd = {
       <p class="eyebrow">Практические материалы · 2026</p>
       <h1>Кадровые документы<br /><span>для реальной работы</span></h1>
       <p class="templates-hero__lead">Каталог из {catalog.items.length} документов: {freeCount} бесплатно, ещё {paidCount} можно предварительно посмотреть по водяной копии первой страницы.</p>
-      <div class="templates-hero__actions"><a class="templates-primary" href="/shablony/free-bundle-20.zip" download>Скачать бесплатный набор из 20</a><a class="templates-secondary" href="#catalog">Выбрать документ <span aria-hidden="true">↓</span></a></div>
+      <div class="templates-hero__actions"><a class="templates-primary" href="/shablony/free-bundle-20.zip" download>Скачать бесплатный набор из 20</a><a class="templates-secondary" href="#catalog"><span>Выбрать документ</span> <span aria-hidden="true">↓</span></a></div>
       <div class="templates-proof"><span><b>20</b> бесплатных PDF</span><span><b>{paidCount}</b> водяных превью</span><span><b>0</b> платных PDF в открытой папке</span></div>
     </div>
-    <div class="templates-hero__orb" aria-hidden="true">КП</div>
+    <!-- Вместо одинокого кружка «КП» — композиция «Кобальт × Аврора»:
+         веер из трёх стеклянных документов. Слой декоративный, поэтому
+         aria-hidden и никаких интерактивных элементов внутри. -->
+    <div class="templates-hero__docs" aria-hidden="true">
+      <div class="hero-doc hero-doc--back">
+        <div class="hero-doc__top">
+          <span class="hero-doc__pdf">PDF</span>
+          <span class="hero-doc__lines" aria-hidden="true"></span>
+        </div>
+        <strong>ПВТР и положения</strong>
+        <span class="hero-doc__meta">Правила · положения · инструкции</span>
+        <span class="hero-doc__sheet"></span>
+        <span class="hero-doc__sheet"></span>
+        <span class="hero-doc__sheet"></span>
+      </div>
+      <div class="hero-doc hero-doc--mid">
+        <div class="hero-doc__top">
+          <span class="hero-doc__pdf">PDF</span>
+          <span class="hero-doc__lines" aria-hidden="true"></span>
+        </div>
+        <strong>Приказы и СОУТ</strong>
+        <span class="hero-doc__meta">Приказы · журналы · карты СОУТ</span>
+        <span class="hero-doc__sheet"></span>
+        <span class="hero-doc__sheet"></span>
+        <span class="hero-doc__sheet"></span>
+      </div>
+      <div class="hero-doc hero-doc--front">
+        <div class="hero-doc__top">
+          <span class="hero-doc__pdf">PDF</span>
+          <span class="hero-doc__lines" aria-hidden="true"></span>
+        </div>
+        <strong>Трудовой договор</strong>
+        <span class="hero-doc__meta">ТК РФ · редакция 2026</span>
+        <span class="hero-doc__sheet"></span>
+        <span class="hero-doc__sheet"></span>
+        <span class="hero-doc__sheet"></span>
+      </div>
+    </div>
   </section>
 
   <section class="template-catalog" id="catalog" aria-labelledby="catalog-title">
@@ -98,14 +135,71 @@ const itemListJsonLd = {
   .templates-secondary { border: 1px solid var(--border-light,rgba(255,255,255,.28)); color: var(--text-primary,#f2f6fb); background: rgba(18,29,48,.42); }
   .templates-proof { display: flex; gap: 28px; margin-top: 36px; color: var(--text-secondary,#c1cbd8); font-size: .9rem; }
   .templates-proof b { color: var(--text-primary,#f2f6fb); font-size: 1.12rem; }
-  .templates-hero__orb {
-    position: absolute; right: 8%; top: 19%; display: grid; place-items: center; width: 220px; height: 220px;
-    border: 1px solid var(--accent-border,rgba(88,166,255,.38)); border-radius: 50%; color: var(--accent-text,#b6daff);
-    background: radial-gradient(circle at 32% 28%,rgba(255,255,255,.12),transparent 42%),linear-gradient(145deg,rgba(39,83,139,.2),rgba(12,22,39,.08));
-    font: 700 5rem 'JetBrains Mono',monospace; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset -18px -20px 45px rgba(3,10,24,.3), 0 0 75px var(--accent-glow,rgba(88,166,255,.16)), 0 0 110px var(--accent-secondary-glow,rgba(234,185,104,.10));
-    transform: rotate(-12deg);
+  /* ---------------------------------------------------------------
+     Композиция «Кобальт × Аврора»: веер из трёх стеклянных документов
+     вместо одинокого кружка «КП». Кобальт — холодное стекло и синий
+     кант, Аврора — холодно-золотой блик сверху и тёплый подсвет снизу.
+     --------------------------------------------------------------- */
+  .templates-hero__docs {
+    position: absolute; right: 6%; top: 50%; width: 300px; height: 330px;
+    --hero-docs-scale: 1;
+    transform: translateY(-50%) scale(var(--hero-docs-scale)); pointer-events: none;
+    animation: heroDocsFloat 7s ease-in-out infinite;
   }
+  @keyframes heroDocsFloat {
+    0%, 100% { transform: translateY(-50%) scale(var(--hero-docs-scale)); }
+    50% { transform: translateY(calc(-50% - 12px)) scale(var(--hero-docs-scale)); }
+  }
+  .hero-doc {
+    position: absolute; left: 50%; top: 50%; width: 250px; min-height: 316px;
+    display: flex; flex-direction: column; gap: 8px; padding: 18px 18px 16px;
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid rgba(126, 172, 235, .34);
+    background:
+      linear-gradient(160deg, rgba(30, 49, 73, .88) 0%, rgba(17, 27, 45, .9) 58%, rgba(12, 20, 34, .94) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(198, 226, 255, .22),
+      inset 0 -1px 0 rgba(0, 0, 0, .4),
+      0 26px 48px -22px rgba(0, 0, 0, .92);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    transform-origin: 50% 90%;
+  }
+  /* Аврора: тёплый золотой блик на верхней кромке и холодный отблеск внизу */
+  .hero-doc::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(120% 60% at 14% 0%, rgba(234, 185, 104, .20) 0%, transparent 58%),
+      radial-gradient(100% 55% at 88% 100%, rgba(86, 155, 255, .22) 0%, transparent 62%);
+  }
+  .hero-doc strong, .hero-doc .hero-doc__meta, .hero-doc .hero-doc__top, .hero-doc .hero-doc__sheet {
+    position: relative; z-index: 1;
+  }
+  .hero-doc strong { color: var(--text-primary, #f2f6fb); font-size: 1rem; line-height: 1.3; letter-spacing: -.01em; }
+  .hero-doc__meta { color: var(--hero-doc-meta, #d7e0ea); font-size: .74rem; line-height: 1.4; }
+  .hero-doc__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+  .hero-doc__pdf {
+    display: inline-grid; place-items: center; min-width: 40px; padding: 3px 8px;
+    border-radius: 7px; color: var(--on-accent, #f8fbff); font: 800 .64rem/1 'Inter', system-ui, sans-serif;
+    letter-spacing: .1em;
+    background: linear-gradient(135deg, #0e7490 0%, #2563eb 52%, #4338ca 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), 0 4px 12px -4px rgba(20, 74, 180, .7);
+  }
+  .hero-doc__lines {
+    width: 54px; height: 6px; border-radius: 99px;
+    background: linear-gradient(90deg, rgba(234, 185, 104, .55), rgba(126, 172, 235, .12));
+  }
+  /* Строки-«текст» документа: три светлые полоски, последняя короче */
+  .hero-doc__sheet {
+    display: block; height: 5px; border-radius: 99px;
+    background: rgba(178, 205, 235, .22);
+  }
+  .hero-doc__sheet:nth-of-type(2) { width: 88%; }
+  .hero-doc__sheet:nth-of-type(3) { width: 72%; }
+  .hero-doc__sheet:nth-of-type(4) { width: 54%; }
+
+  .hero-doc--back  { transform: translate(-58%, -50%) rotate(-15deg) scale(.9);  filter: saturate(.85) brightness(.82); }
+  .hero-doc--mid   { transform: translate(-46%, -50%) rotate(-6deg)  scale(.95); filter: saturate(.92) brightness(.92); }
+  .hero-doc--front { transform: translate(-50%, -50%) rotate(7deg);              z-index: 2; }
   .template-catalog { max-width: 1280px; margin: auto; padding: 76px 22px 88px; }
   .template-catalog__heading { display: flex; justify-content: space-between; align-items: end; gap: 28px; }
   .template-catalog h2 { margin: 0; font-size: clamp(2rem,4vw,3rem); letter-spacing: -.04em; }
@@ -168,7 +262,8 @@ const itemListJsonLd = {
   .template-badge--free:hover,.template-badge--free:focus-visible { color: var(--on-accent,#f8fbff); background: var(--grad-btn-hover,linear-gradient(135deg,#3b82f6,#2563eb)); }
   .template-filters button.is-active:hover,.template-filters button.is-active:focus-visible { color: var(--on-accent,#f8fbff); background: var(--grad-btn-hover,linear-gradient(135deg,#3b82f6,#2563eb)); }
   .templates-primary:focus-visible,.template-filters button:focus-visible,.template-request:focus-visible,.template-badge--free:focus-visible { outline: 3px solid var(--accent-secondary-border,rgba(234,185,104,.65)); outline-offset: 3px; }
-  @media(max-width:1050px) { .template-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } .templates-hero__orb { right: 4%; width: 170px; height: 170px; font-size: 4rem; } }
-  @media(max-width:740px) { .template-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .template-catalog__heading { align-items: stretch; flex-direction: column; } .template-search { width: 100%; } .templates-hero__orb { right: -75px; top: 30px; width: 160px; height: 160px; opacity: .35; } .templates-proof { gap: 12px; flex-wrap: wrap; } .templates-assurance { margin-inline: 14px; align-items: flex-start; flex-wrap: wrap; } .templates-assurance>a { margin-left: 60px; } }
+  @media(max-width:1240px) { .templates-hero__inner { padding-right: 250px; } .templates-hero__docs { --hero-docs-scale: .82; right: 1%; } }
+  @media(max-width:1050px) { .template-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } .templates-hero__inner { padding-right: 0; } .templates-hero__docs { --hero-docs-scale: .9; position: relative; right: auto; top: auto; margin: 34px auto 0; animation: none; } }
+  @media(max-width:740px) { .template-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .template-catalog__heading { align-items: stretch; flex-direction: column; } .template-search { width: 100%; } .templates-hero__docs { display: none; } .templates-proof { gap: 12px; flex-wrap: wrap; } .templates-assurance { margin-inline: 14px; align-items: flex-start; flex-wrap: wrap; } .templates-assurance>a { margin-left: 60px; } }
   @media(max-width:460px) { .template-grid { grid-template-columns: 1fr; } .template-tile { display: grid; grid-template-columns: 112px minmax(0,1fr); } .template-tile__visual { aspect-ratio: 1/1.42; } .template-tile__content { min-height: unset; padding: 13px; } .template-tile h3 { font-size: .94rem; } .template-tile p { font-size: .78rem; } .template-badge { top: 7px; left: 6px; padding: 5px 7px; font-size: .63rem; } .template-tile__number { right: 5px; bottom: 5px; } .template-tile__footer { align-items: flex-start; flex-direction: column; } .template-request { font-size: .76rem; } }
 </style>

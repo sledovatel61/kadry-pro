@@ -1353,32 +1353,14 @@ input[type="range"]::-moz-range-thumb {
 
 /* --- SVG графика на фоне для секций --- */
 
-/* Секция калькулятора — плавающие круги */
+/* Секция калькулятора: раньше по её углам висели два круга 300×300 и 250×250
+   с radial-gradient. На тёмном фоне они читались как мутные пятна с видимым
+   краем, а «overflow: hidden» обрезал их ровной линией. Пятна удалены —
+   глубину здесь дают карточки (--grad-card, --card-shadow) и общий фон.
+   ::before секции свободен и занят световой линией-разделителем в общем
+   блоке ниже, поэтому обрезающий overflow больше не нужен. */
 #calculator {
   position: relative;
-  overflow: hidden;
-}
-#calculator::before {
-  content: '';
-  position: absolute;
-  top: -100px;
-  left: -100px;
-  width: 300px;
-  height: 300px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-  pointer-events: none;
-}
-#calculator::after {
-  content: '';
-  position: absolute;
-  bottom: -80px;
-  right: -80px;
-  width: 250px;
-  height: 250px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-  pointer-events: none;
 }
 
 /* Секция статистики — горизонтальная линия */
@@ -1394,40 +1376,26 @@ input[type="range"]::-moz-range-thumb {
   pointer-events: none;
 }
 
-/* Секция услуг — сетка шестиугольников (имитация) */
+/* Секция «Что я делаю» (#services-overview).
+   Здесь была главная причина «резкой вертикальной линии обрыва фона слева от
+   заголовка во всю высоту экрана»: псевдоэлемент шириной 40% и высотой 100%
+   с двумя наложенными эллипсами. Его левая граница — идеально прямая линия,
+   и она просвечивала как обрез: слева тёмный фон, справа осветлённая плашка.
+   Градиент удалён полностью. Секция выделена своим фоном (.section-alt,
+   --grad-surface) и линией-разделителем — этого достаточно. */
 #services-overview {
   position: relative;
-  overflow: hidden;
-}
-#services-overview::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 40%;
-  height: 100%;
-  background-image:
-    radial-gradient(ellipse at 80% 20%, var(--accent-glow) 0%, transparent 50%),
-    radial-gradient(ellipse at 60% 70%, var(--accent-glow) 0%, transparent 50%);
-  pointer-events: none;
 }
 
-/* Форма обратной связи — мягкое свечение */
+/* Форма обратной связи: был круг 600×600 с radial-gradient по центру секции.
+   Он просвечивал сквозь карточку формы как серое пятно, а его край читался
+   как ореол. Теперь здесь атмосферная фактура bg-cta-aurora с мягким скримом
+   (см. styles/aurora-backgrounds.css), пятно удалено.
+   overflow: hidden оставлен намеренно — секция уходит под фиксированный фон,
+   и без обрезки на широких экранах вылезала горизонтальная прокрутка. */
 #contact-form {
   position: relative;
   overflow: hidden;
-}
-#contact-form::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 60%);
-  pointer-events: none;
 }
 
 /* --- Анимация пульсации на service-card иконках --- */
@@ -1464,26 +1432,21 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
-/* --- На мобильном: упрощаем графику --- */
+/* --- На мобильном: упрощаем графику ---
+   Раньше здесь .hero::after прятали целиком. Теперь этот псевдоэлемент несёт
+   скрим атмосферного фона: если его убрать, картинка начнёт обрываться по
+   краю секции. Поэтому на телефоне не выключаем слой, а только ослабляем его. */
 @media (max-width: 768px) {
-  .hero::after {
-    display: none;
+  .hero > .hero-bg {
+    opacity: 0.28;
   }
 }
 
-/* --- Sub-hero страницы: тоже добавляем графику --- */
-.hero-sub::after {
-  content: '';
-  position: absolute;
-  top: 20%;
-  right: 5%;
-  width: 250px;
-  height: 250px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-  z-index: 0;
-  pointer-events: none;
-}
+/* --- Sub-hero страницы ---
+   Здесь был круг 250×250 справа — «мутное круглое пятно» с видимым краем,
+   которое владелец и просил убрать. Теперь у шапки внутренних страниц
+   атмосферная панорама bg-hero-sub и мягкий скрим без границ
+   (styles/aurora-backgrounds.css). ::after у .hero-sub свободен от пятна. */
 
 /* --- Плавающие элементы (декоративные блоки) --- */
 .section-header::after {
@@ -1661,7 +1624,7 @@ input[type="range"]::-moz-range-thumb {
   text-shadow: none;
 }
 
-/* Бейджи доверия («14 лет опыта», «0 штрафов») — на компаньоне, а не на
+/* Бейджи доверия («16 лет опыта», «0 штрафов») — на компаньоне, а не на
    кобальте: два разных смысловых слоя вместо одного синего пятна. */
 .experience-badge, .guarantee-badge {
   background: var(--accent-secondary-glow);
@@ -2004,7 +1967,10 @@ input[type="range"]::-moz-range-thumb {
    бирюза авроры и глубокий индиго.
    ============================================ */
 
-/* --- Контейнер всех декораций --- */
+/* --- Контейнер всех декораций ---
+   Фон фиксированный: при прокрутке он стоит на месте, а световые ленты
+   двигаются только своей анимацией. Зерно-фактуру добавляет
+   styles/aurora-backgrounds.css — сюда его не дублируем. */
 .bg-decor {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -2246,7 +2212,7 @@ input[type="range"]::-moz-range-thumb {
     font-size: 0.9rem;
   }
 
-  /* Бейджи «14 лет опыта» и «0 штрафов» — не наезжают друг на друга */
+  /* Бейджи «16 лет опыта» и «0 штрафов» — не наезжают друг на друга */
   .experience-badge,
   .guarantee-badge {
     display: inline-block;

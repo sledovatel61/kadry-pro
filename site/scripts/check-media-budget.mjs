@@ -7,7 +7,11 @@
  *   • AVIF не тяжелее WebP того же размера (иначе смысл формата теряется);
  *   • OG-картинка — ровно 1200×630 и не больше 300 КБ;
  *   • логотип — вектор и меньше 20 КБ;
- *   • суммарно всё в public/img — не больше 800 КБ.
+ *   • атмосферные фоны public/img/bg/bg-* — не больше 130 КБ каждый и только
+ *     в AVIF/WebP (PNG-мастер там не нужен: у фактур нет прозрачности);
+ *   • суммарно всё в public/img (включая подпапку bg) — не больше 1600 КБ.
+ *     800 КБ хватало, пока не было фоновых фактур: три фона по 65–115 КБ
+ *     в двух форматах не оставляют от такого лимита ничего.
  *
  * Запуск: node scripts/check-media-budget.mjs
  */
@@ -17,17 +21,26 @@ import sharp from 'sharp';
 
 const IMG_DIR = join(import.meta.dirname, '..', 'public', 'img');
 
+const BG_DIR = join(IMG_DIR, 'bg');
+
 const LIMITS = {
   portrait: 75 * 1024,
   og: 300 * 1024,
   logo: 20 * 1024,
-  total: 800 * 1024,
+  /** Один атмосферный фон: коридор сборки 65–115 КБ, запас до 130 КБ. */
+  bg: 130 * 1024,
+  total: 1600 * 1024,
 };
 
 const errors = [];
 const rows = [];
 
-const files = (await readdir(IMG_DIR)).sort();
+/* Сначала корень public/img, потом подпапка bg — в отчёте это отдельная группа. */
+const files = (await readdir(IMG_DIR, { withFileTypes: true }))
+  .filter((e) => e.isFile())
+  .map((e) => e.name)
+  .sort();
+
 let total = 0;
 
 for (const file of files) {
@@ -66,12 +79,53 @@ for (const width of [480, 720, 1080]) {
   }
 }
 
+/* ------------------------------------------------------------ атмосферные фоны */
+const bgFiles = (await readdir(BG_DIR, { withFileTypes: true }))
+  .filter((e) => e.isFile())
+  .map((e) => e.name)
+  .sort();
+const bgRows = [];
+
+for (const file of bgFiles) {
+  const path = join(BG_DIR, file);
+  const { size } = await stat(path);
+  total += size;
+  const name = basename(file);
+  const ext = extname(file).slice(1);
+  bgRows.push({ name, kb: Math.round(size / 1024) });
+
+  if (!['avif', 'webp'].includes(ext)) {
+    errors.push(`bg/${name}: формат ${ext} — фоны отдаём только в AVIF/WebP`);
+  }
+  if (size > LIMITS.bg) {
+    errors.push(`bg/${name}: ${Math.round(size / 1024)} КБ — больше лимита 130 КБ`);
+  }
+}
+
+/* У каждого фона должны быть оба формата: иначе часть браузеров останется без картинки. */
+for (const name of bgRows.filter((r) => r.name.endsWith('.avif')).map((r) => r.name.replace(/\.avif$/, ''))) {
+  if (!bgRows.some((r) => r.name === `${name}.webp`)) {
+    errors.push(`bg/${name}: есть AVIF, но нет WebP-версии`);
+  }
+}
+/* AVIF должен быть не тяжелее WebP — иначе смысл формата теряется. */
+for (const avif of bgRows.filter((r) => r.name.endsWith('.avif'))) {
+  const webp = bgRows.find((r) => r.name === avif.name.replace(/\.avif$/, '.webp'));
+  if (webp && avif.kb > webp.kb) {
+    errors.push(`bg/${avif.name}: AVIF (${avif.kb} КБ) тяжелее WebP (${webp.kb} КБ)`);
+  }
+}
+
 if (total > LIMITS.total) {
-  errors.push(`весь public/img весит ${Math.round(total / 1024)} КБ — больше лимита 800 КБ`);
+  errors.push(`весь public/img весит ${Math.round(total / 1024)} КБ — больше лимита 1600 КБ`);
 }
 
 console.log('Вес картинок (КБ):');
 for (const r of rows) console.log(`  ${r.name.padEnd(24)} ${String(r.kb).padStart(4)}`);
+if (bgRows.length) {
+  console.log('  — фоновые фактуры —');
+  for (const r of bgRows) console.log(`  bg/${r.name.padEnd(21)} ${String(r.kb).padStart(4)}`);
+}
 console.log(`  ${'ИТОГО'.padEnd(24)} ${String(Math.round(total / 1024)).padStart(4)}`);
 
 if (errors.length) {
