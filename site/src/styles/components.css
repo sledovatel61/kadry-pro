@@ -7,32 +7,25 @@
    Палитра прежняя: #0a0a0a + #4ade80.
    ============================================================ */
 
-/* --- Логотип в шапке: вектор + подпись --- */
+/* --- Логотип в шапке: только векторный logo.svg (знак + слово Kadry-Pro
+       уже в самом файле — текстовый дубль убран из Header.astro) --- */
 .nav-logo { gap: 10px; flex-shrink: 0; }
 .nav-logo .logo { width: auto; }
-.nav-logo-text {
-  font-size: 1.02rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--text-primary);
-  white-space: nowrap;
-}
-@media (max-width: 1100px) { .nav-logo-text { display: none; } }
 
-/* --- Шапка: убираем тесноту 8 пунктов меню на ноутбуках --- */
-@media (min-width: 769px) and (max-width: 1240px) {
-  .nav-inner { gap: 14px; }
-  .nav-links { gap: 16px; }
-  .nav-links a { font-size: 0.88rem; }
-  .nav-cta { padding: 9px 16px; font-size: 0.85rem; }
-}
-@media (min-width: 769px) and (max-width: 1060px) {
-  .nav-links { gap: 12px; }
-  .nav-links a { font-size: 0.82rem; }
-  .nav-cta { display: none; }          /* заявку всегда доступна в доке и в шапке ниже 1060 */
-}
-@media (min-width: 769px) and (max-width: 900px) {
-  .nav-links a[href='/cases'] { display: none; }   /* «Кейсы» дублируются в подвале и на главной */
+/* --- Шапка на десктопе: всё в одну линию --- */
+.nav-inner { max-width: 1320px; gap: 16px; }
+
+/* --- Чистое переключение на бургер-меню ---
+   Замер реальными метриками шрифта (Inter 500, 0.88rem, padding 8px 11px):
+   логотип 170 + 8 пунктов меню 836 + кнопка «Оставить заявку» 162 + отступы
+   = 1200px контента. Влезает от viewport 1248px и выше; начиная с 1240px
+   строка уже короче на 8px — пункты переносились бы. Поэтому до 1280px
+   включительно шапка переключается на бургер: ни один пункт никогда не
+   переносится, кнопка не режется. Старый костыль .nav-links a[href='/cases']
+   удалён: он не учитывал .html и /preview/. */
+@media (max-width: 1279px) {
+  .nav-links, .nav-cta { display: none; }
+  .hamburger { display: flex; }
 }
 
 /* --- Мобильное меню: кнопки связи --- */
@@ -47,10 +40,11 @@
     padding: 84px 24px 32px;
     gap: 18px !important;
   }
-  .mobile-menu a { font-size: 1.22rem !important; }
+  /* Только ссылки разделов — кнопки связи держат свой компактный размер */
+  .mobile-menu > a { font-size: 1.22rem !important; }
 }
 @media (max-width: 768px) and (max-height: 700px) {
-  .mobile-menu a { font-size: 1.05rem !important; }
+  .mobile-menu > a { font-size: 1.05rem !important; }
   .mobile-menu { gap: 12px !important; }
 }
 
@@ -59,7 +53,9 @@
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 22px;
-  width: min(340px, 86vw);
+  /* По контейнеру, а не по vw: на 320px 86vw был шире экрана на 3px */
+  width: 100%;
+  max-width: 340px;
 }
 .mobile-menu-contacts .btn { grid-column: 1 / -1; justify-content: center; }
 .mobile-menu-btn {
