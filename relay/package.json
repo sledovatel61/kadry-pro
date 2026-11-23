@@ -1,0 +1,18 @@
+{
+  "name": "kadry-leads-relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Прослойка «сайт kadry-pro.ru на GitHub Pages → Telegram-группа и почта» вместо Formspree",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.0.0"
+  }
+}

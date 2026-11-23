@@ -1,0 +1,7 @@
+# Зависимости и служебные файлы воркера — в репозиторий не попадают.
+node_modules/
+.wrangler/
+.dev.vars
+.dev.vars.*
+dist/
+*.log

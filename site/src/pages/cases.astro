@@ -1,0 +1,97 @@
+---
+/**
+ * Страница «Кейсы» — собирается из единого `site/content/cases.json`
+ * (стыковка Агента 04: раньше кейсы были зашиты текстом прямо в страницу).
+ *
+ * Так правка или добавление кейса во вкладке «Кейсы» кабинета /manage/
+ * сразу меняет страницу после пересборки — редактировать HTML не нужно.
+ * Фильтр по направлениям работает на тех же классах, что и раньше
+ * (site.ts: кнопки [data-filter], карточки [data-category]).
+ */
+import Base from '../layouts/Base.astro';
+import QuickLeadForm from '../components/QuickLeadForm.astro';
+import ReviewsSection from '../components/ReviewsSection.astro';
+import ReviewModal from '../components/ReviewModal.astro';
+import casesRaw from '../../content/cases.json';
+import {
+  parseCasesFile,
+  publishedCases,
+  caseCounts,
+  CASE_AREAS_TITLE,
+  type CaseArea,
+} from '../shared/cases-schema.ts';
+
+const { file: casesFile } = parseCasesFile(casesRaw);
+const cases = publishedCases(casesFile);
+const counts = caseCounts(casesFile);
+const areas = (Object.keys(counts) as CaseArea[]).filter((area) => counts[area] > 0);
+
+const jsonLd = [{"@context":"https://schema.org","@type":"Organization","name":"Кадры-Про","url":"https://kadry-pro.ru/","logo":"https://kadry-pro.ru/logo.png","image":"https://kadry-pro.ru/logo.png","description":"Кадровый аутсорсинг для малого бизнеса: абонентское обслуживание, разработка ЛНА, СОУТ, подбор персонала, подготовка к проверкам ГИТ. Работаю удалённо по всей России.","telephone":"+7-961-302-21-12","email":"m.perepechay@yandex.ru","address":{"@type":"PostalAddress","addressLocality":"Ростов-на-Дону","addressRegion":"Ростовская область","addressCountry":"RU"},"areaServed":{"@type":"Country","name":"Россия"}}];
+---
+
+<Base
+  title={"Кейсы и результаты — Мария Перепечай"}
+  description={"Реальные кейсы кадрового аутсорсинга: цифровая трансформация, построение HR-службы с нуля, подготовка к проверкам ГИТ."}
+  page="cases"
+  jsonLd={jsonLd}
+>
+  <section class="hero hero-sub">
+    <div class="hero-bg"></div>
+    <div class="container">
+      <div class="hero-content">
+        <h1 class="anim">Кейсы и <strong class="accent">результаты</strong></h1>
+        <p class="hero-subtitle anim anim-delay-1">Реальные проекты с измеримыми результатами</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <!-- Фильтр по направлениям -->
+      <div class="cases-filter anim">
+        <button class="active" data-filter="all">Все</button>
+        {areas.map((area) => (
+          <button data-filter={area}>{CASE_AREAS_TITLE[area]}</button>
+        ))}
+      </div>
+
+      <!-- Кейсы из site/content/cases.json -->
+      <div class="cases-grid">
+        {cases.map((c, i) => (
+          <div class:list={['card', 'case-card', 'anim', i % 2 === 1 ? 'anim-delay-1' : '']} data-category={c.area}>
+            <div class="case-label">{CASE_AREAS_TITLE[c.area]}</div>
+            <h3>{c.title}</h3>
+            <div class="case-meta">
+              <span>{c.client}</span>
+            </div>
+            <p><strong>Задача:</strong> {c.task}</p>
+            <p><strong>Что сделано:</strong> {c.actions}</p>
+            <div class="case-results">
+              <h4>Результаты</h4>
+              <ul>
+                {c.results.map((r) => <li>{r}</li>)}
+              </ul>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  {/* Живые отзывы вместо прежней заглушки: отзывы из reviews.json + новые из relay */}
+  <ReviewsSection id="reviews-cases" source="cases" title="Отзывы клиентов" />
+  <ReviewModal page="cases" />
+
+  <!-- CTA -->
+  <section class="section cta-section">
+    <div class="container">
+      <div class="cta-inner anim">
+        <h2>У вас похожая <strong>задача?</strong></h2>
+        <p>Расскажите о вашей ситуации — предложу решение и рассчитаю стоимость</p>
+        <a href="/contact.html" class="btn btn-primary btn-lg">Обсудить проект</a>
+      </div>
+    </div>
+  </section>
+
+  <QuickLeadForm page="cases" service="other" title="Хочу такой же результат" />
+</Base>

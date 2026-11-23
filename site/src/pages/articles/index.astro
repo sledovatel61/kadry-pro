@@ -1,0 +1,116 @@
+---
+/**
+ * Список разборов «Полезное» — /articles.html (Агент 03; обёртка в Base.astro,
+ * стили и JSON-LD CollectionPage — стыковка Агента 04).
+ *
+ * Витрина статей из `site/content/articles.json`: карточки с категорией, датой и
+ * описанием, фильтр по категории (`?cat=shtrafy`), ссылка на RSS.
+ *
+ * Черновики не показываем: у них нет даты публикации.
+ */
+import Base from '../../layouts/Base.astro';
+import { articleUrl, categoryTitle, ARTICLE_CATEGORIES } from '../../shared/articles-schema.ts';
+import { plainText } from './_markdown.ts';
+import { publishedArticles, fmtDateRu } from './_data.ts';
+import '../../styles/articles.css';
+
+export const prerender = true;
+
+const ALL = publishedArticles();
+
+/** Категория из адреса — только известная, иначе показываем всё. */
+const queryCat = Astro.url.searchParams.get('cat') ?? '';
+const activeCat = ARTICLE_CATEGORIES.some((c) => c.slug === queryCat) ? queryCat : '';
+const items = activeCat ? ALL.filter((a) => a.category === activeCat) : ALL;
+
+const counts = new Map<string, number>();
+for (const article of ALL) counts.set(article.category, (counts.get(article.category) ?? 0) + 1);
+
+/* Сборка с `format: 'file'` кладёт список в `/articles.html`; на него и ссылаемся. */
+const LIST_URL = '/articles.html';
+const title = activeCat
+  ? `${categoryTitle(activeCat)} — разборы Кадры-Про`
+  : 'Полезное: разборы законов для кадровиков и руководителей';
+const description = 'Разборы кадрового законодательства 2026 года: штрафы ГИТ, трудовые споры, воинский учёт и охрана труда. Простым языком, с расчётами и ссылками на нормы.';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'Полезное: разборы законов — Кадры-Про',
+  url: 'https://kadry-pro.ru/articles.html',
+  inLanguage: 'ru-RU',
+  description,
+  isPartOf: { '@type': 'WebSite', name: 'Кадры-Про', url: 'https://kadry-pro.ru/' },
+  hasPart: ALL.map((a) => ({
+    '@type': 'BlogPosting',
+    headline: a.title,
+    url: `https://kadry-pro.ru${articleUrl(a.slug)}`,
+    datePublished: (a.published_at ?? '').slice(0, 10),
+  })),
+};
+
+/** «7 мин» — по 180 слов в минуту, минимум 3. */
+const minutes = (md: string): number => Math.max(3, Math.round(plainText(md).split(' ').length / 180));
+---
+
+<Base title={title} description={description} page="articles" ogType="website" jsonLd={[jsonLd]}>
+  <Fragment slot="head">
+    <link rel="alternate" type="application/rss+xml" title="Кадры-Про — Полезное" href="/articles/rss.xml" />
+  </Fragment>
+
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="/">Главная</a><span aria-hidden="true"> / </span>
+      <span aria-current="page">Полезное</span>
+    </nav>
+
+    <h1>Полезное</h1>
+    <p class="article-lead">
+      Разборы законов, которые касаются каждого работодателя: сколько стоит ошибка,
+      что проверяет ГИТ и как защитить себя в споре. Без юридического тумана.
+    </p>
+
+    <nav class="articles-filter" aria-label="Категории">
+      <a class="chip" href={LIST_URL} aria-current={activeCat ? undefined : 'page'}>Все разборы <span>{ALL.length}</span></a>
+      {ARTICLE_CATEGORIES.filter((c) => (counts.get(c.slug) ?? 0) > 0).map((c) => (
+        <a class="chip" href={`${LIST_URL}?cat=${c.slug}`} aria-current={activeCat === c.slug ? 'page' : undefined}>
+          {c.title} <span>{counts.get(c.slug)}</span>
+        </a>
+      ))}
+      <a class="chip chip-rss" href="/articles/rss.xml">RSS</a>
+    </nav>
+
+    {items.length === 0 ? (
+      <p class="articles-empty">
+        Разборов в этой категории пока нет. <a href="/articles.html">Показать все</a> или
+        <a href="/contact.html">написать вопрос</a> — отвечу.
+      </p>
+    ) : (
+      <div class="articles-grid">
+        {items.map((article) => (
+          <article class="article-card">
+            <a class="article-card-link" href={articleUrl(article.slug)}>
+              <span class="article-card-cat">{categoryTitle(article.category)}</span>
+              <h2>{article.title}</h2>
+              <p>{article.excerpt}</p>
+            </a>
+            <p class="article-card-meta">
+              <time datetime={`${(article.published_at ?? '').slice(0, 10)}T00:00:00+03:00`}>{fmtDateRu(article.published_at)}</time>
+              <span aria-hidden="true">·</span>
+              <span>{minutes(article.body_md)} мин</span>
+            </p>
+          </article>
+        ))}
+      </div>
+    )}
+
+    <aside class="articles-cta">
+      <p><b>Не нашли свой случай?</b> Позвоните: разберу ситуацию и скажу, что делать.</p>
+      <p class="article-cta-links">
+        <a class="btn btn--primary" href="tel:+79613022112">+7 (961) 302-21-12</a>
+        <a class="btn" href="https://t.me/Mariya061" target="_blank" rel="noopener">Telegram</a>
+        <a class="btn" href="/contact.html">Оставить заявку</a>
+      </p>
+    </aside>
+  </div>
+</Base>

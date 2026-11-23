@@ -1,0 +1,81 @@
+---
+/**
+ * Страница 404 — раньше её не было вовсе: посетитель с битой ссылкой видел
+ * стандартную заглушку GitHub Pages и уходил. Теперь человек остаётся
+ * на сайте и получает удобные ссылки на главные разделы и быстрые контакты.
+ */
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Страница не найдена (404) — Кадры-Про"
+  description="Такой страницы нет. Вернитесь на главную или выберите нужный раздел: услуги и цены, ЛНА, аудит, СОУТ, воинский учёт, шаблоны."
+  page="404"
+  noindex={true}
+>
+  <section class="hero hero-sub" style="min-height:70vh;">
+    <div class="hero-bg"></div>
+    <div class="container">
+      <div class="hero-content" style="max-width:760px;">
+        <div class="hero-badge anim"><span class="hero-badge-dot"></span>Ошибка 404</div>
+        <h1 class="anim anim-delay-1">Такой страницы <strong class="accent">нет</strong></h1>
+        <p class="hero-subtitle anim anim-delay-2">
+          Возможно, ссылка устарела или в адресе опечатка. Ниже — разделы,
+          куда чаще всего заходят: оттуда всё найдётся за один клик.
+        </p>
+        <div class="hero-actions anim anim-delay-3">
+          <a href="/" class="btn btn-primary btn-lg"><span class="btn-icon">🏠</span> На главную</a>
+          <a href="/services.html" class="btn btn-outline btn-lg">Услуги и цены</a>
+          <a href="/contact.html" class="btn btn-outline btn-lg">Контакты</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-header anim">
+        <h2>Популярные <strong>разделы</strong></h2>
+        <p>Кадровый аутсорсинг под ключ — от абонентского обслуживания до защиты в трудовом споре</p>
+      </div>
+      <div class="services-grid">
+        <a href="/services.html" class="card card-accent service-card anim">
+          <div class="service-card-icon">💼</div>
+          <h3>Услуги и цены</h3>
+          <p>Абонентское обслуживание от 14 000 ₽/мес и разовые кадровые услуги</p>
+          <div class="service-card-price">от 14 000 ₽/мес</div>
+        </a>
+        <a href="/lna.html" class="card card-accent service-card anim anim-delay-1">
+          <div class="service-card-icon">📄</div>
+          <h3>Разработка ЛНА</h3>
+          <p>ПВТР, положения, должностные инструкции — индивидуально под компанию</p>
+          <div class="service-card-price">от 3 000 ₽</div>
+        </a>
+        <a href="/audit.html" class="card card-accent service-card anim anim-delay-2">
+          <div class="service-card-icon">🛡️</div>
+          <h3>Аудит кадрового учёта</h3>
+          <p>Проверка документов до проверки ГИТ: риски, ошибки, план исправления</p>
+          <div class="service-card-price">от 7 900 ₽</div>
+        </a>
+        <a href="/sout.html" class="card card-accent service-card anim">
+          <div class="service-card-icon">🔬</div>
+          <h3>Организация СОУТ</h3>
+          <p>Спецоценка под ключ с аккредитованной лабораторией</p>
+          <div class="service-card-price">от 9 900 ₽</div>
+        </a>
+        <a href="/voinskiy-uchet.html" class="card card-accent service-card anim anim-delay-1">
+          <div class="service-card-icon">🎖️</div>
+          <h3>Воинский учёт</h3>
+          <p>Постановка с нуля, формы № 10 и № 18, отчётность в военкомат</p>
+          <div class="service-card-price">от 12 000 ₽</div>
+        </a>
+        <a href="/shablony.html" class="card card-accent service-card anim anim-delay-2">
+          <div class="service-card-icon">📚</div>
+          <h3>Шаблоны документов</h3>
+          <p>20 базовых шаблонов бесплатно, полный пакет из 64 документов — 3 500 ₽</p>
+          <div class="service-card-price" style="color: var(--accent);">Открыть каталог →</div>
+        </a>
+      </div>
+    </div>
+  </section>
+</Base>

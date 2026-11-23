@@ -1,0 +1,50 @@
+name = "kadry-leads"
+main = "src/index.ts"
+compatibility_date = "2026-11-18"
+workers_dev = true
+
+# Адреса, которым разрешено обращаться к прослойке из браузера.
+# Другого списка в коде нет: пустое значение = ни один источник не разрешён
+# (fail-closed), чтобы после переезда на домен старый адрес не остался открытым.
+#
+#   kadry-pro.ru — боевой домен (с www и без);
+#   sledovatel61.github.io — превью GitHub Pages (при редиректе браузер
+#   сохраняет Origin исходной страницы);
+#   localhost — локальная разработка.
+[vars]
+ALLOWED_ORIGINS = "https://kadry-pro.ru,https://www.kadry-pro.ru,https://sledovatel61.github.io,http://localhost:4321,http://127.0.0.1:4321"
+SITE_NAME = "Кадры-Про"
+SITE_ADDRESS = "Ростов-на-Дону (удалённо по всей России)"
+# Версия согласия на обработку персональных данных. Меняется вместе с
+# consent.html; старая версия в заявке получит 400 consent_version.
+CONSENT_VERSION = "2026-11-21"
+# Почта-дубль: адрес, куда приходит копия каждой заявки.
+EMAIL_TO = "m.perepechay@yandex.ru"
+# Отправитель. Пусто — берётся EMAIL_TO (Brevo) или onboarding@resend.dev (Resend).
+# EMAIL_FROM = "Кадры-Про <box@kadry-pro.ru>"
+# Репозиторий, право записи в который проверяется ключом GitHub из /manage/.
+GITHUB_REPO = "sledovatel61/kadry-pro"
+
+# Секреты задаются командами (в файле их быть не должно):
+#   npx wrangler secret put BOT_TOKEN
+#   npx wrangler secret put TELEGRAM_CHAT_ID
+#   npx wrangler secret put BREVO_API_KEY     (или RESEND_API_KEY — см. README)
+#   npx wrangler secret put FILE_TOKEN_SECRET
+# В GitHub Actions эти секреты прокидываются самим workflow.
+
+# Необязательная книжка Cloudflare: лимиты, идемпотентность и живые отзывы
+# переживают перезапуск изолята. Без KV всё работает, но память сбрасывается.
+#
+# Придуманных id здесь быть не должно: с чужим id деплой падает. Создайте
+# namespace в дашборде (Workers & Pages → KV → Create) и впишите его id сюда,
+# либо удалите этот блок — тогда воркер работает на памяти изолята.
+# [[kv_namespaces]]
+# binding = "KADRY_KV"
+# id = "<id вашей KV-книжки>"
+
+# Необязательный приватный бакет R2 с полными шаблонами для выдачи по
+# подписанной ссылке. Пока бакета нет, /files отвечает 404 — открытой раздачи
+# платных файлов нет по определению.
+# [[r2_buckets]]
+# binding = "TEMPLATES"
+# bucket_name = "kadry-templates"

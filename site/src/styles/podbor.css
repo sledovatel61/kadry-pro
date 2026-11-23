@@ -1,0 +1,104 @@
+/* Стили страницы «Подбор кадров» — вынесены из podbor.html во время переезда
+   на Astro (раньше инлайн-блок на 2,3 КБ ехал внутри каждой загрузки страницы). */
+.podbor-types {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+    .podbor-specs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+    }
+    .podbor-guarantees {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .guarantee-block {
+      padding: 24px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      transition: var(--transition);
+    }
+    .guarantee-block:hover {
+      background: rgba(0,0,0,0.35);
+      transform: translateY(-4px);
+    }
+    .guarantee-block-icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+    .guarantee-block h4 {
+      color: var(--accent);
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+    .guarantee-block p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .breadcrumb-nav {
+      margin-bottom: 24px;
+      font-size: 0.85rem;
+    }
+    .breadcrumb-nav a {
+      color: var(--text-muted);
+    }
+    .breadcrumb-nav a:hover {
+      color: var(--accent);
+    }
+    .breadcrumb-sep {
+      margin: 0 8px;
+      color: var(--text-muted);
+    }
+    .breadcrumb-current {
+      color: var(--accent);
+    }
+    .spec-card-accent {
+      border-color: rgba(74,222,128,0.3) !important;
+      background: linear-gradient(135deg, rgba(74,222,128,0.08), var(--bg-card)) !important;
+    }
+    .step-number {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+      background: var(--accent-glow);
+      color: var(--accent);
+    }
+    .step-time {
+      color: var(--text-muted);
+      font-weight: 400;
+      font-size: 0.85rem;
+    }
+    .comparison-good {
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .comparison-bad {
+      color: var(--text-muted);
+    }
+    @media (max-width: 1024px) {
+      .podbor-specs {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 768px) {
+      .podbor-types {
+        grid-template-columns: 1fr;
+      }
+      .podbor-specs {
+        grid-template-columns: 1fr;
+      }
+      .podbor-guarantees {
+        grid-template-columns: 1fr;
+      }
+    }

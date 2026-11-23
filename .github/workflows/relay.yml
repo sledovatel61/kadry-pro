@@ -1,0 +1,235 @@
+name: Deploy leads relay
+
+# Прослойка relay/ → Cloudflare Worker: заявки с сайта (формы, калькулятор,
+# шаблоны) сразу в Telegram-группу Марии и копией на почту — вместо Formspree.
+#
+# Секреты репозитория (Settings → Secrets and variables → Actions → Secrets):
+#   CLOUDFLARE_API_TOKEN  — токен Cloudflare с шаблоном «Edit Cloudflare Workers»
+#   CLOUDFLARE_ACCOUNT_ID — необязателен: без него берём Account ID по токену
+#   BOT_TOKEN             — токен бота от @BotFather
+#   TELEGRAM_CHAT_ID      — id группы заявок (отрицательное число)
+#   FILE_TOKEN_SECRET     — любая длинная случайная строка (подпись ссылок на файлы)
+#   BREVO_API_KEY         — необязательно: ключ Brevo для копии на почту
+#   RESEND_API_KEY        — необязательно: ключ Resend (альтернатива Brevo)
+#   EMAIL_TO / EMAIL_FROM — необязательно: адреса почты (по умолчанию в wrangler.toml)
+#   REVIEWS_INBOX_KEY     — необязательно: код доступа к журналу отзывов
+#
+# Workflow запускается сам при изменении relay/ в ветке публикации и вручную
+# (Actions → Deploy leads relay → Run workflow). Адрес воркера печатается в
+# Summary — его нужно положить в переменную репозитория PUBLIC_LEADS_ENDPOINT.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'relay/**'
+      - '.github/workflows/relay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relay
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: relay
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # Сеть в тестах подменена: наружу не уходит ни одна заявка.
+      - name: Tests
+        run: node --test test/*.test.ts
+
+      # Account ID можно не задавать: если секрета нет, определяем его по токену.
+      - name: Resolve account id
+        id: acct
+        run: |
+          set -e
+          ACC="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          if [ -z "$ACC" ]; then
+            echo "Секрет CLOUDFLARE_ACCOUNT_ID не задан — определяю по токену."
+            ACC=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              https://api.cloudflare.com/client/v4/accounts \
+              | grep -Eo '"id": *"[0-9a-f]{32}"' | head -1 | grep -Eo '[0-9a-f]{32}' || true)
+          fi
+          if [ -z "$ACC" ]; then
+            echo "::error::Не удалось определить Account ID. Задайте секрет CLOUDFLARE_ACCOUNT_ID (дашборд → Manage account → Account home)."
+            exit 1
+          fi
+          echo "Account ID определён."
+          echo "CLOUDFLARE_ACCOUNT_ID=$ACC" >> "$GITHUB_ENV"
+          echo "account=$ACC" >> "$GITHUB_OUTPUT"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      # У нового аккаунта Cloudflare нет workers.dev-сабдомена: без него воркер
+      # собирается, но не публикуется. Регистрируем сами; если прав у токена не
+      # хватает — говорим, куда нажать руками.
+      - name: Ensure workers.dev subdomain
+        id: sub
+        run: |
+          set -e
+          API="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/subdomain"
+          get_sub() {
+            curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$API" \
+              | grep -Eo '"subdomain": *"[a-z0-9-]+"' | head -1 | sed 's/.*"\([a-z0-9-]*\)"$/\1/' || true
+          }
+          SUB=$(get_sub)
+          echo "Текущий сабдомен: '${SUB:-нет}'"
+          if [ -z "$SUB" ]; then
+            for CAND in kadrypro "kadrypro-$(echo "$CLOUDFLARE_ACCOUNT_ID" | cut -c1-6)"; do
+              echo "Пробуем зарегистрировать '$CAND'"
+              RESP=$(curl -sS -X PUT "$API" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                -H 'content-type: application/json' -d "{\"subdomain\":\"$CAND\"}")
+              echo "Ответ: $RESP"
+              SUB=$(get_sub)
+              if [ -n "$SUB" ]; then break; fi
+            done
+          fi
+          if [ -z "$SUB" ]; then
+            echo "::error::Не удалось зарегистрировать workers.dev-сабдомен автоматически. Откройте dash.cloudflare.com → Workers & Pages и задайте сабдомен (например kadrypro), затем запустите workflow снова."
+            exit 1
+          fi
+          echo "Сабдомен: $SUB"
+          echo "url=https://kadry-leads.${SUB}.workers.dev" >> "$GITHUB_OUTPUT"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Deploy worker
+        id: deploy
+        run: |
+          set -e
+          npx wrangler deploy 2>&1 | tee /tmp/deploy.log || { echo "::error::wrangler deploy упал"; tail -40 /tmp/deploy.log; exit 1; }
+          tail -20 /tmp/deploy.log || true
+          URL="${{ steps.sub.outputs.url }}"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Адрес прослойки: $URL"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Push secrets to worker
+        run: |
+          set -e
+          printf '%s' "$BOT_TOKEN" | npx wrangler secret put BOT_TOKEN
+          printf '%s' "$TELEGRAM_CHAT_ID" | npx wrangler secret put TELEGRAM_CHAT_ID
+          # Подпись ссылок на платные файлы: без неё ссылка не выдаётся.
+          if [ -n "$FILE_TOKEN_SECRET" ]; then
+            printf '%s' "$FILE_TOKEN_SECRET" | npx wrangler secret put FILE_TOKEN_SECRET
+            echo "Ссылки на файлы: подпись включена"
+          else
+            echo "::warning::FILE_TOKEN_SECRET не задан — защищённые ссылки на платные файлы выдаваться не будут"
+          fi
+          # Почта-дубль необязательна: без ключа заявки идут только в Telegram.
+          if [ -n "$BREVO_API_KEY" ]; then
+            printf '%s' "$BREVO_API_KEY" | npx wrangler secret put BREVO_API_KEY
+            echo "Почта: Brevo подключён"
+          elif [ -n "$RESEND_API_KEY" ]; then
+            printf '%s' "$RESEND_API_KEY" | npx wrangler secret put RESEND_API_KEY
+            echo "Почта: Resend подключён"
+          else
+            echo "::warning::Ключа почты нет (BREVO_API_KEY / RESEND_API_KEY) — копии заявок на почту не уходят"
+          fi
+          # Адрес отправителя кладём, только если задан: без подтверждённого домена
+          # Resend разрешает писать лишь самому себе.
+          if [ -n "$EMAIL_FROM" ]; then
+            printf '%s' "$EMAIL_FROM" | npx wrangler secret put EMAIL_FROM
+            echo "Почта: отправитель задан"
+          fi
+          if [ -n "$EMAIL_TO" ]; then
+            printf '%s' "$EMAIL_TO" | npx wrangler secret put EMAIL_TO
+            echo "Почта: получатель задан"
+          fi
+          # Журнал отзывов — резервный канал, если Telegram недоступен.
+          if [ -n "$REVIEWS_INBOX_KEY" ]; then
+            printf '%s' "$REVIEWS_INBOX_KEY" | npx wrangler secret put REVIEWS_INBOX_KEY
+            echo "Отзывы: журнал включён"
+          else
+            echo "::warning::REVIEWS_INBOX_KEY не задан — запасного журнала отзывов нет (отзывы только в Telegram и на почте)"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FILE_TOKEN_SECRET: ${{ secrets.FILE_TOKEN_SECRET }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          REVIEWS_INBOX_KEY: ${{ secrets.REVIEWS_INBOX_KEY }}
+
+      - name: Health check
+        run: |
+          set -e
+          URL="${{ steps.deploy.outputs.url }}"
+          echo "Проверяем $URL/health"
+          OK=0
+          for i in $(seq 1 12); do
+            sleep 5
+            CODE=$(curl -sS -o /tmp/health.json -w '%{http_code}' "$URL/health" || echo 000)
+            echo "попытка $i: HTTP $CODE $(head -c 300 /tmp/health.json 2>/dev/null)"
+            if [ "$CODE" = "200" ] && grep -q '"telegram":true' /tmp/health.json; then OK=1; break; fi
+            if [ "$CODE" = "200" ] && grep -q '"telegram":false' /tmp/health.json && [ "$i" -ge 6 ]; then
+              echo "::error::Воркер отвечает, но не видит BOT_TOKEN/TELEGRAM_CHAT_ID (секреты не применились)"
+              exit 1
+            fi
+          done
+          if [ "$OK" != "1" ]; then
+            echo "::error::Воркер не ответил на /health. Адрес: $URL/health, последний ответ: $(head -c 200 /tmp/health.json 2>/dev/null)"
+            exit 1
+          fi
+          MAIL=$(grep -o '"email":[^,}]*' /tmp/health.json | head -1 || true)
+          echo "Воркер жив и видит Telegram. Почта: ${MAIL:-нет данных}"
+          echo "::notice::АДРЕС ВОРКЕРА: $URL · ${MAIL:-почта не настроена}"
+
+      # Проверка, что бот пишет в нужную группу: заявка без этого шага может
+      # «улетать в никуда», если chat_id от другого чата.
+      - name: Notify group in Telegram
+        run: |
+          node --input-type=module -e '
+            const token = process.env.BOT_TOKEN || "";
+            const chat = process.env.TELEGRAM_CHAT_ID || "";
+            if (!token || !chat) { console.error("Нет BOT_TOKEN или TELEGRAM_CHAT_ID"); process.exit(1); }
+            const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ chat_id: chat, text: process.env.EMAIL_ON === "true"
+                ? "Прослойка заявок подключена. Заявки будут приходить в этот чат и копией на почту."
+                : "Прослойка заявок подключена. Заявки с сайта будут приходить в этот чат." }),
+            });
+            console.log("HTTP " + res.status + " " + (await res.text()).slice(0, 300));
+            if (!res.ok) process.exit(1);
+          '
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          EMAIL_ON: ${{ secrets.BREVO_API_KEY != '' || secrets.RESEND_API_KEY != '' }}
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Прослойка (relay) задеплоена"
+            echo ""
+            echo "Адрес: \`${{ steps.deploy.outputs.url }}\`"
+            echo ""
+            echo "Дальше: Settings → Secrets and variables → Actions → **Variables** →"
+            echo "новая переменная \`PUBLIC_LEADS_ENDPOINT\` со значением этого адреса (без слэша в конце)."
+            echo ""
+            echo "После этого формы на сайте отправляют заявки в Telegram и на почту, а не в Formspree."
+          } >> "$GITHUB_STEP_SUMMARY"

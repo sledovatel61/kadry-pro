@@ -1,0 +1,82 @@
+# Превью сайта kadry-pro.ru на GitHub Pages.
+#
+# Триггер СТРОГО preview/github-pages (по эталону АвтоТехСервиса):
+# push в основную ветку НЕ деплоит — боевой деплой main остаётся отдельным
+# процессом и здесь не трогается. Запуск вручную — workflow_dispatch.
+#
+# Конвейер: установка → сборка → все проверки → тесты → typecheck →
+# артефакт → деплой. Если любая проверка красная, сайт НЕ публикуется
+# и на Pages остаётся предыдущая версия.
+name: Publish client preview
+
+on:
+  push:
+    branches: [preview/github-pages]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - uses: actions/configure-pages@v5
+      - run: npm ci
+        working-directory: site
+      # Адрес прослойки заявок (Cloudflare Worker, relay/). Боевой адрес зашит
+      # по умолчанию, чтобы формы работали без ручной настройки; переменная
+      # репозитория PUBLIC_LEADS_ENDPOINT перекрывает его, если воркер переедет.
+      # Пустое значение — сайт остаётся честной статикой: формы показывают
+      # телефон и не отправляют данные никуда.
+      - run: npm run build:pages
+        working-directory: site
+        env:
+          PUBLIC_LEADS_ENDPOINT: ${{ vars.PUBLIC_LEADS_ENDPOINT || 'https://kadry-leads.kadrypro.workers.dev' }}
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+          PUBLIC_BASE_PATH: ${{ vars.PUBLIC_BASE_PATH }}
+      # Проверки по конвейеру правды: прайс, страницы, отзывы, кейсы, статьи,
+      # 152-ФЗ (счётчики только после согласия), медиа-бюджет.
+      - run: npm run check:prices
+        working-directory: site
+      - run: npm run check:pages
+        working-directory: site
+      - run: npm run check:reviews
+        working-directory: site
+      - run: npm run check:cases
+        working-directory: site
+      - run: npm run check:articles
+        working-directory: site
+      - run: npm run check:analytics
+        working-directory: site
+      - run: npm run check:media
+        working-directory: site
+      - run: npm test
+        working-directory: site
+      - run: npm run typecheck
+        working-directory: site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/pages-dist
+      # Артефакту нужно время, чтобы индексироваться сервисом Pages,
+      # иначе deploy-pages может подхватить предыдущую сборку (эталон ATS).
+      - name: Wait for artifact indexing
+        run: sleep 5
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
