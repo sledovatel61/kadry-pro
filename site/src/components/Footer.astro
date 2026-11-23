@@ -1,0 +1,83 @@
+---
+/**
+ * Подвал сайта — одинаковый на всех страницах.
+ *
+ * Добавлено против старых страниц (требование ревизии, раздел 2.В и 152-ФЗ):
+ *  • быстрые кнопки Telegram (@Mariya061), WhatsApp и MAX — раньше был только телефон;
+ *  • реквизиты оператора персональных данных: Перепечай Мария Павловна, ИНН,
+ *    статус «самозанятый / НПД»;
+ *  • ссылки на политику конфиденциальности и согласие на обработку ПДн
+ *    (/privacy.html и /consent.html — страницы Агента 02).
+ */
+import { OWNER, SITE } from '../data/site.ts';
+const year = 2026;
+---
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="nav-logo" style="margin-bottom:12px;">
+          <img src="/img/logo.svg" alt={`${SITE.name} — кадровый аутсорсинг`} class="logo">
+        </div>
+        <p>Кадровый аутсорсинг для малого бизнеса. 14 лет опыта, 0 штрафов, {SITE.priceFrom}.</p>
+
+        <div class="footer-messengers">
+          <a href={OWNER.telegram} class="footer-messenger footer-messenger--tg" target="_blank" rel="noopener" aria-label={`Telegram ${OWNER.telegramHandle}`}>
+            <span class="footer-messenger-icon">✈️</span>
+            <span>Telegram<br><b>{OWNER.telegramHandle}</b></span>
+          </a>
+          <a href={OWNER.whatsapp} class="footer-messenger footer-messenger--wa" target="_blank" rel="noopener" aria-label="WhatsApp">
+            <span class="footer-messenger-icon">💬</span>
+            <span>WhatsApp<br><b>{OWNER.phone}</b></span>
+          </a>
+          <a href={OWNER.max} class="footer-messenger footer-messenger--max" target="_blank" rel="noopener" aria-label="MAX">
+            <span class="footer-messenger-icon">Ⓜ️</span>
+            <span>MAX<br><b>написать</b></span>
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4>Услуги</h4>
+        <a href="/services?tab=tab-subscription">Абонентское</a>
+        <a href="/lna" style="color: var(--accent);">Разработка ЛНА →</a>
+        <a href="/sout" style="color: var(--accent);">СОУТ →</a>
+        <a href="/shtrafy-git" style="color: var(--accent);">Штрафы ГИТ 2026 →</a>
+        <a href="/voinskiy-uchet" style="color: var(--accent);">Воинский учёт →</a>
+        <a href="/audit">Аудит кадрового учёта</a>
+        <a href="/podbor">Подбор персонала</a>
+        <a href="/shablony" style="color: var(--accent);">Шаблоны документов →</a>
+      </div>
+
+      <div class="footer-col">
+        <h4>Компания</h4>
+        <a href="/about">Обо мне</a>
+        <a href="/trudovoy-spor" style="color:var(--accent);">Трудовой спор →</a>
+        <a href="/cases">Кейсы</a>
+        <a href="/contact">Контакты</a>
+        <a href="/privacy">Политика конфиденциальности</a>
+        <a href="/consent">Согласие на обработку ПДн</a>
+      </div>
+
+      <div class="footer-col">
+        <h4>Контакты</h4>
+        <a href={OWNER.phoneHref}>{OWNER.phone}</a>
+        <a href={`mailto:${OWNER.email}`}>{OWNER.email}</a>
+        <a href={OWNER.telegram} target="_blank" rel="noopener">Telegram {OWNER.telegramHandle}</a>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-top:8px;">{OWNER.city} · работаю удалённо по всей России</p>
+      </div>
+    </div>
+
+    <div class="footer-requisites">
+      <span><b>Оператор персональных данных:</b> {OWNER.fullName}</span>
+      <span>ИНН {OWNER.inn}</span>
+      <span>{OWNER.status}</span>
+    </div>
+
+    <div class="footer-bottom">
+      <span>© {year} {OWNER.name}. Все права защищены.</span>
+      <span>Кадровый аутсорсинг | {OWNER.city}</span>
+    </div>
+  </div>
+</footer>

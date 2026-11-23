@@ -1,0 +1,131 @@
+---
+/**
+ * Единый каркас страницы.
+ *
+ * Порядок в <head> — по конвенции проекта (AGENTS.md, §3): favicon → title и
+ * description → canonical → Open Graph → JSON-LD → стили.
+ *
+ * Осознанные отличия от старых страниц:
+ *  • НЕТ прямых тегов Яндекс.Метрики и GA4. Счётчики 108237323 и G-76SCLJTYNF
+ *    подключаются строго после нажатия «Принять» в баннере куки — это модуль
+ *    consent.ts Агента 02 (site/src/client/consent.ts) плюс CookieConsent.astro
+ *    в этом же каркасе. До согласия сторонних запросов нет (152-ФЗ).
+ *  • НЕТ @import с fonts.googleapis.com: шрифты лежат локально в /fonts/*.woff2.
+ *  • НЕТ искусственного прелоадера: страница показывается сразу.
+ */
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Dock from '../components/Dock.astro';
+import { SITE, OWNER } from '../data/site.ts';
+/* Стили: сначала локальные шрифты, потом общая тема, потом новые блоки каркаса. */
+import '../styles/fonts.css';
+import '../styles/style.css';
+import '../styles/components.css';
+/* Баннер куки и согласие на аналитику — зона Агента 02 (CookieConsent.astro +
+   client/consent.ts). Собираем через import.meta.glob: если файла ещё нет,
+   glob вернёт пустой объект, и каркас спокойно соберётся без баннера. */
+const consentModules = import.meta.glob('../components/CookieConsent.astro', { eager: true }) as Record<
+  string,
+  { default: unknown } | undefined
+>;
+const ConsentBanner = Object.values(consentModules)[0]?.default ?? null;
+
+export interface Props {
+  /** Заголовок вкладки — точно тот же, что был на старой странице. */
+  title: string;
+  description: string;
+  /** Ключ страницы для подсветки меню (home, services, …). */
+  page?: string;
+  /** JSON-LD блоки: объекты или уже готовые строки из старых страниц. */
+  jsonLd?: unknown[];
+  /** Дополнительные стили конкретной страницы (например, trudovoy-spor.css, podbor.css).
+      Кладём их в public/styles как есть — тогда они отдаются по стабильным адресам. */
+  styles?: string[];
+  /** noindex — для служебных страниц (404). */
+  noindex?: boolean;
+  ogType?: string;
+  ogImage?: string;
+}
+
+const {
+  title,
+  description,
+  page = '',
+  jsonLd = [],
+  styles = [],
+  noindex = false,
+  ogType = 'website',
+  ogImage = '/img/og-default.jpg',
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname === '/index' ? '/' : Astro.url.pathname, SITE.origin).href;
+const ogImageUrl = new URL(ogImage, SITE.origin).href;
+const paragraphs = jsonLd.filter(Boolean);
+---
+
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+    <!-- Favicon — первым в head! -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
+
+    <title>{title}</title>
+    <meta name="description" content={description}>
+    <meta name="author" content={OWNER.name}>
+    <meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow'}>
+    <meta http-equiv="content-language" content="ru">
+
+    <link rel="canonical" href={canonical}>
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={title}>
+    <meta property="og:description" content={description}>
+    <meta property="og:type" content={ogType}>
+    <meta property="og:url" content={canonical}>
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:site_name" content={SITE.name}>
+    <meta property="og:image" content={ogImageUrl}>
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content={`${SITE.name} — кадровый аутсорсинг Марии Перепечай`}>
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content={title}>
+    <meta name="twitter:description" content={description}>
+    <meta name="twitter:image" content={ogImageUrl}>
+
+    <meta name="theme-color" content="#0a0a0a">
+
+    <!-- Шрифты: локальные файлы, два главных сабсета грузим заранее -->
+    <link rel="preload" href="/fonts/inter-cyrillic-400.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/inter-cyrillic-600.woff2" as="font" type="font/woff2" crossorigin>
+
+    <!-- Schema.org JSON-LD -->
+    {paragraphs.map((block) => (
+      <script type="application/ld+json" set:html={typeof block === 'string' ? block : JSON.stringify(block)} />
+    ))}
+
+    {styles.map((href) => <link rel="stylesheet" href={href}>)}
+  </head>
+  <body data-page={page}>
+    <div id="bg-decor"></div>
+
+    <Header page={page} />
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <Footer />
+    <Dock />
+
+    {ConsentBanner && <ConsentBanner />}
+
+    <script>
+      import '../client/site.ts';
+    </script>
+  </body>
+</html>
