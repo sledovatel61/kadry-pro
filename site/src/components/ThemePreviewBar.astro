@@ -2,37 +2,36 @@
 /**
  * Плавающая плашка «🎨 палитра» — временный инструмент для превью.
  *
- * Владелец выбирает одну из пяти деловых палитр прямо на сайте, чтобы увидеть
- * живьём, как выглядят тексты, кнопки и карточки. Выбор запоминается
- * в localStorage и применяется до первой отрисовки (см. THEME_INIT в Base.astro),
- * поэтому при перезагрузке страницы вспышки зелёного не будет.
+ * Владелец утвердил кобальт основной темой. Здесь три его вариации, которые
+ * отличаются только ювелирным компаньоном:
+ *   1. Шампань  — тёплое золото на ночном сапфире (основная);
+ *   2. Аврора   — индиго и прохладная морская бирюза;
+ *   3. Платина  — строгий холодный люкс, серебристые блики.
+ *
+ * Выбор запоминается в localStorage и применяется до первой отрисовки
+ * (см. inline-скрипт в Base.astro), поэтому при перезагрузке страницы
+ * вспышки чужой палитры не будет.
  *
  * Где живёт на экране:
- *   • на компьютере — правый нижний угол, над баннером куки;
+ *   • на компьютере — слева внизу, над баннером куки;
  *   • на телефоне   — сразу НАД нижней плашкой .dock (76px от низа),
- *     чтобы никогда не перекрывать звонок и «Заявку»;
- *     баннер куки уезжает выше (см. components.css).
+ *     чтобы никогда не перекрывать звонок и «Заявку».
  *
- * Когда палитра утверждена — удалить этот компонент и одну строку в Base.astro.
+ * Когда палитра утверждена — удалить этот компонент, одну строку в Base.astro
+ * и client/theme.ts.
  */
 ---
 
-<div class="theme-bar" id="theme-bar" role="group" aria-label="Выбор цветовой палитры (предпросмотр)">
+<div class="theme-bar" id="theme-bar" role="group" aria-label="Выбор вариации палитры (предпросмотр)">
   <span class="theme-bar-label" aria-hidden="true">🎨</span>
-  <button type="button" class="theme-bar-btn" data-theme-set="sage" aria-pressed="true" title="Благородный шалфей">
-    <span class="theme-bar-dot theme-bar-dot--sage"></span>Шалфей
+  <button type="button" class="theme-bar-btn" data-theme-set="cobalt" aria-pressed="true" title="Кобальт × Шампань — тёплое золото на ночном сапфире">
+    <span class="theme-bar-dot theme-bar-dot--champagne"></span>Шампань
   </button>
-  <button type="button" class="theme-bar-btn" data-theme-set="gold" aria-pressed="false" title="Тёмный сапфир и золото">
-    <span class="theme-bar-dot theme-bar-dot--gold"></span>Золото
+  <button type="button" class="theme-bar-btn" data-theme-set="cobalt-aurora" aria-pressed="false" title="Кобальт × Аврора — индиго и морская бирюза">
+    <span class="theme-bar-dot theme-bar-dot--aurora"></span>Аврора
   </button>
-  <button type="button" class="theme-bar-btn" data-theme-set="cobalt" aria-pressed="false" title="Антрацит и кобальт">
-    <span class="theme-bar-dot theme-bar-dot--cobalt"></span>Кобальт
-  </button>
-  <button type="button" class="theme-bar-btn" data-theme-set="amber" aria-pressed="false" title="Графит и янтарь">
-    <span class="theme-bar-dot theme-bar-dot--amber"></span>Янтарь
-  </button>
-  <button type="button" class="theme-bar-btn" data-theme-set="teal" aria-pressed="false" title="Морской сланец и бирюза">
-    <span class="theme-bar-dot theme-bar-dot--teal"></span>Бирюза
+  <button type="button" class="theme-bar-btn" data-theme-set="cobalt-platinum" aria-pressed="false" title="Кобальт × Платина — строгий холодный люкс">
+    <span class="theme-bar-dot theme-bar-dot--platinum"></span>Платина
   </button>
 </div>
 
