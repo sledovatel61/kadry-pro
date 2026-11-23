@@ -153,10 +153,18 @@
 .dock-btn:active { background: var(--bg-card); }
 .dock-icon { font-size: 1.15rem; line-height: 1; }
 .dock-label { font-weight: 500; letter-spacing: 0.01em; }
-.dock-btn--accent { background: var(--accent); color: var(--on-accent) !important; font-weight: 700; }
+/* Главная кнопка нижней плашки — та же драгоценная заливка, что у .btn-primary.
+   Плоский --accent здесь давал 2:1 для белого текста, поэтому только градиент
+   из общего контракта (--grad-btn), см. блок «ОБЪЁМ И ГРАДИЕНТЫ» в style.css. */
+.dock-btn--accent {
+  background: var(--grad-btn);
+  color: var(--on-accent) !important;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
 .dock-btn--accent .dock-icon { filter: none; }
 .dock-btn--accent:hover,
-.dock-btn--accent:focus { background: var(--accent-dark); color: var(--on-accent) !important; }
+.dock-btn--accent:focus { background: var(--grad-btn-hover); color: var(--on-accent) !important; }
 @media (max-width: 768px) {
   .dock { display: flex; }
   /* освобождаем место под плашку, чтобы она не закрывала подвал */
@@ -325,110 +333,21 @@
 /* --- Кнопка «Заявка» в доке и подсветка цели --- */
 #lead-form, #contact-form { scroll-margin-top: 90px; }
 
-/* ============================================================
-   ПЛАШКА ПРЕДПРОСМОТРА ПАЛИТР (временный инструмент)
-   Живёт над нижним .dock на телефоне и в правом нижнем углу
-   на компьютере. Удаляется вместе с ThemePreviewBar.astro.
-   ============================================================ */
-.theme-bar {
-  position: fixed;
-  z-index: 1060;
-  /* Слева внизу: справа стоит кнопка «Настройки cookie» (Агент 02, z-index 999),
-     и перекрывать её нельзя. */
-  left: 16px;
-  bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  font-size: 0.78rem;
-  max-width: calc(100vw - 24px);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.theme-bar::-webkit-scrollbar { display: none; }
-.theme-bar-label { padding: 0 4px; font-size: 0.95rem; flex-shrink: 0; }
-
-.theme-bar-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 11px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  color: var(--text-secondary);
-  background: transparent;
-  font-size: 0.78rem;
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: var(--transition);
-}
-.theme-bar-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-card-hover);
-  border-color: var(--border-color);
-}
-.theme-bar-btn[aria-pressed='true'] {
-  color: var(--text-primary);
-  background: var(--accent-glow);
-  border-color: var(--accent-border);
-  font-weight: 600;
-}
-.theme-bar-dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-}
-/* точки — ровно акцентные цвета пяти палитр */
-.theme-bar-dot--sage { background: #5ec28f; }
-.theme-bar-dot--gold { background: #e2b86b; }
-.theme-bar-dot--cobalt { background: #58a6ff; }
-.theme-bar-dot--amber { background: #efaa4a; }
-.theme-bar-dot--teal { background: #48b8b0; }
-
-/* На компьютере баннер куки занимает низ экрана во всю ширину — поднимаем его
-   над плашкой палитр, чтобы текст не оказался под ней. */
-.cookie-consent { bottom: 78px !important; }
-
-/* Узкий экран: подписи палитр остаются читаемыми, плашка прокручивается
-   по горизонтали (overflow-x в .theme-bar) — на смартфоне владелец сразу
-   видит «Шалфей · Золото · Кобальт · Янтарь · Бирюза» */
-@media (max-width: 560px) {
-  .theme-bar { left: 8px; bottom: 8px; padding: 5px; gap: 2px; }
-  .theme-bar-btn { padding: 6px 9px; font-size: 0.72rem; gap: 5px; }
-  .theme-bar-btn .theme-bar-dot { width: 14px; height: 14px; }
-}
-
 /* ---------------------------------------------------------------
    ТЕЛЕФОН: вертикальная стопка снизу вверх, ничего не перекрывается
      .dock ...................... 0 … 68px   (звонок, Telegram, MAX, Заявка)
-     плашка палитр .............. 76px
-     баннер куки / его кнопка ... 126px
+     баннер куки / его кнопка ... 76px
+   (Плашка предпросмотра палитр удалена вместе с ThemePreviewBar.astro.)
    --------------------------------------------------------------- */
 @media (max-width: 768px) {
-  .theme-bar {
-    left: 8px;
-    bottom: calc(76px + env(safe-area-inset-bottom));
-  }
   .cookie-consent {
-    inset: auto 8px calc(126px + env(safe-area-inset-bottom)) 8px !important;
+    inset: auto 8px calc(76px + env(safe-area-inset-bottom)) 8px !important;
   }
   .cookie-consent__manage {
     right: 8px !important;
-    bottom: calc(126px + env(safe-area-inset-bottom)) !important;
+    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
   }
 }
-
 /* --- Логотип --- */
 .logo { display: block; height: auto; width: auto; flex-shrink: 0; }
 .nav-logo .logo { height: 34px; }

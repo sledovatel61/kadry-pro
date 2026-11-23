@@ -506,8 +506,8 @@ button.btn:disabled { opacity: .5; cursor: not-allowed; }
   left: -9999px;
   top: 0;
   z-index: 100;
-  background: var(--mg-accent);
-  color: var(--mg-on-accent);
+  background: var(--grad-btn);
+  color: var(--on-accent);
   padding: 10px 16px;
   border-radius: 0 0 10px 0;
   font-weight: 600;
