@@ -15,6 +15,10 @@ const year = 2026;
 ---
 
 <footer class="footer">
+  {/* Скрим поверх фоновой фактуры подвала (bg-footer-night). Псевдоэлементы
+      .footer::before и ::after уже заняты: линия-разделитель в теме и сама
+      картинка в bg-chrome.css. Поэтому затемнение — отдельным слоем. */}
+  <div class="footer-chrome" aria-hidden="true"></div>
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">

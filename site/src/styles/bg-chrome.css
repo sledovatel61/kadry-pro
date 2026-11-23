@@ -1,0 +1,253 @@
+/* ============================================================================
+   BG-CHROME — фоновые фактуры для сквозных блоков
+   ----------------------------------------------------------------------------
+   Здесь два атмосферных фона, которые нельзя привязать к конкретному классу
+   секции: «Частые вопросы» и пошаговые процессы встречаются на разных
+   страницах под разными заголовками, а подвал — вообще общий компонент.
+
+   Поэтому цепляемся не за названия страниц, а за содержимое:
+
+     • любая секция, внутри которой есть аккордеон (:has(.accordion-item))
+       или лента этапов (:has(.timeline)), получает bg-process-aurora;
+     • .footer получает bg-footer-night.
+
+   Файл новый и лежит отдельно от style.css намеренно: страницы .astro и
+   style.css — зоны других агентов, а подключение фонов не должно с ними
+   конфликтовать. Подключается в Base.astro после темы.
+
+   ---------------------------------------------------------------------------
+   ПОЧЕМУ @supports
+
+   :has() понимают не все браузеры, а главное — не все их версии, которые
+   ещё сидят на телефонах. Без проверки селектор сам по себе не «сломает»
+   страницу (неизвестный селектор просто игнорируется целиком), но правило
+   с ним в списке может утянуть за собой соседние селекторы. Поэтому весь
+   «умный» слой заперт в @supports selector(:has(*)): браузер, который :has()
+   не понимает, просто не прочитает блок и оставит секции ровный фон темы.
+   Ничего не ломается — фон это украшение, а не носитель информации.
+
+   ---------------------------------------------------------------------------
+   ПОЧЕМУ СКРИМ
+
+   Фактуры светлее обычного фона страницы. Если положить картинку под текст
+   как есть, вторичный серый текст на светлых участках просядет по контрасту
+   ниже целевых 7:1. Поэтому поверх каждого изображения лежит многослойный
+   скрим:
+
+     1) вертикальный — верх и низ сходят ровно в цвет фона страницы, из-за
+        этого нет шва между секцией с картинкой и соседней секцией без неё;
+     2) горизонтальный — гасит свет под колонкой текста;
+     3) общий затемняющий — не даёт фактуре спорить с содержимым.
+
+   Порядок слоёв в одном псевдоэлементе: последний слой рисуется первым,
+   поэтому список идёт от «света» к «тени» — так проще читать.
+   ============================================================================ */
+
+:root {
+  /* Цвет, в который сходят кромки фонов: равен --bg-primary темы. */
+  --bg-chrome-scrim: 7, 12, 24;
+
+  /* Плотность фактуры. 0.55 — картинка читается как материал, но не как
+     самостоятельная иллюстрация: заголовки и карточки остаются главными. */
+  --bg-chrome-opacity: 0.55;
+}
+
+/* ---------------------------------------------------------------------------
+   1. Аккордеоны «Частые вопросы» и пошаговые процессы
+   ---------------------------------------------------------------------------
+
+   :has() ловит и <section class="section section-alt">, и <div
+   class="article-faq">, и <section class="section"> с лентой этапов — то есть
+   любой контейнер, у которого внутри есть accordion-item или timeline.
+   Селектор намеренно «широкий»: список страниц меняется, а содержимое —
+   признак устойчивый.
+
+   Секции уже имеют position: static, поэтому ::before/::after у них
+   позиционируются от ближайшего позиционированного предка — то есть
+   уехали бы к body. Отсюда position: relative и isolation: isolate:
+   картинка и скрим остаются внутри своей секции и не перекрывают соседей.
+   -------------------------------------------------------------------------- */
+@supports selector(:has(*)) {
+  section:has(.accordion-item),
+  section:has(.timeline),
+  div.article-faq:has(.accordion-item) {
+    position: relative;
+    isolation: isolate;
+  }
+
+  section:has(.accordion-item)::before,
+  section:has(.timeline)::before,
+  div.article-faq:has(.accordion-item)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image: image-set(
+      url('/img/bg/bg-process-aurora.avif') type('image/avif'),
+      url('/img/bg/bg-process-aurora.webp') type('image/webp')
+    );
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: var(--bg-chrome-opacity);
+    pointer-events: none;
+  }
+
+  /* Скрим: сверху и снизу — цвет фона страницы, в середине — виден свет. */
+  section:has(.accordion-item)::after,
+  section:has(.timeline)::after,
+  div.article-faq:has(.accordion-item)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      /* 3. общее затемнение под текстом */
+      linear-gradient(
+        180deg,
+        rgba(var(--bg-chrome-scrim), 0.35) 0%,
+        rgba(var(--bg-chrome-scrim), 0.2) 45%,
+        rgba(var(--bg-chrome-scrim), 0.4) 100%
+      ),
+      /* 2. вертикальная виньетка: кромки уходят в цвет страницы */
+      linear-gradient(
+        180deg,
+        rgba(var(--bg-chrome-scrim), 0.95) 0%,
+        rgba(var(--bg-chrome-scrim), 0) 18%,
+        rgba(var(--bg-chrome-scrim), 0) 82%,
+        rgba(var(--bg-chrome-scrim), 0.95) 100%
+      ),
+      /* 1. диагональный свет слева, где стоит колонка текста */
+      linear-gradient(
+        100deg,
+        rgba(var(--bg-chrome-scrim), 0.55) 0%,
+        rgba(var(--bg-chrome-scrim), 0.2) 46%,
+        rgba(var(--bg-chrome-scrim), 0) 78%
+      );
+  }
+
+  /* Секция-чередование (.section-alt) уже залита полупрозрачным фоном поверх
+     страницы. Чтобы фактура не потерялась под этой заливкой, поднимаем её
+     чуть выше: у самой картинки непрозрачность выше. */
+  section.section-alt:has(.accordion-item),
+  section.section-alt:has(.timeline) {
+    --bg-chrome-opacity: 0.62;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   2. Подвал
+   ---------------------------------------------------------------------------
+
+   .footer — последний блок страницы, поэтому картинке не нужен нижний
+   переход: ниже начинается край документа, и там уместен ровный тёмный
+   обсидиан. Кромки сходят в цвет фона слева и справа, а сверху лежит
+   световая линия-разделитель, которая уже есть в теме.
+
+   Верхняя треть — всё, ради чего сцена существует: там сапфировое свечение
+   и полоса авроры. Поэтому background-position 'center top': при любой
+   высоте подвала свечение остаётся у верхней кромки, а не уезжает в
+   середину, как было бы с 'center'.
+
+   ВАЖНО про псевдоэлементы. У .footer::before в теме уже занят: это световая
+   линия 2px по верхней кромке (градиент «прозрачный → акцент → прозрачный»).
+   Если положить туда картинку, линия исчезнет — а она держит композицию
+   подвала. Поэтому картинка идёт на ::after, а скрим — на отдельный слой
+   .footer-chrome, который вставляется первым ребёнком подвала.
+
+   Почему скрим не может быть третьим псевдоэлементом: у элемента их всего
+   два. Вместо хака с box-shadow — обычный div, position: absolute, inset: 0.
+   -------------------------------------------------------------------------- */
+.footer {
+  position: relative;
+  isolation: isolate;
+  /* Прежняя полупрозрачная заливка перекрыла бы картинку. */
+  background-color: transparent;
+}
+
+.footer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: image-set(
+    url('/img/bg/bg-footer-night.avif') type('image/avif'),
+    url('/img/bg/bg-footer-night.webp') type('image/webp')
+  );
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.footer-chrome {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    /* Нижняя половина — глухой обсидиан: мелкий серый текст на нём читается. */
+    linear-gradient(
+      180deg,
+      rgba(var(--bg-chrome-scrim), 0.94) 0%,
+      rgba(var(--bg-chrome-scrim), 0.93) 16%,
+      rgba(var(--bg-chrome-scrim), 0.88) 26%,
+      rgba(var(--bg-chrome-scrim), 0.8) 42%,
+      rgba(var(--bg-chrome-scrim), 0.85) 64%,
+      rgba(var(--bg-chrome-scrim), 0.92) 85%,
+      rgba(var(--bg-chrome-scrim), 0.97) 100%
+    ),
+    /* Боковые кромки тоже сходят в фон: широкая картинка не обрывается. */
+    linear-gradient(
+      90deg,
+      rgba(var(--bg-chrome-scrim), 0.6) 0%,
+      rgba(var(--bg-chrome-scrim), 0.12) 22%,
+      rgba(var(--bg-chrome-scrim), 0.12) 78%,
+      rgba(var(--bg-chrome-scrim), 0.6) 100%
+    );
+}
+
+/* ---------------------------------------------------------------------------
+   3. Доступность и экономия
+   -------------------------------------------------------------------------- */
+
+/* Кто просил меньше движения — тот не должен получить и мигания при
+   прокрутке: фоны статичны, но на всякий случай гасим их плотнее. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --bg-chrome-opacity: 0.45;
+  }
+}
+
+/* На телефоне широкие сцены обрезаются до узкой полосы и превращаются в
+   случайные пятна за текстом. Там фон остаётся ровным, как в теме. */
+@media (max-width: 768px) {
+  @supports selector(:has(*)) {
+    section:has(.accordion-item)::before,
+    section:has(.timeline)::before,
+    div.article-faq:has(.accordion-item)::before {
+      opacity: calc(var(--bg-chrome-opacity) * 0.6);
+      background-position: 30% center;
+    }
+  }
+
+  .footer::after {
+    opacity: 0.75;
+  }
+}
+
+/* Печать: фактуры не нужны, а чернила — да. */
+@media print {
+  section:has(.accordion-item)::before,
+  section:has(.timeline)::before,
+  div.article-faq:has(.accordion-item)::before,
+  .footer::after,
+  .footer-chrome,
+  section:has(.accordion-item)::after,
+  section:has(.timeline)::after,
+  div.article-faq:has(.accordion-item)::after {
+    display: none;
+  }
+}
