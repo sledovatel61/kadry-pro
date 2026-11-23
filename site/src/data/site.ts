@@ -30,7 +30,7 @@ export const SITE = {
   origin: 'https://kadry-pro.ru',
   // Цена — из единого prices.json (правка в /manage/ меняет шапку и футер)
   priceFrom: 'от ' + formatPrice(getPrice('retainer.start')) + '/мес',
-  experience: '14 лет опыта',
+  experience: '16 лет опыта',
   zeroFines: '0 штрафов',
 } as const;
 
