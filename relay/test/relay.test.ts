@@ -11,7 +11,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { resetMemoryStore } from '../src/index.ts';
+import worker, { resetMemoryStore, LEAD_LIMIT } from '../src/index.ts';
 import { normalizePhone, validateLead, MIN_FILL_MS } from '../src/validate.ts';
 import { validateReview, looksLikeLink } from '../src/reviews-validate.ts';
 import { signFileToken, verifyFileToken, downloadName } from '../src/files.ts';
@@ -128,18 +128,76 @@ test('устаревшая версия согласия отвергается 
   assert.equal(body.error.code, 'consent_version');
 });
 
-test('ловушка для ботов: 201 и ни одного сообщения', async () => {
+test('скрытая ловушка (display:none) — бот: 201 и ни одного сообщения', async () => {
   const fake = mockFetch();
-  const res = await post('/leads', leadBody({ honeypot: 'viagra' }), baseEnv());
+  /* `honeypot_hidden` ставит клиент, когда поле реально скрыто: человек его
+     заполнить не может. Только это и считается достоверным признаком бота. */
+  const res = await post('/leads', leadBody({ honeypot: 'viagra', honeypot_hidden: true }), baseEnv());
   assert.equal(res.status, 201);
-  const body = await res.json() as { ticket: string };
+  const body = await res.json() as { ticket: string; delivered?: unknown };
   assert.match(body.ticket, /^K-\d{4}-\d{4}$/);
+  /* Про доставку боту ничего не обещаем: поля нет вовсе. */
+  assert.equal(body.delivered, undefined);
   assert.equal(fake.calls.length, 0);
 });
 
-test('слишком быстрое заполнение не доставляется, но выглядит успехом', async () => {
+test('автозаполнение вписало текст в офскрин-ловушку — заявка ДОСТАВЛЯЕТСЯ с пометкой', async () => {
   const fake = mockFetch();
+  /* Реальный случай владельца: iOS-автозаполнение заполнило company_website.
+     Поле видимо для браузера (офскрин), значит это не бот. Терять заявку
+     нельзя: доставляем и помечаем для Марии. */
+  const res = await post('/leads', leadBody({
+    honeypot: 'ООО Ромашка',
+    honeypot_hidden: false,
+    form_started_at: Date.now() - MIN_FILL_MS - 1000,
+  }), baseEnv());
+  assert.equal(res.status, 201);
+  const body = await res.json() as {
+    delivered: { telegram: boolean };
+    flagged?: string[];
+  };
+  assert.equal(body.delivered.telegram, true, 'заявка должна уйти в Telegram');
+  assert.deepEqual(body.flagged, ['hidden-field']);
+  const tg = fake.calls.find((c) => c.url.includes('api.telegram.org'));
+  assert.ok(tg, 'Telegram не вызван — заявка потеряна');
+  assert.match(tg.body.text, /Проверить на спам/);
+  assert.match(tg.body.text, /Иван Петров/);
+});
+
+test('без флага от старого клиента заполненная ловушка не теряет заявку', async () => {
+  const fake = mockFetch();
+  /* Старая сборка сайта не присылает `honeypot_hidden`. Раньше это был
+     гарантированный 201-в-никуда; теперь доставляем с пометкой. */
+  const res = await post('/leads', leadBody({
+    honeypot: 'ООО Ромашка',
+    form_started_at: Date.now() - MIN_FILL_MS - 1000,
+  }), baseEnv());
+  assert.equal(res.status, 201);
+  const body = await res.json() as { delivered: { telegram: boolean } };
+  assert.equal(body.delivered.telegram, true);
+  assert.equal(fake.calls.filter((c) => c.url.includes('api.telegram.org')).length, 1);
+});
+
+test('слишком быстрое заполнение доставляется с пометкой too-fast', async () => {
+  const fake = mockFetch();
+  /* Бывает не только у ботов: браузер восстановил черновик, автозаполнение
+     заполнило всё разом. Молча терять такую заявку нельзя. */
   const res = await post('/leads', leadBody({ form_started_at: Date.now() - (MIN_FILL_MS - 1000) }), baseEnv());
+  assert.equal(res.status, 201);
+  const body = await res.json() as { delivered: { telegram: boolean }; flagged?: string[] };
+  assert.equal(body.delivered.telegram, true);
+  assert.deepEqual(body.flagged, ['too-fast']);
+  const tg = fake.calls.find((c) => c.url.includes('api.telegram.org'));
+  assert.match(tg!.body.text, /Проверить на спам/);
+});
+
+test('бот с заполненной скрытой ловушкой и быстрой отправкой — ни одного канала', async () => {
+  const fake = mockFetch();
+  const res = await post('/leads', leadBody({
+    honeypot: 'spam',
+    honeypot_hidden: true,
+    form_started_at: Date.now() - (MIN_FILL_MS - 1000),
+  }), baseEnv());
   assert.equal(res.status, 201);
   assert.equal(fake.calls.length, 0);
 });
@@ -168,6 +226,50 @@ test('Telegram упал — заявка всё равно принята, ес�
   assert.ok(fake.calls.some((c) => c.url.includes('api.brevo.com')));
 });
 
+test('почта не настроена — delivered.email=false, это видно клиенту', async () => {
+  mockFetch();
+  const res = await post('/leads', freshBody(), baseEnv());
+  assert.equal(res.status, 201);
+  const body = await res.json() as {
+    delivered: { telegram: boolean; email: boolean };
+    channels: { telegram: boolean; email: boolean };
+  };
+  assert.deepEqual(body.delivered, { telegram: true, email: false });
+  /* channels — какие каналы были подключены. Клиент по этой паре выбирает
+     формулировку: «увидит в Telegram» без упоминания почты. */
+  assert.deepEqual(body.channels, { telegram: true, email: false });
+});
+
+test('только почта: Telegram упал, письмо прошло — клиент не должен обещать Telegram', async () => {
+  mockFetch({ telegramStatus: 500 });
+  const res = await post('/leads', freshBody(), baseEnv({ BREVO_API_KEY: 'x' }));
+  const body = await res.json() as { delivered: { telegram: boolean; email: boolean } };
+  assert.deepEqual(body.delivered, { telegram: false, email: true });
+  /* В этом случае successText выбирает текст «отправлена на почту Марии»
+     и просит продублировать звонком — проверяется в клиентском наборе. */
+});
+
+test('Telegram не настроен, но есть почта — заявка не теряется', async () => {
+  const fake = mockFetch();
+  const env = baseEnv({ BOT_TOKEN: undefined, TELEGRAM_CHAT_ID: undefined, BREVO_API_KEY: 'x' });
+  const res = await post('/leads', freshBody(), env);
+  /* Раньше здесь был безусловный 502 «telegram не настроен», хотя почта жива.
+     Теперь отсутствие Telegram — это просто выключенный канал. */
+  assert.equal(res.status, 201);
+  const body = await res.json() as { delivered: { telegram: boolean; email: boolean } };
+  assert.deepEqual(body.delivered, { telegram: false, email: true });
+  assert.ok(fake.calls.some((c) => c.url.includes('api.brevo.com')));
+});
+
+test('ни Telegram, ни почты не настроено — 502, заявка не выдаёт себя за принятую', async () => {
+  mockFetch();
+  const env = baseEnv({ BOT_TOKEN: undefined, TELEGRAM_CHAT_ID: undefined });
+  const res = await post('/leads', freshBody(), env);
+  assert.equal(res.status, 502);
+  const body = await res.json() as { error: { message: string } };
+  assert.match(body.error.message, /Позвоните/);
+});
+
 test('оба канала упали — 502 с просьбой позвонить', async () => {
   mockFetch({ telegramStatus: 500, mailStatus: 500 });
   const res = await post('/leads', freshBody(), baseEnv({ BREVO_API_KEY: 'x' }));
@@ -175,6 +277,74 @@ test('оба канала упали — 502 с просьбой позвони�
   const body = await res.json() as { error: { code: string; message: string } };
   assert.equal(body.error.code, 'delivery');
   assert.match(body.error.message, /Позвоните/);
+});
+
+test('доставка не удалась — попытка не жжёт лимит, честный повтор проходит', async () => {
+  const env = baseEnv({ BREVO_API_KEY: 'x' });
+  /* Один и тот же «лежащий» апстрим на весь тест: mockFetch() внутри цикла
+     чистил бы память лимитов, и проверка стала бы бессмысленной. */
+  mockFetch({ telegramStatus: 500, mailStatus: 500 });
+  for (let i = 0; i < LEAD_LIMIT.max; i++) {
+    const res = await post('/leads', freshBody(), env);
+    assert.equal(res.status, 502, 'каналы лежат — честная ошибка');
+  }
+  /* Ни одна заявка не дошла, значит и тратить лимит не на что: тот же человек
+     после починки каналов не должен видеть 429. Каналы «починились» — меняем
+     только ответы апстрима, память лимитов не трогаем. */
+  const broken = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    void input;
+    return new Response('{"ok":true}', { status: 200 });
+  }) as typeof fetch;
+  try {
+    const ok = await post('/leads', freshBody(), env);
+    assert.equal(ok.status, 201, 'после сбоя доставки лимит не должен блокировать');
+  } finally {
+    globalThis.fetch = broken;
+  }
+});
+
+test('успешные заявки по-прежнему упираются в лимит с одного адреса', async () => {
+  /* Обратная сторона возврата лимита при 502: доставка прошла — попытка
+     считается. Иначе спамер гасил бы счётчик сбоями канала. */
+  mockFetch();
+  const env = baseEnv();
+  for (let i = 0; i < LEAD_LIMIT.max; i++) {
+    const res = await post('/leads', freshBody(), env);
+    assert.equal(res.status, 201, `заявка ${i + 1} должна пройти`);
+  }
+  const blocked = await post('/leads', freshBody(), env);
+  assert.equal(blocked.status, 429, 'шестая заявка с того же адреса — отказ');
+});
+
+test('зависший Telegram прерывается таймаутом и не держит клиента дольше 12 с', async () => {
+  resetMemoryStore();
+  /* Апстрим «висит» и игнорирует сигнал — так ведёт себя перегруженный шлюз.
+     Без таймаута две попытки + пауза дали бы 20+ с, а клиент сдаётся на 12 с:
+     посетитель увидел бы ошибку при уже ушедшей заявке и отправил её снова. */
+  let calls = 0;
+  const saved = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    if (String(input).includes('api.telegram.org')) {
+      calls += 1;
+      return await new Promise<Response>(() => {}); // никогда не отвечает
+    }
+    return new Response('{"ok":true}', { status: 200 });
+  }) as typeof fetch;
+
+  try {
+  const started = Date.now();
+  const res = await post('/leads', freshBody(), baseEnv({ BREVO_API_KEY: 'x' }));
+  const spent = Date.now() - started;
+  assert.equal(res.status, 201, 'письмо прошло — заявка принята');
+  const body = await res.json() as { delivered: { telegram: boolean; email: boolean } };
+  assert.deepEqual(body.delivered, { telegram: false, email: true });
+  assert.ok(spent < 12_000, `воркер держал клиента ${spent} мс — больше таймаута клиента`);
+  assert.equal(calls, 2, 'две попытки: одна и один повтор');
+  } finally {
+    /* Возвращаем подмену: иначе висящий промис протечёт в соседние тесты. */
+    globalThis.fetch = saved;
+  }
 });
 
 test('повторная отправка с тем же ключом не дублирует уведомление', async () => {
@@ -189,6 +359,78 @@ test('повторная отправка с тем же ключом не ду�
   const payload = await second.json() as { duplicate: boolean };
   assert.equal(payload.duplicate, true);
   assert.equal(fake.calls.length, callsAfterFirst);
+});
+
+test('«Ответить» в письме ведёт клиенту, а не на наш же ящик', async () => {
+  resetMemoryStore();
+  const mails: Record<string, unknown>[] = [];
+  const savedFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    /* Telegram идёт на api.telegram.org и в JSON с текстом — его пропускаем. */
+    if (String(input).includes('brevo.com')) {
+      mails.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+    }
+    return new Response('{"ok":true}', { status: 200 });
+  }) as typeof fetch;
+  try {
+    const res = await post('/leads', { ...freshBody(), kind: 'consult', email: 'client@example.ru' }, baseEnv({ BREVO_API_KEY: 'x' }));
+    assert.equal(res.status, 201);
+    assert.equal(mails.length, 1, 'письмо должно уйти один раз');
+    assert.equal((mails[0] as { replyTo?: { email: string } }).replyTo?.email, 'client@example.ru', 'ответ должен уходить клиенту');
+  } finally {
+    globalThis.fetch = savedFetch;
+  }
+});
+
+test('без почты клиента replyTo не ставится: не отвечаем сами себе', async () => {
+  resetMemoryStore();
+  const mails: Record<string, unknown>[] = [];
+  const savedFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).includes('brevo.com')) {
+      mails.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+    }
+    return new Response('{"ok":true}', { status: 200 });
+  }) as typeof fetch;
+  try {
+    const res = await post('/leads', { ...freshBody(), kind: 'consult' }, baseEnv({ BREVO_API_KEY: 'x' }));
+    assert.equal(res.status, 201);
+    assert.equal(mails.length, 1);
+    assert.equal('replyTo' in (mails[0] as object), false, 'replyTo не должен указывать на наш ящик');
+  } finally {
+    globalThis.fetch = savedFetch;
+  }
+});
+
+test('сеть подвела на первом ответе: повтор с тем же ключом не дублирует заявку', async () => {
+  const fake = mockFetch();
+  const env = baseEnv();
+  /* Первая попытка дошла до воркера, но ответ до клиента не добрался (обрыв
+     сети/таймаут). Клиент повторяет с тем же ключом идемпотентности. */
+  const body = freshBody();
+  const first = await post('/leads', body, env);
+  assert.equal(first.status, 201);
+  await first.text();
+  const sent = fake.calls.length;
+  const again = await post('/leads', body, env);
+  assert.equal(again.status, 201);
+  const payload = await again.json() as { ticket: string; duplicate: boolean; delivered?: unknown };
+  assert.equal(payload.duplicate, true);
+  assert.equal(fake.calls.length, sent, 'повтор не должен слать второе сообщение');
+  /* И не выдаёт себя за свежую доставку: каналы у дубля неизвестны. */
+  assert.equal(payload.delivered, undefined);
+});
+
+test('конфликт: тот же ключ идемпотентности с другого телефона — 409', async () => {
+  mockFetch();
+  const env = baseEnv();
+  const body = freshBody();
+  const first = await post('/leads', body, env);
+  assert.equal(first.status, 201);
+  const other = await post('/leads', { ...body, phone: '+7 (999) 111-22-33' }, env);
+  assert.equal(other.status, 409);
+  const payload = await other.json() as { error: { code: string } };
+  assert.equal(payload.error.code, 'conflict');
 });
 
 test('заявка с калькулятора несёт штат, зарплату и экономию', async () => {

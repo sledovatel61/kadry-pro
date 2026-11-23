@@ -42,6 +42,14 @@ export interface LeadBase {
   page: string;
   idempotency_key: string;
   honeypot: string;
+  /**
+   * Клиент сообщил, что скрытое поле действительно скрыто (`display:none`
+   * или атрибут `hidden`). Только в этом случае заполненный honeypot —
+   * достоверный признак бота: человек такое поле заполнить не может.
+   * Офскрин-ловушку (`position:absolute; left:-9999px`) автозаполнение
+   * телефона видит и заполняет, поэтому она признаком бота не считается.
+   */
+  honeypot_hidden?: boolean;
   form_started_at?: number;
 }
 
@@ -150,6 +158,10 @@ export function validateLead(body: unknown): Validated {
   const honeypot = str(body.honeypot);
   if (honeypot.length > 200) bad('honeypot', 'Значение больше допустимого');
 
+  /* Флаг ставит клиент. Принимаем только явный `true`: строка "false" из
+     разметки не должна включать «режим бота». */
+  const honeypot_hidden = body.honeypot_hidden === true;
+
   const form_started_at = body.form_started_at === undefined ? undefined : int(body.form_started_at);
   if (body.form_started_at !== undefined && (form_started_at == null || form_started_at <= 0)) {
     bad('form_started_at', 'Время заполнения: неверный формат значения');
@@ -164,6 +176,7 @@ export function validateLead(body: unknown): Validated {
     page,
     idempotency_key,
     honeypot,
+    ...(honeypot_hidden ? { honeypot_hidden } : {}),
     ...(form_started_at ? { form_started_at } : {}),
   };
 

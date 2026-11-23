@@ -24,7 +24,7 @@ import {
   parseLeadsEndpoint,
   retryAfterSeconds,
 } from '../src/shared/leads-endpoint.ts';
-import { buildPayload, validateForm, DEFAULT_TEXTS } from '../src/client/leads-form.ts';
+import { buildPayload, validateForm, DEFAULT_TEXTS, successText } from '../src/client/leads-form.ts';
 import { fieldText, FIELD_TEXTS } from '../src/client/review-form.ts';
 import { pickNew, reviewKey, plural as livePlural, formatDayMonth } from '../src/client/reviews-live.ts';
 
@@ -82,6 +82,100 @@ function makeForm(fields: Record<string, FakeEl>, dataset: Record<string, string
   form.querySelectorAll = () => [];
   return form as unknown as HTMLFormElement;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Автозаполнение и скрытая ловушка                                   */
+/* ------------------------------------------------------------------ */
+
+test('заполненная офскрин-ловушка не теряет заявку: honeypot уходит, флаг hidden=false', () => {
+  /* Воспроизводим баг владельца: автозаполнение вписало «ООО Ромашка» в
+     company_website. Поле видимо для браузера (офскрин), значит это не бот —
+     заявка должна уйти, а флаг сообщить воркеру правду. */
+  const form = makeForm(
+    {
+      name: el({ value: 'Иван Петров' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      company_website: el({ value: 'ООО Ромашка', hidden: false }),
+    },
+    { page: 'contact', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 60_000, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot, 'ООО Ромашка');
+  assert.equal(payload.honeypot_hidden, false, 'офскрин-поле не должно считаться скрытым');
+  assert.equal(payload.phone, '79613022112');
+});
+
+test('по-настоящему скрытая ловушка помечается hidden=true', () => {
+  const hiddenField = el({ value: 'spam', hidden: true });
+  const form = makeForm(
+    {
+      name: el({ value: 'Бот' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      honeypot: hiddenField,
+    },
+    { page: 'contact', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 60_000, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot_hidden, true);
+});
+
+test('пустая ловушка — hidden=false, обычная заявка не помечается', () => {
+  const form = makeForm(
+    {
+      name: el({ value: 'Иван' }),
+      phone: el({ value: '+7 (961) 302-21-12' }),
+      consent: el({ checked: true }),
+      company_website: el({ value: '', hidden: false }),
+    },
+    { page: 'contact', consentVersion: CONSENT_VERSION },
+  );
+  const payload = buildPayload(form, Date.now() - 60_000, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  assert.equal(payload.honeypot, '');
+  assert.equal(payload.honeypot_hidden, false);
+});
+
+/* ------------------------------------------------------------------ */
+/*  Текст результата: он должен совпадать с тем, что реально произошло  */
+/* ------------------------------------------------------------------ */
+
+test('оба канала подтверждены — обещаем Telegram и почту', () => {
+  const t = successText({ telegram: true, email: true }, DEFAULT_TEXTS.success);
+  assert.match(t.title, /Telegram/);
+  assert.match(t.title, /почт/i);
+});
+
+test('только Telegram — про почту не говорим ни слова', () => {
+  const t = successText({ telegram: true, email: false }, DEFAULT_TEXTS.success);
+  assert.match(t.title, /Telegram/);
+  assert.doesNotMatch(t.title, /почт/i);
+});
+
+test('только почта — не обещаем Telegram, просим продублировать звонком', () => {
+  const t = successText({ telegram: false, email: true }, DEFAULT_TEXTS.success);
+  assert.doesNotMatch(t.title, /Telegram/, 'нельзя обещать Telegram, если дошло письмо');
+  assert.match(t.title, /почт/i);
+  assert.match(t.note, /\+7 \(961\) 302-21-12/, 'человеку нужен телефон, а не объяснение');
+});
+
+test('ни один канал не подтверждён — честно говорим и даём телефон', () => {
+  const t = successText({ telegram: false, email: false }, DEFAULT_TEXTS.success);
+  assert.match(t.title, /подтверждения доставки нет/i);
+  assert.match(t.note, /\+7 \(961\) 302-21-12/);
+});
+
+test('старая сборка воркера без delivered — нейтральный текст, без обещаний канала', () => {
+  const t = successText(undefined, 'Заявка принята — Мария ответит в рабочее время.');
+  assert.equal(t.title, 'Заявка принята — Мария ответит в рабочее время.');
+  assert.doesNotMatch(t.title, /Telegram|почт/i);
+});
+
+test('шаблонный текст по умолчанию не обещает Telegram', () => {
+  /* Именно эта строка показывалась владельцу вместе с талоном, хотя заявка
+     никуда не ушла. Теперь такой формулировки по умолчанию быть не должно. */
+  assert.doesNotMatch(DEFAULT_TEXTS.success, /Telegram/);
+});
 
 /* ------------------------------------------------------------------ */
 /*  Адрес приёмника                                                    */

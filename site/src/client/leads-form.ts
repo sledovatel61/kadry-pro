@@ -30,6 +30,49 @@ import {
 
 export type LeadKind = 'consult' | 'calculator' | 'template' | 'subscribe';
 
+/**
+ * Текст экрана успеха под РЕАЛЬНЫЙ результат доставки.
+ *
+ * Воркер отвечает полем `delivered` — какие каналы подтвердили приём. Обещать
+ * «Мария увидит в Telegram», когда Telegram не сработал, нельзя: человек
+ * расслабится и не позвонит. Поэтому формулировка выбирается по факту:
+ * оба канала — так и говорим; только почта — говорим про почту; только
+ * Telegram — про Telegram; ни одного (или поле не пришло от старой сборки
+ * воркера) — честно просим продублировать звонком. */
+export function successText(
+  delivered: { telegram?: boolean; email?: boolean } | undefined,
+  fallback: string,
+): { title: string; note: string } {
+  const tg = delivered?.telegram === true;
+  const mail = delivered?.email === true;
+  if (tg && mail) {
+    return {
+      title: 'Заявка ушла — Мария увидит её в Telegram, копия отправлена на почту.',
+      note: 'Ответит в рабочее время.',
+    };
+  }
+  if (tg) {
+    return {
+      title: 'Заявка ушла — Мария увидит её в Telegram.',
+      note: 'Ответит в рабочее время.',
+    };
+  }
+  if (mail) {
+    return {
+      title: 'Заявка отправлена на почту Марии.',
+      note: 'Дублируйте звонком, если вопрос срочный: +7 (961) 302-21-12.',
+    };
+  }
+  if (delivered) {
+    return {
+      title: 'Заявка принята, но подтверждения доставки нет.',
+      note: 'Чтобы не потеряться — позвоните: +7 (961) 302-21-12.',
+    };
+  }
+  /* Старая сборка воркера: поля `delivered` в ответе нет. Не врём про каналы. */
+  return { title: fallback, note: '' };
+}
+
 export interface LeadFormTexts {
   sending: string;
   success: string;
@@ -42,7 +85,9 @@ export interface LeadFormTexts {
 
 export const DEFAULT_TEXTS: LeadFormTexts = {
   sending: 'Отправляем…',
-  success: 'Заявка ушла — Мария увидит её в Telegram и ответит в рабочее время.',
+  /* Нейтральная формулировка по умолчанию: канал доставки подтверждает ответ
+     воркера, а не наши предположения. Конкретику подставляет showSuccess. */
+  success: 'Заявка принята — Мария ответит в рабочее время.',
   ticket: 'Номер заявки',
   error: 'Не получилось отправить заявку. Позвоните, пожалуйста: +7 (961) 302-21-12.',
   phoneHint: 'Позвоните: +7 (961) 302-21-12 — или напишите в Telegram @Mariya061.',
@@ -51,6 +96,42 @@ export const DEFAULT_TEXTS: LeadFormTexts = {
 };
 
 const PHONE_RE = /^\d{11}$/;
+
+/**
+ * Скрыто ли поле по-настоящему: `display:none`, `visibility:hidden` или атрибут
+ * `hidden`. Только такое поле человек заполнить не может.
+ *
+ * Офскрин-ловушка (`position:absolute; left:-9999px`, класс `.quick-lead-hp`)
+ * сюда НЕ попадает: в ней поле видимо для браузера, и автозаполнение телефона
+ * охотно вписывает туда «ООО Ромашка» из профиля. Раньше такая запись
+ * означала «бот» и заявка молча терялась при ответе 201.
+ */
+function isReallyHidden(el: HTMLElement | null): boolean {
+  if (!el) return false;
+  if (el.hidden === true) return true;
+  /* В тестах и в окружениях без CSSOM getComputedStyle может отсутствовать:
+     тогда считаем поле видимым (безопасная сторона — доставить заявку). */
+  if (typeof getComputedStyle !== 'function') return false;
+  try {
+    const style = getComputedStyle(el);
+    return style.display === 'none' || style.visibility === 'hidden';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Поле-ловушка, из которого берём `honeypot`, — в том же порядке приоритета,
+ * что и значение. Нужно, чтобы флаг `honeypot_hidden` относился к тому же
+ * элементу, а не к первому попавшемуся.
+ */
+function honeypotField(form: HTMLElement): HTMLElement | null {
+  return (
+    form.querySelector<HTMLElement>(`[name="${form.dataset.honeypot || 'honeypot'}"]`)
+    ?? form.querySelector<HTMLElement>('[name="_gotcha"]')
+    ?? form.querySelector<HTMLElement>('[name="company_website"]')
+  );
+}
 
 /** Значение поля по имени (первое совпадение внутри формы). */
 function fieldValue(form: HTMLElement, name: string): string {
@@ -105,13 +186,35 @@ function hidden(form: HTMLElement, name: string): HTMLInputElement {
   return el;
 }
 
-/** Текст «Спасибо» и номер заявки: блок с `[data-lead-success]` либо подмена формы. */
-function showSuccess(form: HTMLElement, ticket: string, texts: LeadFormTexts, download?: string): void {
+/**
+ * Текст «Спасибо» и номер заявки: блок с `[data-lead-success]` либо подмена формы.
+ *
+ * `delivered` — подтверждение каналов от воркера. Текст подбирается по нему,
+ * а не по нашим ожиданиям: обещать Telegram, когда он не сработал, значит
+ * оставить человека без ответа в уверенности, что заявка дошла.
+ */
+function showSuccess(
+  form: HTMLElement,
+  ticket: string,
+  texts: LeadFormTexts,
+  download?: string,
+  delivered?: { telegram?: boolean; email?: boolean },
+): void {
+  const { title, note } = successText(delivered, texts.success);
   const box = form.parentElement?.querySelector<HTMLElement>('[data-lead-success]')
     ?? document.querySelector<HTMLElement>(`[data-lead-success="${form.id}"]`);
   if (box) {
     box.hidden = false;
     box.classList.add('visible');
+    /* Заголовок блока мог быть свёрстан под «Мария увидит в Telegram»:
+       заменяем его на подтверждённый канал, если разметка это позволяет. */
+    const head = box.querySelector<HTMLElement>('[data-success-title]');
+    if (head) head.textContent = title;
+    const noteEl = box.querySelector<HTMLElement>('[data-success-note]');
+    if (noteEl) {
+      noteEl.textContent = note;
+      noteEl.hidden = !note;
+    }
     const no = box.querySelector<HTMLElement>('[data-ticket]');
     if (no) no.textContent = `${texts.ticket}: ${ticket}`;
     const link = box.querySelector<HTMLAnchorElement>('[data-download]');
@@ -122,11 +225,20 @@ function showSuccess(form: HTMLElement, ticket: string, texts: LeadFormTexts, do
     form.hidden = true;
     return;
   }
-  /* Разметка без блока успеха (формы Агента 01/02): сообщение вставляем сами. */
+  /* Разметка без блока успеха (формы Агента 01/02): сообщение вставляем сами.
+     Текст собираем через textContent — данные пришли из сети, innerHTML с ними
+     недопустим. */
   const fallback = document.createElement('div');
   fallback.className = 'lead-success';
   fallback.setAttribute('role', 'status');
-  fallback.innerHTML = `<p><b>${texts.success}</b></p><p class="hint">${texts.ticket}: ${ticket}</p>`;
+  const line = document.createElement('p');
+  const strong = document.createElement('b');
+  strong.textContent = title;
+  line.append(strong);
+  const hint = document.createElement('p');
+  hint.className = 'hint';
+  hint.textContent = note ? `${note} ${texts.ticket}: ${ticket}` : `${texts.ticket}: ${ticket}`;
+  fallback.append(line, hint);
   if (download) {
     const a = document.createElement('a');
     a.className = 'btn btn--primary';
@@ -208,6 +320,9 @@ export function buildPayload(form: HTMLFormElement, startedAt: number, idem: str
       fieldValue(form, form.dataset.honeypot || 'honeypot')
       || fieldValue(form, '_gotcha')
       || fieldValue(form, 'company_website'),
+    /* Флаг нужен воркеру: заполненная офскрин-ловушка — это, скорее всего,
+       автозаполнение, а не бот. Доставляем, но с пометкой «проверить». */
+    honeypot_hidden: isReallyHidden(honeypotField(form)),
     form_started_at: startedAt,
   };
 
@@ -385,11 +500,26 @@ export function wireLeadForms(options: WireOptions = {}): void {
             body: JSON.stringify(buildPayload(form, startedAt, idem)),
           });
           const data = await res.json().catch(() => null) as
-            | { ticket?: string; duplicate?: boolean; download?: string }
+            | {
+                ticket?: string;
+                duplicate?: boolean;
+                download?: string;
+                /** Подтверждение каналов от воркера. Может отсутствовать
+                 *  у старых сборок — тогда текст остаётся нейтральным. */
+                delivered?: { telegram?: boolean; email?: boolean };
+              }
             | null;
 
           if ((res.status === 201 || res.status === 200) && data?.ticket) {
-            showSuccess(form, data.ticket, texts, data.download);
+            /* Повторная отправка (`duplicate`) доставку не повторяет: заявка
+               уже ушла раньше. Показываем тот же экран, но не обещаем каналы. */
+            showSuccess(
+              form,
+              data.ticket,
+              texts,
+              data.download,
+              data.duplicate ? undefined : data.delivered,
+            );
             idem = makeIdempotencyKey();
             form.reset();
             return;

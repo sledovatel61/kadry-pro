@@ -48,6 +48,12 @@ export interface ComposeOpts {
   siteName: string;
   address?: string;
   at?: Date;
+  /**
+   * Почему заявка помечена как подозрительная (`hidden-field`, `too-fast`).
+   * Не блокирует доставку: владелец получает заявку с видимой пометкой и сам
+   * решает, спам это или живой человек с автозаполнением.
+   */
+  suspicious?: string[];
 }
 
 export function composeTelegram(lead: LeadPayload, ticket: string, opts: ComposeOpts): string {
@@ -61,11 +67,17 @@ export function composeTelegram(lead: LeadPayload, ticket: string, opts: Compose
   const consent = `\nСогласие на обработку ПД: версия <b>${esc(lead.consent_version)}</b>, отметка ${esc(fmtStamp(at))} МСК`;
   const footer = `\n\n<b>${esc(ticket)}</b> · ${esc(fmtStamp(at))} МСК`;
   const page = `\nСтраница: ${esc(lead.page)}`;
+  /* Пометка «проверить» — первой строкой, до имени: её должно быть видно
+     в превью уведомления, не разворачивая сообщение. */
+  const warn = opts.suspicious?.length
+    ? `\n⚠️ <b>Проверить на спам</b> (${esc(opts.suspicious.join(', '))}) — заявка не отброшена, потому что поле мог заполнить автозаполнитель`
+    : '';
 
   if (lead.kind === 'calculator') {
     const c = lead.calc;
     return [
       '🧮 <b>Расчёт с калькулятора</b>',
+      warn,
       ...common,
       `\nШтат: <b>${c.staff}</b> чел.`,
       `\nЗарплата «на руки»: <b>${rub(c.salary_net)}</b>/мес`,
@@ -82,6 +94,7 @@ export function composeTelegram(lead: LeadPayload, ticket: string, opts: Compose
     const t = lead.template;
     return [
       '📄 <b>Заявка на шаблон</b>',
+      warn,
       ...common,
       `\nШаблон: <b>${esc(t.title)}</b>${t.id ? ` (${esc(t.id)})` : ''}`,
       `\nПакет: <b>${PACKAGE_LABEL[t.package] ?? t.package}</b>`,
@@ -95,6 +108,7 @@ export function composeTelegram(lead: LeadPayload, ticket: string, opts: Compose
 
   return [
     lead.kind === 'subscribe' ? '✉️ <b>Заявка из статьи</b>' : '💬 <b>Заявка с сайта</b>',
+    warn,
     ...common,
     lead.company ? `\nКомпания: ${esc(lead.company)}` : '',
     lead.email ? `\nПочта: ${esc(lead.email)}` : '',
@@ -118,6 +132,10 @@ export interface SendOpts {
 export async function sendTelegram(text: string, opts: SendOpts): Promise<void> {
   const base = (opts.apiBase ?? 'https://api.telegram.org').replace(/\/$/, '');
   const doFetch = opts.fetchImpl ?? fetch;
+  /* Свой таймаут на попытку. Клиент сдаётся через 12 с (LEADS_TIMEOUT_MS), а
+     две попытки без таймаута легко дают 20+ с: посетитель видит ошибку, хотя
+     заявка уже ушла, и отправляет её снова. 4 с — с запасом на p95 Telegram. */
+  const ATTEMPT_MS = 4000;
   const url = `${base}/bot${opts.token}/sendMessage`;
   const body = JSON.stringify({
     chat_id: opts.chatId,
@@ -130,11 +148,32 @@ export async function sendTelegram(text: string, opts: SendOpts): Promise<void> 
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 400));
     let res: Response;
+    const ctrl = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    /* Гонка «запрос против таймера»: одного AbortSignal мало — апстрим,
+       который игнорирует сигнал, держал бы нас бесконечно. */
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        ctrl.abort();
+        reject(new Error('timeout'));
+      }, ATTEMPT_MS);
+    });
     try {
-      res = await doFetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+      res = await Promise.race([
+        doFetch(url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body,
+          signal: ctrl.signal,
+        }),
+        timeout,
+      ]);
     } catch (e) {
+      /* AbortError и таймаут — тоже «сеть»: на повтор уходит следующая попытка. */
       lastErr = `network:${(e as Error)?.name ?? 'error'}`;
       continue;
+    } finally {
+      if (timer) clearTimeout(timer);
     }
     if (res.ok) return;
     lastErr = `http:${res.status}`;
