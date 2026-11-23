@@ -1,6 +1,17 @@
 /* ============================================
    СТИЛИ СТРАНИЦЫ ТРУДОВОГО СПОРА
    Extracted from trudovoy-spor.html for caching
+   ============================================
+
+   Цвета — только переменные темы (style.css) с fallback-значениями.
+   Три роли акцента, чтобы не было «зелёного на зелёном»:
+     • --accent        — крупные цифры, иконки, рамки, ссылки на тёмном фоне;
+     • --accent-text   — мелкий текст внутри полупрозрачных зелёных плашек
+                         (плашка категории, номер шага, бейдж закона, код
+                         закона, подпись цитаты прокуратуры);
+     • --on-accent     — текст на плотной заливке (кнопки, звёзды, чекбоксы).
+   Подписи и даты переведены с --text-muted на --text-secondary: #777 на
+   #0a0a0a даёт меньше 4.5:1, и даты в таймлайне «тонули» в фоне.
    ============================================ */
 
 
@@ -9,13 +20,15 @@
        ============================================ */
 
     /* --- Хлебные крошки --- */
+    /* Крошки — навигация, а не декор: #777 на #0a0a0a даёт 4.42:1, чуть ниже
+       нормы для мелкого текста. Берём --text-secondary. */
     .breadcrumb {
       padding: 16px 0;
       font-size: 0.85rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
     }
     .breadcrumb a {
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       text-decoration: none;
       transition: color 0.3s ease;
     }
@@ -36,9 +49,9 @@
       margin-bottom: 24px;
     }
     .article-category-tag {
-      background: rgba(74,222,128,0.1);
-      border: 1px solid rgba(74,222,128,0.2);
-      color: var(--accent);
+      background: var(--accent-glow, rgba(74,222,128,0.1));
+      border: 1px solid var(--accent-border, rgba(74,222,128,0.2));
+      color: var(--accent-text, #86efac);
       padding: 4px 14px;
       border-radius: 100px;
       font-size: 0.8rem;
@@ -47,11 +60,11 @@
       letter-spacing: 0.05em;
     }
     .article-date {
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       font-size: 0.85rem;
     }
     .article-read-time {
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       font-size: 0.85rem;
       display: flex;
       align-items: center;
@@ -77,8 +90,8 @@
       display: flex;
       align-items: flex-start;
       gap: 12px;
-      background: rgba(74,222,128,0.05);
-      border: 1px solid rgba(74,222,128,0.15);
+      background: var(--accent-glow, rgba(74,222,128,0.05));
+      border: 1px solid var(--accent-border, rgba(74,222,128,0.15));
       border-left: 4px solid var(--accent);
       padding: 16px 20px;
       border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
@@ -99,7 +112,7 @@
       gap: 32px;
       margin-top: 40px;
       padding-top: 32px;
-      border-top: 1px solid rgba(74,222,128,0.1);
+      border-top: 1px solid var(--accent-border, rgba(74,222,128,0.1));
       flex-wrap: wrap;
     }
     .article-win-item {
@@ -114,7 +127,7 @@
     }
     .article-win-label {
       font-size: 0.8rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       margin-top: 4px;
     }
 
@@ -136,7 +149,7 @@
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       font-weight: 600;
       margin-bottom: 16px;
     }
@@ -158,23 +171,25 @@
       transition: all 0.3s ease;
       line-height: 1.4;
     }
+    /* Подсветка пункта идёт заливкой --accent-glow, поэтому текст здесь
+       --accent-text: сам --accent на зелёной подложке сливался с фоном. */
     .article-toc-list a:hover {
-      color: var(--accent);
+      color: var(--accent-text, #86efac);
       border-left-color: var(--accent);
-      background: rgba(74,222,128,0.05);
+      background: var(--accent-glow, rgba(74,222,128,0.05));
       padding-left: 16px;
     }
     .article-toc-list a.active {
-      color: var(--accent);
+      color: var(--accent-text, #86efac);
       border-left-color: var(--accent);
-      background: rgba(74,222,128,0.08);
+      background: var(--accent-glow, rgba(74,222,128,0.08));
       font-weight: 500;
     }
     .article-toc-cta {
       margin-top: 32px;
       padding: 20px;
-      background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(74,222,128,0.05));
-      border: 1px solid rgba(74,222,128,0.2);
+      background: linear-gradient(135deg, var(--accent-glow, rgba(74,222,128,0.1)), transparent);
+      border: 1px solid var(--accent-border, rgba(74,222,128,0.2));
       border-radius: var(--radius);
       text-align: center;
     }
@@ -248,14 +263,14 @@
     .article-quote-author {
       margin-top: 12px;
       font-size: 0.85rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
     }
 
     /* Цитата прокуратуры */
     .article-quote-official {
       margin: 32px 0;
       padding: 24px 32px;
-      background: rgba(74,222,128,0.06);
+      background: var(--accent-glow, rgba(74,222,128,0.06));
       border-left: 4px solid var(--accent);
       border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     }
@@ -269,7 +284,7 @@
     .article-quote-official-source {
       margin-top: 12px;
       font-size: 0.8rem;
-      color: var(--accent);
+      color: var(--accent-text, #86efac);
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -313,7 +328,7 @@
       top: 0;
       bottom: 0;
       width: 2px;
-      background: linear-gradient(to bottom, var(--accent), rgba(74,222,128,0.1));
+      background: linear-gradient(to bottom, var(--accent), transparent);
     }
     .timeline-event {
       position: relative;
@@ -328,7 +343,7 @@
       height: 12px;
       border-radius: 50%;
       border: 2px solid var(--bg-primary);
-      box-shadow: 0 0 0 3px rgba(74,222,128,0.2);
+      box-shadow: 0 0 0 3px var(--accent-glow, rgba(74,222,128,0.2));
     }
     .timeline-dot.dot-bad {
       background: #ef4444;
@@ -343,12 +358,12 @@
     }
     .timeline-dot.dot-win {
       background: var(--accent);
-      box-shadow: 0 0 0 3px rgba(74,222,128,0.4), 0 0 12px rgba(74,222,128,0.3);
+      box-shadow: 0 0 0 3px var(--accent-glow, rgba(74,222,128,0.4)), 0 0 12px var(--accent-glow, rgba(74,222,128,0.3));
     }
     .timeline-date {
       font-family: var(--font-mono);
       font-size: 0.8rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       margin-bottom: 4px;
     }
     .timeline-event h4 {
@@ -359,7 +374,7 @@
     }
     .timeline-event p {
       font-size: 0.88rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       margin: 0;
       line-height: 1.6;
     }
@@ -381,15 +396,16 @@
       transition: all 0.3s ease;
     }
     .principle-card:hover {
-      border-color: rgba(74,222,128,0.3);
+      border-color: var(--accent-border, rgba(74,222,128,0.3));
       transform: translateY(-4px);
-      box-shadow: 0 8px 30px rgba(74,222,128,0.1);
+      box-shadow: 0 8px 30px var(--accent-glow, rgba(74,222,128,0.1));
     }
     .principle-number {
       font-family: var(--font-mono);
       font-size: 2.5rem;
       font-weight: 700;
-      color: rgba(74,222,128,0.2);
+      color: var(--accent, #4ade80);
+      opacity: 0.5;
       line-height: 1;
       margin-bottom: 12px;
     }
@@ -410,14 +426,14 @@
     .instruction-block {
       margin: 48px 0;
       background: var(--bg-card);
-      border: 1px solid rgba(74,222,128,0.2);
+      border: 1px solid var(--accent-border, rgba(74,222,128,0.2));
       border-radius: var(--radius-lg);
       overflow: hidden;
     }
     .instruction-header {
       padding: 28px 32px;
-      background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(74,222,128,0.05));
-      border-bottom: 1px solid rgba(74,222,128,0.15);
+      background: linear-gradient(135deg, var(--accent-glow, rgba(74,222,128,0.1)), transparent);
+      border-bottom: 1px solid var(--accent-border, rgba(74,222,128,0.15));
     }
     .instruction-header h2 {
       font-size: 1.3rem;
@@ -446,15 +462,15 @@
       width: 48px;
       height: 48px;
       border-radius: 50%;
-      background: rgba(74,222,128,0.1);
-      border: 2px solid rgba(74,222,128,0.3);
+      background: var(--accent-glow, rgba(74,222,128,0.1));
+      border: 2px solid var(--accent-border, rgba(74,222,128,0.3));
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: var(--font-mono);
       font-size: 1rem;
       font-weight: 700;
-      color: var(--accent);
+      color: var(--accent-text, #86efac);
       flex-shrink: 0;
     }
     .step-content h3 {
@@ -474,9 +490,9 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(74,222,128,0.08);
-      border: 1px solid rgba(74,222,128,0.2);
-      color: var(--accent);
+      background: var(--accent-glow, rgba(74,222,128,0.08));
+      border: 1px solid var(--accent-border, rgba(74,222,128,0.2));
+      color: var(--accent-text, #86efac);
       padding: 4px 12px;
       border-radius: 100px;
       font-size: 0.78rem;
@@ -494,8 +510,8 @@
     .article-cta-block {
       margin: 48px 0;
       padding: 40px;
-      background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(74,222,128,0.03));
-      border: 1px solid rgba(74,222,128,0.2);
+      background: linear-gradient(135deg, var(--accent-glow, rgba(74,222,128,0.08)), transparent);
+      border: 1px solid var(--accent-border, rgba(74,222,128,0.2));
       border-radius: var(--radius-lg);
       text-align: center;
     }
@@ -591,7 +607,7 @@
     }
     .risk-item-text span {
       font-size: 0.82rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
     }
     .risk-result {
       margin: 0 32px 32px;
@@ -600,9 +616,13 @@
       display: none;
     }
     .risk-result.visible { display: block; }
+    /* Подложка результата — нейтральная светлая карточка, а не --accent-glow:
+       глоу 15% давал фон #264b34, и серый текст на нём проваливался до 4.23:1.
+       «Хороший» статус читается по зелёной рамке и зелёному заголовку, а не
+       по заливке — так текст остаётся контрастным. */
     .risk-result.low {
-      background: rgba(74,222,128,0.08);
-      border: 1px solid rgba(74,222,128,0.2);
+      background: var(--bg-card-hover, #222222);
+      border: 1px solid var(--accent-border, rgba(74,222,128,0.2));
     }
     .risk-result.medium {
       background: rgba(245,158,11,0.08);
@@ -617,7 +637,7 @@
       font-size: 1rem;
       margin-bottom: 8px;
     }
-    .risk-result.low .risk-result-title { color: var(--accent); }
+    .risk-result.low .risk-result-title { color: var(--accent-text, #86efac); }
     .risk-result.medium .risk-result-title { color: #f59e0b; }
     .risk-result.high .risk-result-title { color: #ef4444; }
     .risk-result p {
@@ -629,7 +649,7 @@
       padding: 16px 32px;
       border-top: 1px solid var(--border-color);
       font-size: 0.88rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -651,8 +671,8 @@
     }
     .calc-header-article {
       padding: 28px 32px;
-      background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(74,222,128,0.03));
-      border-bottom: 1px solid rgba(74,222,128,0.15);
+      background: linear-gradient(135deg, var(--accent-glow, rgba(74,222,128,0.08)), transparent);
+      border-bottom: 1px solid var(--accent-border, rgba(74,222,128,0.15));
     }
     .calc-header-article h3 {
       font-size: 1.2rem;
@@ -674,7 +694,7 @@
     .calc-field label {
       display: block;
       font-size: 0.85rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       margin-bottom: 10px;
       font-weight: 500;
     }
@@ -686,15 +706,15 @@
       margin-bottom: 10px;
     }
     .calc-results-article {
-      background: rgba(74,222,128,0.05);
-      border: 1px solid rgba(74,222,128,0.15);
+      background: var(--bg-card-hover, #222222);
+      border: 1px solid var(--accent-border, rgba(74,222,128,0.15));
       border-radius: var(--radius);
       padding: 24px;
       margin-top: 24px;
     }
     .calc-results-article h4 {
       font-size: 0.85rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       text-transform: uppercase;
       letter-spacing: 0.05em;
       margin-bottom: 16px;
@@ -717,7 +737,7 @@
     .calc-result-total {
       margin-top: 16px;
       padding-top: 16px;
-      border-top: 2px solid rgba(74,222,128,0.2);
+      border-top: 2px solid var(--accent-border, rgba(74,222,128,0.2));
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -735,7 +755,7 @@
     .calc-disclaimer {
       margin-top: 16px;
       font-size: 0.78rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       line-height: 1.5;
     }
 
@@ -750,7 +770,7 @@
     .article-stats-block h3 {
       font-size: 1rem;
       font-weight: 600;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       text-transform: uppercase;
       letter-spacing: 0.08em;
       margin-bottom: 24px;
@@ -761,7 +781,7 @@
       gap: 24px;
     }
     .article-stat-item {
-      border-left: 3px solid rgba(74,222,128,0.3);
+      border-left: 3px solid var(--accent-border, rgba(74,222,128,0.3));
       padding-left: 16px;
     }
     .article-stat-number {
@@ -779,7 +799,7 @@
     }
     .article-stat-source {
       font-size: 0.75rem;
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       margin-top: 4px;
     }
 
@@ -823,10 +843,10 @@
       font-family: var(--font-mono);
       font-size: 0.85rem;
       font-weight: 700;
-      color: var(--accent);
+      color: var(--accent-text, #86efac);
       padding: 4px 10px;
-      background: rgba(74,222,128,0.08);
-      border: 1px solid rgba(74,222,128,0.2);
+      background: var(--accent-glow, rgba(74,222,128,0.08));
+      border: 1px solid var(--accent-border, rgba(74,222,128,0.2));
       border-radius: var(--radius-sm);
       text-align: center;
       white-space: nowrap;
@@ -855,8 +875,8 @@
     .article-postscript {
       margin: 48px 0;
       padding: 40px;
-      background: rgba(74,222,128,0.04);
-      border: 1px solid rgba(74,222,128,0.1);
+      background: var(--accent-glow, rgba(74,222,128,0.04));
+      border: 1px solid var(--accent-border, rgba(74,222,128,0.1));
       border-radius: var(--radius-lg);
       position: relative;
       overflow: hidden;
@@ -867,7 +887,8 @@
       right: 24px;
       bottom: -20px;
       font-size: 8rem;
-      color: rgba(74,222,128,0.06);
+      color: var(--accent, #4ade80);
+      opacity: 0.12;
       font-family: Georgia, serif;
       line-height: 1;
     }
@@ -878,7 +899,7 @@
       margin-bottom: 20px;
     }
     .article-postscript p:last-of-type { margin-bottom: 0; }
-    .article-postscript p strong { color: var(--accent); }
+    .article-postscript p strong { color: var(--accent-text, #86efac); }
 
     /* --- Теги статьи --- */
     .article-tags {
@@ -895,7 +916,7 @@
       font-size: 0.78rem;
       background: var(--bg-card);
       border: 1px solid var(--border-color);
-      color: var(--text-muted);
+      color: var(--text-secondary, #aaaaaa);
       cursor: default;
       transition: all 0.3s ease;
     }
