@@ -1,0 +1,34 @@
+---
+import { CONSENT_VERSION } from '../shared/settings';
+---
+<aside class="cookie-consent" data-cookie-consent hidden aria-labelledby="cookie-title" aria-describedby="cookie-copy" role="dialog" aria-modal="false">
+  <div class="cookie-consent__copy">
+    <p class="cookie-consent__eyebrow">Ваш выбор важен · версия {CONSENT_VERSION}</p>
+    <h2 id="cookie-title">Разрешить аналитику?</h2>
+    <p id="cookie-copy">Сайт работает и без неё. Яндекс.Метрика и Google Analytics включатся только после вашего согласия. Подробнее — в <a href="/privacy.html">политике конфиденциальности</a> и <a href="/consent.html">правилах использования файлов cookie</a>.</p>
+  </div>
+  <div class="cookie-consent__actions">
+    <button class="cookie-consent__accept" type="button" data-consent-accept>Принять</button>
+    <button class="cookie-consent__reject" type="button" data-consent-reject>Не принимать</button>
+  </div>
+</aside>
+<button class="cookie-consent__manage" type="button" data-consent-manage data-consent-reopen hidden aria-label="Изменить настройки согласия на аналитику">Настройки cookie</button>
+<script>
+  import '../client/consent.ts';
+</script>
+<style>
+  .cookie-consent{position:fixed;z-index:1000;inset:auto 20px 20px;max-width:900px;margin-inline:auto;padding:22px 24px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;color:#f4f7f4;background:rgba(18,24,20,.98);border:1px solid rgba(74,222,128,.48);border-radius:18px;box-shadow:0 18px 70px #0009;backdrop-filter:blur(16px)}
+  .cookie-consent[hidden],.cookie-consent__manage[hidden]{display:none}
+  .cookie-consent__eyebrow{margin:0 0 6px;color:#86efac;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+  .cookie-consent h2{margin:0 0 6px;font-size:1.12rem;color:#fff}
+  .cookie-consent__copy>p:last-child{margin:0;color:#c6d1c8;font-size:.89rem;line-height:1.55}
+  .cookie-consent a{color:#86efac;text-decoration:underline;text-underline-offset:3px}
+  .cookie-consent__actions{display:flex;gap:10px;flex-wrap:wrap}
+  .cookie-consent button{min-height:44px;padding:0 17px;border-radius:10px;font:inherit;font-weight:700;cursor:pointer}
+  .cookie-consent__accept{border:1px solid #4ade80;color:#07130b;background:#4ade80}
+  .cookie-consent__reject{border:1px solid #637067;color:#f4f7f4;background:#202923}
+  .cookie-consent__manage{position:fixed;right:16px;bottom:16px;z-index:999;min-height:40px;padding:8px 13px;border:1px solid #4ade80;border-radius:999px;color:#d7ffe2;background:#132219;font:600 .82rem inherit;cursor:pointer}
+  .cookie-consent button:focus-visible,.cookie-consent__manage:focus-visible{outline:3px solid #fef08a;outline-offset:3px}
+  @media(max-width:650px){.cookie-consent{inset:auto 10px 10px;padding:18px;grid-template-columns:1fr;gap:15px}.cookie-consent__actions{display:grid;grid-template-columns:1fr 1fr}.cookie-consent button{padding-inline:8px;font-size:.9rem}}
+  @media(prefers-reduced-motion:no-preference){.cookie-consent{animation:consent-rise .28s ease-out}@keyframes consent-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}}
+</style>
