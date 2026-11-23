@@ -11,6 +11,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "build:pages": "astro build && node scripts/export-pages.mjs",
+    "build:preview": "PUBLIC_LEADS_ENDPOINT=${PUBLIC_LEADS_ENDPOINT:-https://kadry-leads.ats439.workers.dev} astro build && node scripts/export-pages.mjs && node scripts/export-subfolder-preview.mjs",
+    "preview:export": "node scripts/export-subfolder-preview.mjs",
     "check:pages": "node scripts/check-pages.mjs --dir pages-dist",
     "check:links": "node scripts/check-pages.mjs --dir pages-dist",
     "check:media": "node scripts/check-media-budget.mjs",

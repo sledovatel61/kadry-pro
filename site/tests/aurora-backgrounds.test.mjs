@@ -42,14 +42,21 @@ test('три атмосферных фона лежат в public/img/bg в AVIF
   }
 });
 
-test('styles/aurora-backgrounds.css подключён после общей темы, а layout-polish — последним', () => {
+test('styles/aurora-backgrounds.css подключён после общей темы, layout-polish — последним', () => {
   assert.match(base, /import '\.\.\/styles\/aurora-backgrounds\.css'/, 'файл не подключён');
   const order = [...base.matchAll(/import '\.\.\/styles\/([\w-]+\.css)'/g)].map((m) => m[1]);
   // скримы авроры должны перекрывать старые фоны style.css, поэтому aurora —
-  // после общей темы; layout-polish идёт последним (стыковочный порядок ревьюера)
+  // после общей темы; layout-polish идёт последним (стыковочный порядок ревьюера).
+  // bg-chrome.css (фактуры FAQ/этапов и подвала, зона Агента 03) встаёт между
+  // ними: ему нужно перекрыть фоновые заливки секций, но не спорить с
+  // уплотнениями — поэтому его место зафиксировано прямо перед layout-polish.
+  // Стыковочный порядок ревьюера: общий стиль → компоненты → отзывы →
+  // aurora-backgrounds → фактуры секций (дом/внутренние/сквозные блоки) →
+  // layout-polish последним (его уплотнения перекрывают базовые отступы).
   assert.deepEqual(
-    order.slice(-3),
-    ['reviews.css', 'aurora-backgrounds.css', 'layout-polish.css'],
+    order,
+    ['fonts.css', 'style.css', 'components.css', 'reviews.css', 'aurora-backgrounds.css',
+      'bg-home-sections.css', 'bg-inner-sections.css', 'bg-chrome.css', 'layout-polish.css'],
     `порядок стилей нарушен: ${order.join(' → ')}`,
   );
   assert.equal(order.at(-1), 'layout-polish.css', 'уплотнения layout-polish должны перекрывать базовые отступы');
