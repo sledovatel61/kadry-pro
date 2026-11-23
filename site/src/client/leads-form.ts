@@ -200,6 +200,7 @@ function showSuccess(
   download?: string,
   delivered?: { telegram?: boolean; email?: boolean },
 ): void {
+  clearStrayStatus(form);
   const { title, note } = successText(delivered, texts.success);
   const box = form.parentElement?.querySelector<HTMLElement>('[data-lead-success]')
     ?? document.querySelector<HTMLElement>(`[data-lead-success="${form.id}"]`);
@@ -249,7 +250,24 @@ function showSuccess(
   form.replaceWith(fallback);
 }
 
+/**
+ * Гасим посторонние сообщения под формой.
+ *
+ * `site.ts` в старой версии писал в `.quick-lead-status` текст «Заявка почти
+ * ушла — позвоните». Если такой блок остался на странице, он переживёт и
+ * успех, и ошибку — человек увидит одновременно «отправлена» и «позвоните».
+ * Поэтому перед своим сообщением чистим чужое.
+ */
+function clearStrayStatus(form: HTMLElement): void {
+  const stray = form.querySelector<HTMLElement>('.quick-lead-status');
+  if (stray) {
+    stray.textContent = '';
+    stray.hidden = true;
+  }
+}
+
 function showError(form: HTMLElement, texts: LeadFormTexts, message?: string, waitSec?: number): void {
+  clearStrayStatus(form);
   const box = form.parentElement?.querySelector<HTMLElement>('[data-lead-error]')
     ?? document.querySelector<HTMLElement>(`[data-lead-error="${form.id}"]`);
   const text = message ?? texts.error;

@@ -317,11 +317,16 @@ document.querySelectorAll('.accordion-header').forEach(function(header) {
      подключён — показывает под кнопкой телефон и Telegram, чтобы человек
      точно мог связаться, а не видел «ошибка отправки». */
 
-  var leadForms = document.querySelectorAll('form[data-lead-form], form[data-validate]');
+  /* Ловим только формы БЕЗ data-lead-form: их отправляет leads-form.ts.
+     Раньше здесь стояла проверка `dataset.leadsBound`, но этот флаг не ставил
+     никто (в leads-form.ts он называется leadWired) — и на каждую заявку
+     срабатывали ДВА обработчика: сначала этот показывал «Заявка почти ушла,
+     позвоните», потом настоящий модуль писал свой результат. Человек видел
+     два противоречащих сообщения подряд и не понимал, ушла заявка или нет.
+     Привязка через querySelector, а не через флаг: её нельзя забыть выставить. */
+  var leadForms = document.querySelectorAll('form[data-validate]:not([data-lead-form])');
   for (var lf = 0; lf < leadForms.length; lf++) {
     leadForms[lf].addEventListener('submit', function (e) {
-      /* Если заявки уже отправляет leads-form.ts — не мешаем ему. */
-      if (this.dataset.leadsBound === '1') return;
       e.preventDefault();
       var form = this;
       var valid = true;
