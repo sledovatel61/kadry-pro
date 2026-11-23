@@ -119,7 +119,7 @@ const title1 = textToPath('Кадровый аутсорсинг', { size: 46, x
 const title2 = textToPath('под ключ', { size: 46, x: TEXT_X, y: 288, weight: 700, letterSpacing: -0.8 });
 const kicker = textToPath('КАДРЫ-ПРО · МАРИЯ ПЕРЕПЕЧАЙ', { size: 20, x: TEXT_X, y: 152, weight: 500, letterSpacing: 1.6 });
 const sub1 = textToPath('от 14 000 руб/мес вместо штатного кадровика', { size: 22, x: TEXT_X, y: 342, weight: 400 });
-const sub2 = textToPath('14 лет опыта · 0 штрафов · работаю по всей России', { size: 22, x: TEXT_X, y: 374, weight: 400 });
+const sub2 = textToPath('16 лет опыта · 0 штрафов · работаю по всей России', { size: 22, x: TEXT_X, y: 374, weight: 400 });
 const phone = textToPath('+7 (961) 302-21-12', { size: 30, x: TEXT_X, y: 470, weight: 700 });
 const tail = textToPath('kadry-pro.ru · Telegram @Mariya061', { size: 19, x: TEXT_X, y: 506, weight: 400 });
 

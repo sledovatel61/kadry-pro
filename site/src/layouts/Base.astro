@@ -22,6 +22,12 @@ import '../styles/fonts.css';
 import '../styles/style.css';
 import '../styles/components.css';
 import '../styles/reviews.css';
+/* Атмосферные фоны (.hero, .hero-sub, .cta-section) и микро-фактура — зона
+   Агента 01. Файл идёт после общей темы, чтобы его скрим перекрывал фоновые
+   градиенты секций из style.css, а не наоборот. */
+import '../styles/aurora-backgrounds.css';
+/* Компактная геометрия шапок, вкладок и карточек — зона Агента 02;
+   идёт последним, чтобы уплотнения перекрывали базовые отступы. */
 import '../styles/layout-polish.css';
 /* Баннер куки и согласие на аналитику — зона Агента 02 (CookieConsent.astro +
    client/consent.ts). Собираем через import.meta.glob: если файла ещё нет,

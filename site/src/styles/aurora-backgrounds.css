@@ -1,0 +1,294 @@
+/* ============================================================================
+   ATMOSPHERIC BACKGROUNDS — атмосферные фоны и микро-фактура
+   ----------------------------------------------------------------------------
+   Почему отдельный файл.
+
+   Раньше «глубину» рисовали псевдоэлементы с radial-gradient: круг 250×250
+   справа в .hero-sub, полоса 40% × 100% справа в секции «Что я делаю», пятно
+   600×600 по центру формы, круги 300×300 по углам калькулятора. У каждого был
+   видимый край: круг на тёмном читается как мутное пятно, а прямоугольник
+   40% × 100% — как резкая вертикальная линия обрыва фона во всю высоту секции.
+   Менять их цвет бессмысленно: проблема в геометрии, а не в оттенке. Эти
+   артефакты удалены из style.css.
+
+   Теперь фон — настоящие изображения (site/public/img/bg/): широкие, мягкие,
+   с уходом в темноту по краям, плюс тонкая плёнка зерна.
+
+   Три фактуры:
+     bg-hero-main    — первый экран главной: архитектурный ночной кобальт,
+                       слева глухо и темно (под заголовок), справа стеклянные
+                       грани, волны сапфира и бирюзы и тёплый контровой отсвет
+                       в зоне портрета;
+     bg-hero-sub     — шапки внутренних страниц: тёмное сапфировое стекло с
+                       диагональными лентами кобальта и авроры;
+     bg-cta-aurora   — CTA-блоки и форма консультации: бирюза снизу слева,
+                       индиго сверху справа.
+
+   Страницы .astro не тронуты, поэтому фон цепляется за уже существующую
+   разметку: .hero, .hero-sub, .cta-section, #contact-form и собственный слой
+   #bg-decor из Base.astro.
+
+   Читаемость — главное. Поверх каждой картинки лежит многослойный скрим: он
+   гасит свет под текстом и, что важнее, съедает верхнюю и нижнюю кромку
+   изображения. Поэтому перехода «картинка → соседняя секция» не видно: у
+   границы блока уже стоит ровно тот же цвет, что у фона страницы.
+   ============================================================================ */
+
+:root {
+  /* Скрим ведёт к цвету фона страницы: именно это делает шов невидимым. */
+  --bg-scrim: 7, 12, 24; /* = #070c18, --bg-primary */
+  /* Плотность плёнки зерна: заметно только боковым зрением. */
+  --grain-opacity: 0.025;
+}
+
+/* ---------------------------------------------------------------------------
+   1. Первый экран главной
+
+   У .hero уже есть слой .hero-bg с «дышащими» куполами света. Картинка идёт
+   ПОД него отдельным слоем через ::before самого .hero (своих псевдоэлементов
+   у .hero не было — они свободны). Купола остаются, но приглушаются: свет
+   теперь даёт изображение, а не градиенты.
+   ------------------------------------------------------------------------- */
+.hero {
+  /* Контекст наложения: картинка → скрим → купола .hero-bg → контент. */
+  isolation: isolate;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: image-set(
+    url('/img/bg/bg-hero-main.avif') type('image/avif'),
+    url('/img/bg/bg-hero-main.webp') type('image/webp')
+  );
+  background-size: cover;
+  background-repeat: no-repeat;
+  /* Свет держим справа (там портрет), левая треть остаётся глухой. */
+  background-position: 74% center;
+  pointer-events: none;
+}
+
+/* Скрим поверх картинки: два слоя в одном псевдоэлементе.
+   1) горизонтальный — заголовок и подзаголовок стоят на глубокой тени;
+   2) вертикальная виньетка — верх и низ сходят в цвет страницы, шва нет. */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(var(--bg-scrim), 0.94) 0%,
+      rgba(var(--bg-scrim), 0.84) 26%,
+      rgba(var(--bg-scrim), 0.46) 50%,
+      rgba(var(--bg-scrim), 0.08) 72%,
+      rgba(var(--bg-scrim), 0) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(var(--bg-scrim)) 0%,
+      rgba(var(--bg-scrim), 0.92) 4%,
+      rgba(var(--bg-scrim), 0.84) 10%,
+      rgba(var(--bg-scrim), 0.2) 27%,
+      rgba(var(--bg-scrim), 0) 48%,
+      rgba(var(--bg-scrim), 0) 62%,
+      rgba(var(--bg-scrim), 0.34) 84%,
+      rgba(var(--bg-scrim), 0.94) 97%,
+      rgb(var(--bg-scrim)) 100%
+    );
+  pointer-events: none;
+}
+
+/* Поверх фотографии купола уже лишние: вместе с ней они дают «муть».
+   От них остаётся только слабый отсвет — сама .hero-bg приглушена. */
+.hero > .hero-bg {
+  opacity: 0.45;
+}
+
+@media (max-width: 640px) {
+  /* На телефоне картинка сильно обрезается по краям: пусть будет фактурой,
+     а не акцентом, — иначе за текстом начнётся пёстрое. */
+  .hero::before { opacity: 0.72; }
+  .hero > .hero-bg { opacity: 0.3; }
+}
+
+/* ---------------------------------------------------------------------------
+   2. Шапки внутренних страниц (.hero-sub)
+
+   Внутренние шапки размечены как <section class="hero hero-sub"> и содержат
+   свой .hero-bg. Правила ниже идут после блока первого экрана, поэтому у
+   .hero-sub своя панорама и свой скрим.
+   ------------------------------------------------------------------------- */
+.hero-sub::before {
+  background-image: image-set(
+    url('/img/bg/bg-hero-sub.avif') type('image/avif'),
+    url('/img/bg/bg-hero-sub.webp') type('image/webp')
+  );
+  /* Ленты идут по диагонали — центр картинки самый тёмный, под ним H1. */
+  background-position: center 42%;
+}
+
+.hero-sub::after {
+  background: linear-gradient(
+    180deg,
+    rgb(var(--bg-scrim)) 0%,
+    rgba(var(--bg-scrim), 0.9) 5%,
+    rgba(var(--bg-scrim), 0.84) 13%,
+    rgba(var(--bg-scrim), 0.3) 36%,
+    rgba(var(--bg-scrim), 0.06) 56%,
+    rgba(var(--bg-scrim), 0.42) 80%,
+    rgba(var(--bg-scrim), 0.95) 96%,
+    rgb(var(--bg-scrim)) 100%
+  );
+}
+
+/* На внутренних шапках купола не нужны вовсе: картинка уже даёт свет,
+   а два источника света в одном блоке читаются как грязь. */
+.hero-sub > .hero-bg {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   3. CTA-блоки и форма консультации
+
+   .cta-section — секция призыва (главная, «Обо мне», кейсы, услуги, подбор,
+   трудовой спор). Своих псевдоэлементов у неё нет.
+   ------------------------------------------------------------------------- */
+.cta-section {
+  position: relative;
+  isolation: isolate;
+}
+
+.cta-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: image-set(
+    url('/img/bg/bg-cta-aurora.avif') type('image/avif'),
+    url('/img/bg/bg-cta-aurora.webp') type('image/webp')
+  );
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+/* Виньетка мягче: CTA часто соседствует с .section-alt, у которой свой
+   градиентный фон, и жёсткий скрим дал бы полосу. */
+.cta-section::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--bg-scrim)) 0%,
+    rgba(var(--bg-scrim), 0.78) 6%,
+    rgba(var(--bg-scrim), 0.66) 14%,
+    rgba(var(--bg-scrim), 0.16) 34%,
+    rgba(var(--bg-scrim), 0.1) 62%,
+    rgba(var(--bg-scrim), 0.64) 86%,
+    rgb(var(--bg-scrim)) 100%
+  );
+  pointer-events: none;
+}
+
+/* Форма консультации на главной: раньше здесь был круг 600×600 по центру —
+   он просвечивал сквозь карточки серым пятном. Теперь та же фактура, но
+   очень тихая. */
+#contact-form {
+  position: relative;
+  isolation: isolate;
+}
+
+#contact-form::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: image-set(
+    url('/img/bg/bg-cta-aurora.avif') type('image/avif'),
+    url('/img/bg/bg-cta-aurora.webp') type('image/webp')
+  );
+  background-size: cover;
+  background-position: center 30%;
+  background-repeat: no-repeat;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+#contact-form::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--bg-scrim)) 0%,
+    rgba(var(--bg-scrim), 0.8) 7%,
+    rgba(var(--bg-scrim), 0.68) 18%,
+    rgba(var(--bg-scrim), 0.52) 50%,
+    rgba(var(--bg-scrim), 0.8) 84%,
+    rgb(var(--bg-scrim)) 100%
+  );
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   4. Микро-фактура (зерно) на тёмных секциях
+
+   Плоский тёмный блок на большом мониторе читается как залитый цвет: фон
+   выглядит «пластиковым», особенно рядом с фотографией героя. Слой тонкого
+   зерна это лечит — 0,025 по непрозрачности заметно только боковым зрением.
+
+   Разметку не трогаем: #bg-decor уже занимает весь экран и лежит под
+   содержимым (z-index: -1). Зерно живёт прямо на нём, новых обёрток нет.
+   Сетевых запросов ноль: inline-SVG с feTurbulence, около 300 байт в CSS.
+   ------------------------------------------------------------------------- */
+#bg-decor::after {
+  /* Псевдоэлемент, а не фон контейнера: #bg-decor наполняется из site.ts тремя
+     «лентами» авроры, и как фон зерно оказалось бы ПОД ними и работало только
+     на пустых участках. ::after лежит выше детей и накрывает весь экран. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+  background-repeat: repeat;
+}
+
+/* ---------------------------------------------------------------------------
+   5. Служебное
+   ------------------------------------------------------------------------- */
+
+/* Экономия трафика: картинки не грузим, остаётся ровный тёмный фон. */
+@media (prefers-reduced-data: reduce) {
+  .hero::before,
+  .hero-sub::before,
+  .cta-section::before,
+  #contact-form::before {
+    background-image: none;
+  }
+  #bg-decor { display: none; }
+}
+
+/* Печать: фоны не нужны, на бумаге они дают серую заливку. */
+@media print {
+  .hero::before,
+  .hero::after,
+  .hero-sub::before,
+  .hero-sub::after,
+  .cta-section::before,
+  .cta-section::after,
+  #contact-form::before,
+  #contact-form::after,
+  #bg-decor {
+    display: none;
+  }
+}
