@@ -22,7 +22,7 @@ import {
   EMPTY_REVIEWS_FILE,
   type SiteReview,
 } from '../src/shared/reviews-schema.ts';
-// @ts-expect-error — гейт написан как .mjs и не имеет типов
+// Гейт написан как .mjs и не имеет типов (проверяем только типы .ts-модулей)
 import { checkReviewsFile } from '../scripts/check-reviews.mjs';
 
 const GOOD = (over: Partial<SiteReview> = {}): SiteReview => ({

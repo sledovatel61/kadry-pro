@@ -4,8 +4,22 @@ import catalog from '../../content/templates.json';
 const categories = [...new Set(catalog.items.map((item) => item.category))];
 const freeCount = catalog.items.filter((item) => item.free).length;
 const paidCount = catalog.items.length - freeCount;
+
+/* JSON-LD ItemList — как на старом shablony.html: 64 позиции с якорями #sNN. */
+const itemListJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: 'Кадровые шаблоны — Кадры-Про',
+  numberOfItems: catalog.items.length,
+  itemListElement: catalog.items.map((item, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: item.name,
+    url: `https://kadry-pro.ru/shablony.html#s${item.id}`,
+  })),
+};
 ---
-<Base title="Кадровые шаблоны: 20 бесплатно и 44 платных — Кадры-Про" description="Каталог из 64 кадровых документов: 20 шаблонов можно скачать бесплатно, платные доступны с водяным превью первой страницы." page="shablony">
+<Base title="Кадровые шаблоны: 20 бесплатно и 44 платных — Кадры-Про" description="Каталог из 64 кадровых документов: 20 шаблонов можно скачать бесплатно, платные доступны с водяным превью первой страницы." page="shablony" jsonLd={[itemListJsonLd]}>
   <section class="templates-hero">
     <div class="templates-hero__inner">
       <p class="eyebrow">Практические материалы · 2026</p>

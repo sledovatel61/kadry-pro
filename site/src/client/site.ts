@@ -233,10 +233,24 @@ document.addEventListener('DOMContentLoaded', function () {
     var savingsMonth = document.getElementById('savings-month');
     var savingsYear = document.getElementById('savings-year');
 
+    /* Цены тарифов — из единого prices.json (script#calc-prices на странице).
+       Правка цены в /manage/ («Прайс») → пересборка → цифры здесь меняются
+       без правки кода. Значения по умолчанию — на случай отсутствия JSON. */
+    var tierPrices = { start: 14000, business: 24000, max: 36000 };
+    var calcPricesEl = document.getElementById('calc-prices');
+    if (calcPricesEl) {
+      try {
+        var fromJson = JSON.parse(calcPricesEl.textContent || '');
+        if (fromJson.start) tierPrices.start = fromJson.start;
+        if (fromJson.business) tierPrices.business = fromJson.business;
+        if (fromJson.max) tierPrices.max = fromJson.max;
+      } catch (e) { /* остаёмся на значениях по умолчанию */ }
+    }
+
     function getTierPrice(count) {
-      if (count <= 10) return 14000;
-      if (count <= 30) return 24000;
-      return 36000;
+      if (count <= 10) return tierPrices.start;
+      if (count <= 30) return tierPrices.business;
+      return tierPrices.max;
     }
 
     function getTierName(count) {

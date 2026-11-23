@@ -23,10 +23,13 @@ export const OWNER = {
   max: 'https://max.ru/u/f9LHodD0cOLiuQ9EgyjlbHIJwJl6MM59mjwQFfIGh0UQE-CLoaQb-A60M0U',
 } as const;
 
+import { getPrice, formatPrice } from '../shared/prices.ts';
+
 export const SITE = {
   name: 'Кадры-Про',
   origin: 'https://kadry-pro.ru',
-  priceFrom: 'от 14 000 ₽/мес',
+  // Цена — из единого prices.json (правка в /manage/ меняет шапку и футер)
+  priceFrom: 'от ' + formatPrice(getPrice('retainer.start')) + '/мес',
   experience: '14 лет опыта',
   zeroFines: '0 штрафов',
 } as const;
@@ -34,11 +37,11 @@ export const SITE = {
 /** Пункты меню: одинаковые на десктопе и в мобильном меню (раньше расходились). */
 export const NAV = [
   { href: '/', key: 'home', label: 'Главная' },
-  { href: '/services', key: 'services', label: 'Услуги и цены' },
-  { href: '/podbor', key: 'podbor', label: 'Подбор кадров' },
-  { href: '/about', key: 'about', label: 'Обо мне' },
-  { href: '/trudovoy-spor', key: 'trudovoy-spor', label: 'Трудовые споры' },
-  { href: '/cases', key: 'cases', label: 'Кейсы' },
-  { href: '/shablony', key: 'shablony', label: 'Шаблоны' },
-  { href: '/contact', key: 'contact', label: 'Контакты' },
+  { href: '/services.html', key: 'services', label: 'Услуги и цены' },
+  { href: '/podbor.html', key: 'podbor', label: 'Подбор кадров' },
+  { href: '/about.html', key: 'about', label: 'Обо мне' },
+  { href: '/trudovoy-spor.html', key: 'trudovoy-spor', label: 'Трудовые споры' },
+  { href: '/cases.html', key: 'cases', label: 'Кейсы' },
+  { href: '/shablony.html', key: 'shablony', label: 'Шаблоны' },
+  { href: '/contact.html', key: 'contact', label: 'Контакты' },
 ] as const;

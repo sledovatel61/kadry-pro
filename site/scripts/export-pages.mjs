@@ -54,14 +54,41 @@ await cp(SRC, OUT, { recursive: true });
 /* GitHub Pages без .nojekyll выбрасывает папку _astro — сайт остаётся без стилей */
 await writeFile(join(OUT, '.nojekyll'), '');
 
+/* Кабинет /manage/: Astro при build.format: 'file' создаёт manage.html, а
+   владелец открывает привычный /manage/. Кладём копию в manage/index.html —
+   так работают ОБА адреса: и /manage/, и /manage.html (и на GitHub Pages,
+   и в живом превью). Кабинет noindex, дублирование контента безопасно. */
+try {
+  await stat(join(OUT, 'manage.html'));
+  await mkdir(join(OUT, 'manage'), { recursive: true });
+  await cp(join(OUT, 'manage.html'), join(OUT, 'manage', 'index.html'));
+} catch {
+  console.error('✗ Нет manage.html — кабинет /manage/ не попал в выгрузку');
+  process.exit(1);
+}
+
 const REQUIRED = [
-  'index.html', 'services.html', 'podbor.html', 'audit.html', 'lna.html',
-  'sout.html', 'voinskiy-uchet.html', 'shtrafy-git.html', 'trudovoy-spor.html',
-  'about.html', 'cases.html', 'contact.html', '404.html',
+  /* 18 прежних адресов живого сайта */
+  'index.html', 'services.html', 'podbor.html', 'shablony.html', 'audit.html',
+  'lna.html', 'sout.html', 'voinskiy-uchet.html', 'shtrafy-git.html',
+  'trudovoy-spor.html', 'about.html', 'cases.html', 'contact.html',
+  'privacy.html', 'thank-you.html', 'thank-you-paid.html', 'bundle-download.html',
+  'yandex_22774c0af65b478b.html',
+  /* новые обязательные страницы */
+  'consent.html', '404.html', 'articles.html', 'manage.html', 'manage/index.html',
+  /* служебные файлы */
   'sitemap.xml', 'robots.txt', 'CNAME',
 ];
 
-const present = new Set(await readdir(OUT));
+const present = new Set();
+async function walk(dir, prefix = '') {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    present.add(rel);
+    if (entry.isDirectory()) await walk(join(dir, entry.name), rel);
+  }
+}
+await walk(OUT);
 const missing = REQUIRED.filter((f) => !present.has(f));
 
 if (missing.length) {

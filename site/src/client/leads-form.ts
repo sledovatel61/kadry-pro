@@ -202,7 +202,12 @@ export function buildPayload(form: HTMLFormElement, startedAt: number, idem: str
     consent_version: form.dataset.consentVersion || CONSENT_VERSION,
     page: form.dataset.page || pageSlug(),
     idempotency_key: idem,
-    honeypot: fieldValue(form, 'honeypot') || fieldValue(form, '_gotcha'),
+    /* Ловушка ботов: имя может приходить из data-honeypot формы, а формы
+       Агентов 01/02 используют company_website / _gotcha / honeypot. */
+    honeypot:
+      fieldValue(form, form.dataset.honeypot || 'honeypot')
+      || fieldValue(form, '_gotcha')
+      || fieldValue(form, 'company_website'),
     form_started_at: startedAt,
   };
 
@@ -235,7 +240,8 @@ export function buildPayload(form: HTMLFormElement, startedAt: number, idem: str
 function readCalc(form: HTMLFormElement): CalcSummary | null {
   const staff = Number(fieldValue(form, 'calc_staff'));
   const salary = Number(fieldValue(form, 'calc_salary'));
-  const tariff = fieldValue(form, 'calc_tariff');
+  /* calc_tariff — имя Агента 03, calc_tier — скрытое поле формы главной (Агент 01). */
+  const tariff = fieldValue(form, 'calc_tariff') || fieldValue(form, 'calc_tier');
   const sm = Number(fieldValue(form, 'calc_savings_month'));
   const sy = Number(fieldValue(form, 'calc_savings_year'));
   if (Number.isFinite(staff) && staff > 0 && Number.isFinite(salary) && salary > 0 && tariff) {
@@ -449,21 +455,26 @@ function russianFieldText(field: string, code: string): string {
 /**
  * Кнопка «Зафиксировать этот расчёт» под калькулятором: переносит штат, тариф и
  * экономию в форму заявки, чтобы клиенту не пришлось объяснять цифры заново.
+ *
+ * Стыковка Агентов 01 и 03: кнопка главной помечена [data-calc-fix], модуль
+ * заявок ищет [data-fix-calc] — поддерживаем оба имени. Скрытые поля формы
+ * главной используют calc_tier, модуль заявок — calc_tariff: пишем в оба.
  */
 function wireCalculatorFix(): void {
-  const buttons = document.querySelectorAll<HTMLElement>('[data-fix-calc]');
+  const buttons = document.querySelectorAll<HTMLElement>('[data-fix-calc], [data-calc-fix]');
   buttons.forEach((button) => {
     if (button.dataset.calcWired === '1') return;
     button.dataset.calcWired = '1';
     button.addEventListener('click', () => {
-      const calc = collectCalcSummary(document);
-      const targetSel = button.dataset.fixCalc || '#lead-form, form[data-lead-form]';
+      const calc = collectCalcSummary(document) ?? collectCalcFromSliders(document);
+      const targetSel = button.dataset.fixCalc || '#home-lead-form, #lead-form, form[data-lead-form]';
       const form = document.querySelector<HTMLFormElement>(targetSel);
       if (!calc || !form) return;
       form.dataset.leadKind = 'calculator';
       hidden(form, 'calc_staff').value = String(calc.staff);
       hidden(form, 'calc_salary').value = String(calc.salary_net);
       hidden(form, 'calc_tariff').value = calc.tariff;
+      hidden(form, 'calc_tier').value = calc.tariff;
       hidden(form, 'calc_savings_month').value = String(calc.savings_month);
       hidden(form, 'calc_savings_year').value = String(calc.savings_year);
 
@@ -476,6 +487,31 @@ function wireCalculatorFix(): void {
       form.querySelector<HTMLInputElement>('[name="name"]')?.focus({ preventScroll: true });
     });
   });
+}
+
+/**
+ * Расчёт с ползунков калькулятора главной (Агент 01): их id не совпадают с
+ * селекторами collectCalcSummary, поэтому читаем напрямую.
+ */
+function collectCalcFromSliders(doc: Document): CalcSummary | null {
+  const staffEl = doc.querySelector<HTMLInputElement>('#staff-slider');
+  const salaryEl = doc.querySelector<HTMLInputElement>('#salary-slider');
+  if (!staffEl || !salaryEl) return null;
+  const staff = Number(staffEl.value);
+  const salary = Number(salaryEl.value);
+  if (!Number.isFinite(staff) || staff <= 0 || !Number.isFinite(salary) || salary <= 0) return null;
+  const tariff = (doc.querySelector<HTMLElement>('#staff-tier')?.textContent ?? '').trim() || 'по расчёту';
+  const smText = (doc.querySelector<HTMLElement>('#savings-month')?.textContent ?? '0').replace(/\D/g, '');
+  const syText = (doc.querySelector<HTMLElement>('#savings-year')?.textContent ?? '0').replace(/\D/g, '');
+  const savings_month = Number(smText) || 0;
+  const savings_year = Number(syText) || savings_month * 12;
+  return {
+    staff: Math.round(staff),
+    salary_net: Math.round(salary),
+    tariff,
+    savings_month: Math.round(savings_month),
+    savings_year: Math.round(savings_year),
+  };
 }
 
 /* Автозапуск: скрипт грузится на всех страницах, формы ищутся сами. */

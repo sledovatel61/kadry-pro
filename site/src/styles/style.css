@@ -745,7 +745,7 @@ input[type="range"]::-moz-range-thumb {
   .stats-grid { grid-template-columns: 1fr; }
   .cases-filter { justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; }
 }
-```
+
 /* ===========================
    ИСПРАВЛЕНИЯ И УЛУЧШЕНИЯ v2
    =========================== */
