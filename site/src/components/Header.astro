@@ -10,6 +10,7 @@
  *  • в мобильном меню есть кнопки Telegram и MAX, а не только телефон.
  */
 import { NAV, OWNER, SITE } from '../data/site.ts';
+import Logo from './Logo.astro';
 
 interface Props {
   /** Ключ страницы из NAV: home, services, podbor, … — подсвечивает активный пункт. */
@@ -21,9 +22,10 @@ const { page = '' } = Astro.props;
 <nav class="nav" id="site-nav" role="navigation" aria-label="Главная навигация">
   <div class="nav-inner">
     <a href="/" class="nav-logo" aria-label={`${SITE.name} — на главную`}>
-      {/* В logo.svg уже отрисованы знак и слово Kadry-Pro — текстовый дубль
-          «Кадры-Про» рядом только съедал ~110px ширины шапки */}
-      <img src="/img/logo.svg" alt="" class="logo" width="170" height="34">
+      {/* Логотип инлайновый (Logo.astro): знак и «-Pro» красятся --accent и
+          --accent-text, поэтому переключаются вместе с палитрой. Подписи
+          текстом рядом нет — она съедала ~110px ширины шапки. */}
+      <Logo height={34} />
     </a>
 
     <div class="nav-links">
