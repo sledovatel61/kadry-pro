@@ -59,49 +59,10 @@
    из трёх тем.
    ============================================================================ */
 
-/* Тема 1 — «Кобальт × Шампань» (основная) */
+/* ЕДИНСТВЕННАЯ штатная тема — «Кобальт × Аврора» (утверждена владельцем).
+   Палитра перенесена в :root; html[data-theme='cobalt-aurora'] оставлен
+   алиасом на случай старых ссылок и закэшированной разметки. */
 :root,
-html[data-theme='cobalt'],
-html[data-theme='cobalt-champagne'] {
-  color-scheme: dark;
-
-  /* фон: полуночный сапфир, не чёрный — глубина вместо плоскости */
-  --bg-primary: #080d17;
-  --bg-elevated: #0d1524;
-  --bg-card: #121c2e;
-  --bg-card-hover: #18253c;
-
-  --border-color: rgba(148, 178, 220, 0.16);
-  --border-light: rgba(148, 178, 220, 0.3);
-
-  --text-primary: #f2f7ff;
-  --text-secondary: #c3d0e2;
-  --text-muted: #93a3bb;
-  --text-slate: #a8b6c9;
-
-  --accent: #6cb6ff;
-  --accent-dark: #4a9ae8;
-  --accent-text: #cde6ff;
-  --on-accent: #f8fbff;
-
-  --accent-glow: rgba(108, 182, 255, 0.1);
-  --accent-glow-strong: rgba(108, 182, 255, 0.2);
-  --accent-border: rgba(108, 182, 255, 0.32);
-
-  /* компаньон — тёплое золото шампанского */
-  --accent-secondary: #eab968;
-  --accent-secondary-text: #fde4b8;
-  --on-accent-secondary: #241a08;
-  --accent-secondary-glow: rgba(234, 185, 104, 0.12);
-  --accent-secondary-border: rgba(234, 185, 104, 0.34);
-
-  /* атмосферные купола света: кобальт + шампань */
-  --atmosphere-1: rgba(37, 99, 235, 0.18);
-  --atmosphere-2: rgba(234, 185, 104, 0.09);
-  --atmosphere-3: rgba(49, 46, 129, 0.24);
-}
-
-/* Тема 2 — «Кобальт × Аврора»: индиго и прохладная морская бирюза */
 html[data-theme='cobalt-aurora'] {
   color-scheme: dark;
 
@@ -127,65 +88,26 @@ html[data-theme='cobalt-aurora'] {
   --accent-glow-strong: rgba(108, 182, 255, 0.2);
   --accent-border: rgba(108, 182, 255, 0.32);
 
-  /* компаньон — морская бирюза, подложки — индиговые */
+  /* компаньон — морская бирюза авроры, подложки — индиговые */
   --accent-secondary: #4fd1c5;
   --accent-secondary-text: #b9f5ee;
   --on-accent-secondary: #06201f;
   --accent-secondary-glow: rgba(79, 209, 197, 0.12);
   --accent-secondary-border: rgba(79, 209, 197, 0.34);
 
-  --atmosphere-1: rgba(37, 99, 235, 0.17);
-  --atmosphere-2: rgba(99, 102, 241, 0.14);
-  --atmosphere-3: rgba(79, 209, 197, 0.1);
-}
-
-/* Тема 3 — «Кобальт × Платина»: строгий холодный люкс */
-html[data-theme='cobalt-platinum'] {
-  color-scheme: dark;
-
-  --bg-primary: #080c14;
-  --bg-elevated: #0c121d;
-  --bg-card: #111826;
-  --bg-card-hover: #17202f;
-
-  --border-color: rgba(160, 186, 222, 0.17);
-  --border-light: rgba(160, 186, 222, 0.32);
-
-  --text-primary: #f3f6fb;
-  --text-secondary: #c5d0de;
-  --text-muted: #96a4b8;
-  --text-slate: #abb8c9;
-
-  --accent: #6cb6ff;
-  --accent-dark: #4a9ae8;
-  --accent-text: #cde6ff;
-  --on-accent: #f8fbff;
-
-  --accent-glow: rgba(108, 182, 255, 0.1);
-  --accent-glow-strong: rgba(108, 182, 255, 0.2);
-  --accent-border: rgba(108, 182, 255, 0.32);
-
-  /* компаньон — серебристо-платиновые блики */
-  --accent-secondary: #cbd5e1;
-  --accent-secondary-text: #f1f5f9;
-  --on-accent-secondary: #101823;
-  --accent-secondary-glow: rgba(203, 213, 225, 0.12);
-  --accent-secondary-border: rgba(203, 213, 225, 0.34);
-
+  /* атмосфера сияния: королевский кобальт, глубокий индиго, бирюза авроры */
   --atmosphere-1: rgba(37, 99, 235, 0.16);
-  --atmosphere-2: rgba(203, 213, 225, 0.08);
-  --atmosphere-3: rgba(30, 41, 59, 0.3);
+  --atmosphere-2: rgba(99, 102, 241, 0.11);
+  --atmosphere-3: rgba(45, 212, 191, 0.12);
 }
 
 /* --- Объём, глубина и градиенты (одинаковы для всех трёх тем) --- */
 :root {
-  /* Главные кнопки: королевский кобальт → сапфир → глубокий индиго.
-     Белоснежный --on-accent держит 4,98:1 на самом светлом конце градиента
-     и 11:1 на тёмном. Плоским --accent кнопки заливать нельзя. */
-  --grad-btn: linear-gradient(135deg, #2563eb 0%, #1d4ed8 55%, #312e81 100%);
-  /* Наведение светлеет ЗАМЕТНО, но так, чтобы белый текст не провалился:
-     #2a63dd = 5,15:1 (на 0,17 выше базы). #3b82f6 давал бы 3,5:1 — нельзя. */
-  --grad-btn-hover: linear-gradient(135deg, #2a63dd 0%, #2456c4 45%, #4338ca 100%);
+  /* Главные кнопки: живой ювелирный перелив Авроры — бирюза → кобальт →
+     глубокий индиго. КАЖДАЯ точка держит контраст ≥ 4,98:1 с #f8fbff. */
+  --grad-btn: linear-gradient(135deg, #0e7490 0%, #2563eb 52%, #4338ca 100%);
+  /* Наведение чуть глубже и холоднее: те же ≥ 5,2:1 под белым текстом. */
+  --grad-btn-hover: linear-gradient(135deg, #0f766e 0%, #1d4ed8 50%, #3730a3 100%);
 
   /* Текстовый градиент: белый → голубой кобальт → ювелирный компаньон.
      Правило .grad-text ниже подстрахует: если background-clip: text не
@@ -360,25 +282,43 @@ input, textarea, select { font-family: inherit; font-size: inherit; color: inher
   display: flex; align-items: center;
   padding: 120px 0 80px; overflow: hidden;
 }
-/* Атмосфера: не три одинаковых пятна, а многослойные световые купола разного
-   размера и температуры — глубокий кобальт сверху, индиго сбоку и тёплый
-   (или бирюзовый / платиновый) блик компаньона снизу. */
+/* Атмосфера: мягкие шёлковые ленты Северного сияния — размытые эллипсы
+   королевского кобальта, бирюзовой авроры и глубокого индиго, которые
+   плавно «дышат». Тот же язык света, что и в #bg-decor. */
 .hero-bg {
   position: absolute; inset: 0; z-index: 0;
   background:
     radial-gradient(ellipse 70% 55% at 14% 8%, var(--atmosphere-1) 0%, transparent 62%),
     radial-gradient(ellipse 55% 45% at 88% 18%, var(--atmosphere-3) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 72% 92%, var(--atmosphere-2) 0%, transparent 58%),
-    radial-gradient(ellipse 90% 70% at 50% 120%, var(--accent-glow) 0%, transparent 65%);
+    radial-gradient(ellipse 60% 50% at 72% 92%, var(--atmosphere-2) 0%, transparent 58%);
 }
-.hero-grid {
-  position: absolute; inset: 0; z-index: 0;
-  background-image:
-    linear-gradient(var(--accent-glow) 1px, transparent 1px),
-    linear-gradient(90deg, var(--accent-glow) 1px, transparent 1px);
-  background-size: 60px 60px;
-  mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+/* Две «ленты» — крупные размытые эллипсы, медленно дышащие в противофазе */
+.hero-bg::before {
+  content: '';
+  position: absolute;
+  left: -12%; top: 2%;
+  width: 58%; height: 46%;
+  background: radial-gradient(closest-side, var(--atmosphere-3) 0%, transparent 72%);
+  filter: blur(46px);
+  animation: aurora-breathe 16s ease-in-out infinite alternate;
+}
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  right: -14%; bottom: -8%;
+  width: 64%; height: 52%;
+  background: radial-gradient(closest-side, var(--atmosphere-1) 0%, transparent 70%);
+  filter: blur(52px);
+  animation: aurora-breathe 21s ease-in-out infinite alternate-reverse;
+}
+@keyframes aurora-breathe {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
+  50%  { transform: translate3d(3%, -2%, 0) scale(1.07); opacity: 1; }
+  100% { transform: translate3d(-2%, 3%, 0) scale(0.97); opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-bg::before,
+  .hero-bg::after { animation: none; }
 }
 .hero .container { position: relative; z-index: 1; }
 .hero-content { max-width: 800px; }
@@ -441,14 +381,16 @@ input, textarea, select { font-family: inherit; font-size: inherit; color: inher
 }
 .btn-primary {
   /* Только глубокий градиент: на плоском --accent светлый текст даёт 2,07:1.
-     Верхний внутренний блик + глубокая тень = объёмная дорогая кнопка. */
+     Верхний аквамариновый блик + мягкое двойное свечение (кобальт + бирюза)
+     = объёмная ювелирная кнопка. */
   background: var(--grad-btn);
   color: var(--on-accent);
   font-weight: 700;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 1px 0 rgba(165, 243, 252, 0.38),
     0 2px 4px rgba(3, 8, 20, 0.5),
-    0 10px 24px rgba(29, 78, 216, 0.32);
+    0 10px 24px rgba(37, 99, 235, 0.32),
+    0 14px 34px rgba(45, 212, 191, 0.16);
 }
 /* !important здесь не для красоты: глобальный a:hover { color: var(--accent-dark) }
    иначе красит текст в тон заливки, и на кнопке получается «светлое по светлому». */
@@ -459,19 +401,30 @@ input, textarea, select { font-family: inherit; font-size: inherit; color: inher
   color: var(--on-accent) !important;
   transform: translateY(-2px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 1px 0 rgba(165, 243, 252, 0.44),
     0 4px 8px rgba(3, 8, 20, 0.55),
-    0 16px 38px rgba(37, 99, 235, 0.45);
+    0 16px 38px rgba(37, 99, 235, 0.42),
+    0 22px 52px rgba(45, 212, 191, 0.22);
 }
 .btn-outline {
-  background: transparent; color: var(--text-primary);
+  /* Благородное матовое стекло: полупрозрачный сапфировый фон под размытием. */
+  background: rgba(18, 30, 52, 0.65);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text-primary);
   border: 1px solid var(--border-light);
+  box-shadow: inset 0 1px 0 rgba(186, 230, 255, 0.18);
 }
 .btn-outline:hover,
 .btn-outline:focus {
-  border-color: var(--accent); color: var(--accent-text) !important;
-  background: var(--accent-glow);
+  border-color: var(--accent-secondary-border); color: var(--accent-text) !important;
+  background: rgba(18, 30, 52, 0.5);
   transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(186, 230, 255, 0.26),
+    0 0 0 1px rgba(79, 209, 197, 0.35),
+    0 12px 34px rgba(79, 209, 197, 0.18),
+    0 10px 30px rgba(37, 99, 235, 0.22);
 }
 
 /* Табы, фильтры и прочие «залитые» активные элементы — тот же контракт:
@@ -526,12 +479,51 @@ input, textarea, select { font-family: inherit; font-size: inherit; color: inher
 }
 .card-accent:hover { border-color: var(--accent-border); box-shadow: 0 8px 30px var(--accent-glow); }
 
+/* --- Spotlight: деликатный блик Авроры в точке курсора ---
+   Работает только на устройствах с точным указателем; координаты
+   --spot-x / --spot-y пишет пассивный pointermove в site.ts. */
+@media (hover: hover) and (pointer: fine) {
+  .card,
+  .template-tile {
+    background-image:
+      radial-gradient(280px circle at var(--spot-x, 50%) var(--spot-y, 50%), rgba(79, 209, 197, 0.09) 0%, rgba(88, 166, 255, 0.08) 45%, transparent 72%),
+      var(--grad-card);
+    background-color: var(--bg-card);
+  }
+}
+
 /* --- Problems vs Solutions --- */
 .pvs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 .pvs-card { padding: 40px; }
 .pvs-card h3 { font-size: 1.3rem; font-weight: 600; margin-bottom: 24px; }
 .pvs-card.problems h3 { color: var(--danger); }
 .pvs-card.solutions h3 { color: var(--accent); }
+/* Левая карточка «проблем» — деликатный рубиново-коралловый угловой отсвет
+   сверху и тёплая алая верхняя кромка: тревога без крика. */
+.pvs-card.problems {
+  border-top-color: rgba(248, 113, 113, 0.38);
+  background:
+    radial-gradient(120% 90% at 8% 0%, rgba(239, 68, 68, 0.10) 0%, transparent 52%),
+    var(--grad-card), var(--bg-card);
+}
+/* Правая карточка «решений» — свечение щита Авроры сверху (бирюза + сапфир)
+   и переливающийся верхний кант: бирюза → кобальт. */
+.pvs-card.solutions {
+  border-top-color: rgba(79, 209, 197, 0.42);
+  background:
+    radial-gradient(120% 90% at 12% 0%, rgba(79, 209, 197, 0.12) 0%, transparent 55%),
+    radial-gradient(90% 80% at 88% 0%, rgba(37, 99, 235, 0.10) 0%, transparent 55%),
+    var(--grad-card), var(--bg-card);
+}
+.pvs-card.solutions::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 8%; right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(79, 209, 197, 0.65), rgba(37, 99, 235, 0.65));
+  pointer-events: none;
+}
+.pvs-card { position: relative; overflow: hidden; }
 .pvs-item {
   display: flex; gap: 12px; align-items: flex-start;
   padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -543,7 +535,12 @@ input, textarea, select { font-family: inherit; font-size: inherit; color: inher
   font-size: 0.75rem; flex-shrink: 0; margin-top: 2px;
 }
 .pvs-icon.bad { background: var(--danger-soft); color: var(--danger); }
-.pvs-icon.good { background: var(--accent-glow); color: var(--accent-text); }
+/* Галочки «решений» — подсвеченные бирюзовые иконки щита Авроры */
+.pvs-icon.good {
+  background: rgba(79, 209, 197, 0.14);
+  color: var(--accent-secondary-text);
+  box-shadow: 0 0 12px rgba(79, 209, 197, 0.22), inset 0 1px 0 rgba(186, 230, 255, 0.16);
+}
 .pvs-item p { color: var(--text-secondary); font-size: 0.95rem; }
 
 /* --- Calculator --- */
@@ -587,19 +584,38 @@ input[type="range"]::-moz-range-thumb {
 .calc-detail span:last-child { font-family: var(--font-mono); }
 .calc-result {
   grid-column: 1 / -1;
-  background: var(--grad-card-featured);
-  border-color: var(--accent-border);
+  border: 1px solid transparent;
+  background-image:
+    var(--grad-card-featured),
+    linear-gradient(135deg, rgba(79, 209, 197, 0.65), rgba(88, 166, 255, 0.55), rgba(129, 140, 248, 0.5));
+  background-origin: padding-box, padding-box, padding-box, border-box;
+  background-clip: padding-box, padding-box, padding-box, border-box;
+  -webkit-background-clip: padding-box, padding-box, padding-box, border-box;
   text-align: center; padding: 40px;
   box-shadow: var(--card-highlight), var(--card-shadow), 0 0 60px rgba(29, 78, 216, 0.16);
 }
 .calc-result h3 { color: var(--accent-text); font-size: 1.2rem; margin-bottom: 16px; }
-/* Экономия — главная цифра страницы: градиентная, с ювелирным компаньоном */
+/* Экономия — главная цифра страницы: ювелирный компаньон и атмосферное свечение */
 .calc-savings {
   font-family: var(--font-mono); font-size: clamp(2rem, 4vw, 3.5rem);
-  font-weight: 700; color: var(--accent-secondary-text); margin-bottom: 8px;
+  font-weight: 700; color: var(--accent-secondary-text); margin-bottom: 12px;
   text-shadow: 0 2px 24px var(--accent-secondary-glow);
+  filter: drop-shadow(0 0 24px rgba(79, 209, 197, 0.22));
 }
-.calc-savings-year { font-size: 1.1rem; color: var(--text-secondary); }
+/* Годовая сумма — подсвеченная капсула-бейдж Авроры: главный аргумент
+   сразу считывается как «700 140 руб. в год». */
+.calc-savings-year {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--accent-secondary-text);
+  background: rgba(79, 209, 197, 0.12);
+  border: 1px solid rgba(79, 209, 197, 0.38);
+  box-shadow: 0 0 24px rgba(79, 209, 197, 0.22), inset 0 1px 0 rgba(186, 230, 255, 0.16);
+}
 
 /* --- Stats --- */
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
@@ -634,8 +650,13 @@ input[type="range"]::-moz-range-thumb {
 .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .pricing-card { padding: 40px 32px; position: relative; display: flex; flex-direction: column; }
 .pricing-card.featured {
-  border-color: var(--accent-border);
-  background: var(--grad-card-featured);
+  border: 1px solid transparent;
+  background-image:
+    var(--grad-card-featured),
+    linear-gradient(135deg, rgba(79, 209, 197, 0.65), rgba(88, 166, 255, 0.55), rgba(129, 140, 248, 0.5));
+  background-origin: padding-box, padding-box, padding-box, border-box;
+  background-clip: padding-box, padding-box, padding-box, border-box;
+  -webkit-background-clip: padding-box, padding-box, padding-box, border-box;
   box-shadow:
     var(--card-highlight),
     inset 0 0 0 1px var(--accent-secondary-glow),
@@ -644,13 +665,18 @@ input[type="range"]::-moz-range-thumb {
     0 0 60px rgba(29, 78, 216, 0.16);
 }
 .pricing-card.featured:hover {
-  border-color: var(--accent-secondary-border);
+  border-color: transparent;
   box-shadow:
     var(--card-highlight),
     inset 0 0 0 1px var(--accent-secondary-glow),
     0 4px 8px rgba(0, 0, 0, 0.5),
     0 24px 60px rgba(29, 78, 216, 0.36),
     0 0 80px rgba(29, 78, 216, 0.22);
+}
+/* На десктопе центральная карточка слегка приподнята над соседями */
+@media (min-width: 1025px) {
+  .pricing-card.featured { transform: translateY(-8px); }
+  .pricing-card.featured:hover { transform: translateY(-12px); }
 }
 .pricing-badge {
   position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
@@ -1229,86 +1255,6 @@ input[type="range"]::-moz-range-thumb {
    ДЕКОРАТИВНАЯ ГРАФИКА И ФОН
    ============================================= */
 
-/* Точечная сетка на всём фоне */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: -2;
-  background-image: radial-gradient(var(--accent-glow) 1px, transparent 1px);
-  background-size: 32px 32px;
-  pointer-events: none;
-}
-
-/* Большой градиентный круг справа на Hero */
-.hero::after {
-  content: '';
-  position: absolute;
-  top: 10%;
-  right: -5%;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--accent-glow) 0%, var(--accent-glow) 40%, transparent 70%);
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* Геометрические декоративные линии */
-.hero .hero-grid::before {
-  content: '';
-  position: absolute;
-  top: 20%;
-  right: 8%;
-  width: 300px;
-  height: 300px;
-  border: 1px solid var(--accent-glow);
-  border-radius: 50%;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.hero .hero-grid::after {
-  content: '';
-  position: absolute;
-  top: 35%;
-  right: 15%;
-  width: 150px;
-  height: 150px;
-  border: 1px solid var(--accent-glow);
-  border-radius: 50%;
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* Диагональные линии на Hero */
-.hero-bg::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 10%;
-  width: 1px;
-  height: 100%;
-  background: linear-gradient(to bottom, transparent 0%, var(--accent-glow) 30%, var(--accent-glow) 70%, transparent 100%);
-  z-index: 0;
-  pointer-events: none;
-}
-
-.hero-bg::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 25%;
-  width: 1px;
-  height: 100%;
-  background: linear-gradient(to bottom, transparent 0%, var(--accent-glow) 40%, var(--accent-glow) 60%, transparent 100%);
-  z-index: 0;
-  pointer-events: none;
-}
-
 /* Светящийся заголовок */
 .hero h1 .accent {
   text-shadow: 0 0 60px var(--accent-border), 0 0 120px var(--accent-glow);
@@ -1521,23 +1467,7 @@ body::before {
 /* --- На мобильном: упрощаем графику --- */
 @media (max-width: 768px) {
   .hero::after {
-    width: 300px;
-    height: 300px;
-    top: 5%;
-    right: -20%;
-    opacity: 0.5;
-  }
-  .hero .hero-grid::before,
-  .hero .hero-grid::after {
     display: none;
-  }
-  .hero-bg::before,
-  .hero-bg::after {
-    display: none;
-  }
-  body::before {
-    background-size: 24px 24px;
-    opacity: 0.4;
   }
 }
 
@@ -2068,23 +1998,11 @@ body::before {
 }
 
 /* ============================================
-   ДЕКОРАТИВНЫЙ ФОН — HR ТЕМАТИКА v4 (УСИЛЕННЫЙ)
+   ФОН — МЯГКИЕ ШЁЛКОВЫЕ ЛЕНТЫ СЕВЕРНОГО СИЯНИЯ
+   Вместо матричных цифр, контурных иконок и линеек старого шаблона —
+   три плавно «дышащих» размытых эллипса: королевский кобальт,
+   бирюза авроры и глубокий индиго.
    ============================================ */
-
-/* --- Крупная техническая сетка --- */
-body::after {
-  content: '';
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: -3;
-  pointer-events: none;
-  background-image:
-    linear-gradient(var(--accent-glow) 1px, transparent 1px),
-    linear-gradient(90deg, var(--accent-glow) 1px, transparent 1px);
-  background-size: 180px 180px;
-  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.7) 0%, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.7) 0%, transparent 80%);
-}
 
 /* --- Контейнер всех декораций --- */
 .bg-decor {
@@ -2095,372 +2013,47 @@ body::after {
   overflow: hidden;
 }
 
-/* --- Градиентные пятна (видимые) --- */
-.bg-decor-glow {
+.bg-decor-aurora {
   position: absolute;
   border-radius: 50%;
-  filter: blur(100px);
-}
-.bg-decor-glow--1 {
-  width: 620px; height: 620px;
-  background: var(--atmosphere-1);
-  top: -10%; left: -8%;
-  animation: glow-drift 28s ease-in-out infinite;
-}
-.bg-decor-glow--2 {
-  width: 520px; height: 520px;
-  background: var(--atmosphere-3);
-  top: 35%; right: -12%;
-  animation: glow-drift 24s ease-in-out infinite reverse;
-}
-.bg-decor-glow--3 {
-  width: 470px; height: 470px;
-  background: var(--atmosphere-2);
-  bottom: -8%; left: 25%;
-  animation: glow-drift 20s ease-in-out infinite 3s;
+  filter: blur(90px);
+  will-change: transform, opacity;
 }
 
-@keyframes glow-drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%      { transform: translate(50px, -40px) scale(1.08); }
-  66%      { transform: translate(-40px, 50px) scale(0.93); }
+/* Королевский кобальт — крупная лента сверху слева */
+.bg-decor-aurora--1 {
+  width: 680px; height: 520px;
+  top: -12%; left: -10%;
+  background: radial-gradient(closest-side, var(--atmosphere-1) 0%, transparent 72%);
+  animation: aurora-breathe 24s ease-in-out infinite alternate;
 }
 
-/* --- HR-иконки (КРУПНЫЕ, ВИДИМЫЕ) --- */
-.bg-decor-icon {
-  position: absolute;
-  color: var(--accent);
-  opacity: 0.10;
-  filter: drop-shadow(0 0 8px var(--accent-glow-strong));
+/* Бирюза авроры — диагональная лента справа */
+.bg-decor-aurora--2 {
+  width: 580px; height: 460px;
+  top: 28%; right: -12%;
+  background: radial-gradient(closest-side, var(--atmosphere-3) 0%, transparent 70%);
+  animation: aurora-breathe 28s ease-in-out infinite alternate-reverse;
 }
 
-/* Документ — левый верхний */
-.bg-decor-icon--1 {
-  top: 8%; left: 4%;
-  width: 100px; height: auto;
+/* Глубокий индиго — низкая лента снизу */
+.bg-decor-aurora--3 {
+  width: 620px; height: 420px;
+  bottom: -10%; left: 18%;
+  background: radial-gradient(closest-side, var(--atmosphere-2) 0%, transparent 72%);
+  animation: aurora-breathe 32s ease-in-out infinite alternate 2s;
 }
 
-/* Человек — правый верх */
-.bg-decor-icon--2 {
-  top: 22%; right: 5%;
-  width: 90px; height: auto;
+@media (prefers-reduced-motion: reduce) {
+  .bg-decor-aurora { animation: none; }
 }
 
-/* График — левый центр */
-.bg-decor-icon--3 {
-  top: 48%; left: 2%;
-  width: 95px; height: auto;
-}
-
-/* Чек-лист — правый центр */
-.bg-decor-icon--4 {
-  top: 60%; right: 3%;
-  width: 85px; height: auto;
-}
-
-/* Печать — верхний правый */
-.bg-decor-icon--5 {
-  top: 12%; right: 20%;
-  width: 80px; height: auto;
-}
-
-/* Щит — нижний левый */
-.bg-decor-icon--6 {
-  top: 78%; left: 5%;
-  width: 88px; height: auto;
-}
-
-/* --- Текстурный слой (микро-сетка «бумага») --- */
-.bg-decor-texture {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  opacity: 0.04;
-  background-image:
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.08) 0px,
-      transparent 1px,
-      transparent 3px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.08) 0px,
-      transparent 1px,
-      transparent 3px
-    );
-  background-size: 4px 4px;
-}
-
-/* --- Декоративные кольца (КРУПНЫЕ, ЗАМЕТНЫЕ) --- */
-.bg-decor-ring {
-  position: absolute;
-  border-radius: 50%;
-}
-
-.bg-decor-ring--1 {
-  width: 350px; height: 350px;
-  top: 8%; right: 12%;
-  border: 1.5px solid var(--accent-glow);
-}
-
-.bg-decor-ring--2 {
-  width: 220px; height: 220px;
-  top: 50%; left: 8%;
-  border: 1.5px solid var(--accent-glow);
-}
-
-.bg-decor-ring--3 {
-  width: 160px; height: 160px;
-  bottom: 15%; right: 18%;
-  border: 1px solid var(--accent-glow);
-}
-
-/* --- Пунктирные линии связи (ТОЛСТЫЕ, ВИДИМЫЕ) --- */
-.bg-decor-line {
-  position: absolute;
-  width: 2px;
-}
-
-/* Линия слева */
-.bg-decor-line--l {
-  left: 7%;
-  top: 5%;
-  height: 88%;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 12px,
-    var(--accent-glow) 12px,
-    var(--accent-glow) 20px
-  );
-}
-
-/* Линия справа */
-.bg-decor-line--r {
-  right: 8%;
-  top: 10%;
-  height: 75%;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 18px,
-    var(--accent-glow) 18px,
-    var(--accent-glow) 26px
-  );
-}
-
-/* --- Горизонтальные линии связи (НОВЫЕ) --- */
-.bg-decor-hline {
-  position: absolute;
-  height: 2px;
-}
-
-.bg-decor-hline--1 {
-  top: 30%;
-  left: 5%;
-  width: 25%;
-  background: repeating-linear-gradient(
-    to right,
-    transparent 0px,
-    transparent 10px,
-    var(--accent-glow) 10px,
-    var(--accent-glow) 18px
-  );
-}
-
-.bg-decor-hline--2 {
-  top: 70%;
-  right: 3%;
-  width: 20%;
-  background: repeating-linear-gradient(
-    to right,
-    transparent 0px,
-    transparent 14px,
-    var(--accent-glow) 14px,
-    var(--accent-glow) 22px
-  );
-}
-
-/* --- Узловые точки на пересечениях (НОВЫЕ) --- */
-.bg-decor-dot {
-  position: absolute;
-  border-radius: 50%;
-  background: var(--accent-glow-strong);
-  box-shadow: 0 0 12px var(--accent-glow-strong);
-}
-
-.bg-decor-dot--1 {
-  width: 8px; height: 8px;
-  top: 30%; left: 7%;
-}
-.bg-decor-dot--2 {
-  width: 6px; height: 6px;
-  top: 55%; left: 7%;
-}
-.bg-decor-dot--3 {
-  width: 7px; height: 7px;
-  top: 42%; right: 8%;
-}
-.bg-decor-dot--4 {
-  width: 5px; height: 5px;
-  top: 70%; right: 20%;
-}
-.bg-decor-dot--5 {
-  width: 8px; height: 8px;
-  top: 85%; left: 7%;
-}
-
-/* --- Стрелка процесса (НОВАЯ, SVG) --- */
-.bg-decor-arrow {
-  position: absolute;
-  color: var(--accent);
-  opacity: 0.10;
-}
-
-.bg-decor-arrow--1 {
-  top: 40%;
-  left: 12%;
-  width: 60px;
-  transform: rotate(90deg);
-}
-
-.bg-decor-arrow--2 {
-  top: 55%;
-  right: 12%;
-  width: 50px;
-  transform: rotate(-90deg);
-}
-
-/* --- Уголки-рамки (НОВЫЕ) --- */
-.bg-decor-corner {
-  position: absolute;
-  width: 40px;
-  height: 40px;
-}
-
-.bg-decor-corner--tl {
-  top: 18%; left: 15%;
-  border-top: 2px solid var(--accent-glow);
-  border-left: 2px solid var(--accent-glow);
-}
-
-.bg-decor-corner--br {
-  bottom: 22%; right: 15%;
-  border-bottom: 2px solid var(--accent-glow);
-  border-right: 2px solid var(--accent-glow);
-}
-
-.bg-decor-corner--tr {
-  top: 42%; right: 25%;
-  border-top: 2px solid var(--accent-glow);
-  border-right: 2px solid var(--accent-glow);
-}
-
-.bg-decor-corner--bl {
-  bottom: 35%; left: 20%;
-  border-bottom: 2px solid var(--accent-glow);
-  border-left: 2px solid var(--accent-glow);
-}
-
-/* --- Цифры-«матрица» (НОВЫЕ, псевдоэлемент) --- */
-.bg-decor-matrix {
-  position: absolute;
-  top: 5%; right: 2%;
-  width: 120px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.8;
-  color: var(--accent-glow);
-  letter-spacing: 3px;
-  word-break: break-all;
-  overflow: hidden;
-  max-height: 400px;
-  user-select: none;
-}
-
-/* --- АНИМАЦИИ --- */
-
-/* Плавание иконок */
-@keyframes icon-float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-15px); }
-}
-
-.bg-decor-icon--1 { animation: icon-float 16s ease-in-out infinite; }
-.bg-decor-icon--2 { animation: icon-float 20s ease-in-out infinite 2s; }
-.bg-decor-icon--3 { animation: icon-float 18s ease-in-out infinite 5s; }
-.bg-decor-icon--4 { animation: icon-float 22s ease-in-out infinite 1s; }
-.bg-decor-icon--5 { animation: icon-float 19s ease-in-out infinite 6s; }
-.bg-decor-icon--6 { animation: icon-float 15s ease-in-out infinite 3s; }
-
-/* Пульсация колец */
-@keyframes ring-breathe {
-  0%, 100% { transform: scale(1);    opacity: 1; }
-  50%      { transform: scale(1.05); opacity: 0.5; }
-}
-
-.bg-decor-ring--1 { animation: ring-breathe 10s ease-in-out infinite; }
-.bg-decor-ring--2 { animation: ring-breathe 14s ease-in-out infinite 3s; }
-.bg-decor-ring--3 { animation: ring-breathe 12s ease-in-out infinite 6s; }
-
-/* Мерцание точек */
-@keyframes dot-blink {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.3; }
-}
-
-.bg-decor-dot--1 { animation: dot-blink 4s ease-in-out infinite; }
-.bg-decor-dot--2 { animation: dot-blink 5s ease-in-out infinite 1s; }
-.bg-decor-dot--3 { animation: dot-blink 3.5s ease-in-out infinite 2s; }
-.bg-decor-dot--4 { animation: dot-blink 6s ease-in-out infinite 0.5s; }
-.bg-decor-dot--5 { animation: dot-blink 4.5s ease-in-out infinite 3s; }
-
-/* --- МОБИЛЬНАЯ АДАПТАЦИЯ --- */
-
-@media (max-width: 1024px) {
-  .bg-decor-glow--1 { width: 400px; height: 400px; }
-  .bg-decor-glow--2 { width: 350px; height: 350px; }
-  .bg-decor-glow--3 { width: 300px; height: 300px; }
-  .bg-decor-icon { width: 70px !important; }
-  .bg-decor-icon--3,
-  .bg-decor-icon--5 { display: none; }
-  .bg-decor-ring--3,
-  .bg-decor-hline--2 { display: none; }
-  .bg-decor-line--r { display: none; }
-  .bg-decor-corner--tr,
-  .bg-decor-corner--bl { display: none; }
-  .bg-decor-arrow--2 { display: none; }
-  .bg-decor-matrix { display: none; }
-}
-
+/* На узких экранах ленты легче и меньше — чистый фон без перегруза */
 @media (max-width: 768px) {
-  body::after {
-    background-size: 100px 100px;
-    opacity: 0.6;
-  }
-  .bg-decor-glow--1 { width: 300px; height: 300px; }
-  .bg-decor-glow--2 { width: 250px; height: 250px; }
-  .bg-decor-glow--3 { display: none; }
-  .bg-decor-icon { opacity: 0.06; width: 60px !important; }
-  .bg-decor-icon--2,
-  .bg-decor-icon--3,
-  .bg-decor-icon--4,
-  .bg-decor-icon--5 { display: none; }
-  .bg-decor-texture { display: none; }
-  .bg-decor-ring { display: none; }
-  .bg-decor-line { display: none; }
-  .bg-decor-hline { display: none; }
-  .bg-decor-dot { display: none; }
-  .bg-decor-corner { display: none; }
-  .bg-decor-arrow { display: none; }
+  .bg-decor-aurora--1 { width: 380px; height: 300px; }
+  .bg-decor-aurora--2 { width: 320px; height: 260px; }
+  .bg-decor-aurora--3 { display: none; }
 }
-
-@media (max-width: 480px) {
-  .bg-decor-icon { display: none; }
-  body::after { display: none; }
-  .bg-decor-glow--2 { display: none; }
-}
-
 /* ============================================
    ФОТО МАРИИ ПЕРЕПЕЧАЙ — ИСПРАВЛЕННАЯ ВЕРСИЯ
    ============================================ */

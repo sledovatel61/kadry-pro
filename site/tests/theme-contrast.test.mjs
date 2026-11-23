@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 /**
  * Тесты палитр, контраста и объёма (кобальт).
@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
  *   • кислотный зелёный не вернулся в style.css и components.css;
  *   • залитые кнопки всегда красят текст в --on-accent;
  *   • логотип в шапке и подвале — инлайновый и красится переменными;
- *   • переключатель палитр подключён и помнит выбор.
+ *   • тестовый переключатель палитр удалён — тема одна, «Кобальт × Аврора».
  */
 
 const ROOT = new URL('../', import.meta.url);
@@ -74,61 +74,51 @@ const REQUIRED_VARS = [
   'atmosphere-1', 'atmosphere-2', 'atmosphere-3',
 ];
 
-/* Основная тема объявлена на :root и дублируется алиасом cobalt-champagne. */
-const CHAMPAGNE = ":root,\nhtml[data-theme='cobalt'],\nhtml[data-theme='cobalt-champagne']";
+/* Единственная штатная тема — «Кобальт × Аврора» в :root;
+   html[data-theme='cobalt-aurora'] — алиас на случай старой разметки. */
+const AURORA = ':root,' + String.fromCharCode(10) + "html[data-theme='cobalt-aurora']";
 const THEMES = {
-  cobalt: CHAMPAGNE,
-  'cobalt-aurora': "html[data-theme='cobalt-aurora']",
-  'cobalt-platinum': "html[data-theme='cobalt-platinum']",
+  'cobalt-aurora': AURORA,
 };
 
 const varsOf = (selector) => themeVars(selector) ?? themeVars(selector.split(',')[0]);
 
-test('объявлены ровно три вариации кобальта с одинаковым набором переменных', () => {
-  for (const [name, selector] of Object.entries(THEMES)) {
-    const vars = varsOf(selector);
-    assert.ok(vars, `нет блока переменных для темы ${name}`);
-    for (const key of REQUIRED_VARS) {
-      assert.ok(vars[key], `тема ${name}: нет --${key}`);
-    }
+test('финальная палитра «Кобальт × Аврора» — единственная штатная, с полным набором переменных', () => {
+  const vars = varsOf(AURORA);
+  assert.ok(vars, 'нет блока переменных :root с палитрой Авроры');
+  for (const key of REQUIRED_VARS) {
+    assert.ok(vars[key], `нет --${key}`);
   }
+  // компаньон — морская бирюза авроры, утверждённая владельцем
+  assert.equal(vars['accent-secondary'], '#4fd1c5', 'компаньон должен быть бирюзой авроры #4fd1c5');
 
-  // старые палитры первой волны убраны, чтобы не тянуть мёртвые блоки
-  for (const gone of ['sage', 'gold', 'amber', 'teal']) {
+  // никаких других палитр: ни трёх вариаций кобальта, ни первой волны
+  for (const gone of ['cobalt', 'cobalt-champagne', 'cobalt-platinum', 'sage', 'gold', 'amber', 'teal']) {
     assert.ok(
       !new RegExp(`html\\[data-theme='${gone}'\\]`).test(plain),
-      `в style.css остался блок старой темы ${gone}`,
+      `в style.css остался блок темы ${gone}`,
     );
   }
 });
 
-test('все три вариации остаются кобальтом: общий акцент и очень тёмная база', () => {
-  const base = varsOf(CHAMPAGNE);
+test('аврора остаётся глубокой темой: очень тёмная база и кобальтовый акцент', () => {
+  const v = varsOf(AURORA);
   const white = parseColor('#ffffff');
 
-  for (const name of ['cobalt', 'cobalt-aurora', 'cobalt-platinum']) {
-    const v = varsOf(name === 'cobalt' ? CHAMPAGNE : `html[data-theme='${name}']`);
-
-    /* акцент и его текстовые производные — общий кобальтовый каркас */
-    for (const key of ['accent', 'accent-dark', 'accent-text', 'on-accent']) {
-      assert.equal(v[key], base[key], `${name}: --${key} должен совпадать с базой — это один и тот же кобальт`);
-    }
-
-    /* фон каждой вариации — глубокий ночной, а не серый: белый на нём ≥ 15:1 */
-    for (const key of ['bg-primary', 'bg-card']) {
-      const r = contrast(white, parseColor(v[key]));
-      assert.ok(r >= 15, `${name}: --${key} слишком светлый (${r.toFixed(2)}:1 к белому) — пропала глубина`);
-    }
+  /* акцентный каркас — кобальт */
+  assert.equal(v['accent'], '#6cb6ff', '--accent должен остаться кобальтом');
+  for (const key of ['accent', 'accent-dark', 'accent-text', 'on-accent']) {
+    assert.ok(v[key], `нет --${key}`);
   }
 
-  /* компаньоны у трёх вариаций разные: иначе вариации неразличимы */
-  const companions = ['cobalt', 'cobalt-aurora', 'cobalt-platinum'].map(
-    (n) => varsOf(n === 'cobalt' ? CHAMPAGNE : `html[data-theme='${n}']`)['accent-secondary'],
-  );
-  assert.equal(new Set(companions).size, 3, `компаньоны должны различаться, а они: ${companions.join(', ')}`);
+  /* фон — глубокий ночной, а не серый: белый на нём ≥ 15:1 */
+  for (const key of ['bg-primary', 'bg-card']) {
+    const r = contrast(white, parseColor(v[key]));
+    assert.ok(r >= 15, `--${key} слишком светлый (${r.toFixed(2)}:1 к белому) — пропала глубина`);
+  }
 });
 
-test('контраст текста не ниже нормы во всех трёх вариациях', () => {
+test('контраст текста не ниже нормы в палитре Авроры', () => {
   /* [цвет текста, цвет фона, минимум] */
   const minimums = [
     ['text-primary', ['bg-card', 'bg-primary'], 7],
@@ -231,7 +221,7 @@ test('--on-accent держит ≥ 4,95:1 на каждой точке град�
 });
 
 test('плоский --accent не годится под белый текст — кнопки живут на градиенте', () => {
-  const v = varsOf(CHAMPAGNE);
+  const v = varsOf(AURORA);
   const flat = contrast(parseColor(v['on-accent']), parseColor(v['accent']));
   assert.ok(flat < 3, 'плоский --accent неожиданно стал контрастным — обновите контракт переменных');
 
@@ -239,7 +229,7 @@ test('плоский --accent не годится под белый текст �
   assert.ok(btnPrimary, 'нет правила .btn-primary');
   assert.match(btnPrimary[1], /background:\s*var\(--grad-btn\)/, '.btn-primary: заливка не --grad-btn');
   assert.match(btnPrimary[1], /color:\s*var\(--on-accent\)/, '.btn-primary: текст не --on-accent');
-  assert.match(btnPrimary[1], /inset 0 1px 0 rgba\(255,\s*255,\s*255/, '.btn-primary: нет верхнего блика');
+  assert.match(btnPrimary[1], /inset 0 1px 0 rgba\(165,\s*243,\s*252/, '.btn-primary: нет аквамаринового верхнего блика');
 
   const cta = /\.nav-cta\s*\{([^}]*)\}/.exec(plain);
   assert.ok(cta, 'нет правила .nav-cta');
@@ -403,57 +393,27 @@ test('логотип в шапке и подвале инлайновый и к�
   assert.match(svg, /#6dbf7b/, 'public/img/logo.svg изменён — он должен остаться исходным');
 });
 
-test('переключатель палитр подключён и помнит выбор', () => {
+test('тестовый переключатель палитр удалён, тема одна — «Кобальт × Аврора»', () => {
   const base = read('src/layouts/Base.astro');
-  const theme = read('src/client/theme.ts');
-  const bar = read('src/components/ThemePreviewBar.astro');
 
-  assert.match(base, /ThemePreviewBar/, 'Base.astro не подключает ThemePreviewBar');
-  assert.match(base, /client\/theme\.ts/, 'Base.astro не подключает client/theme.ts');
-  assert.match(base, /localStorage\.getItem\('kadrypro-preview-theme'\)/, 'нет предварительного применения темы в <head>');
-  assert.match(base, /data-theme="cobalt"/, 'базовая тема в <html> не кобальт');
+  // плашка, её скрипт и чтение выбора из localStorage больше не подключены
+  assert.ok(!base.includes('ThemePreviewBar'), 'Base.astro всё ещё подключает ThemePreviewBar');
+  assert.ok(!base.includes('client/theme.ts'), 'Base.astro всё ещё подключает client/theme.ts');
+  assert.ok(!base.includes('kadrypro-preview-theme'), 'в <head> остался скрипт чтения kadrypro-preview-theme');
+  assert.ok(!base.includes('data-theme='), '<html> всё ещё несёт data-theme');
 
-  for (const name of ['cobalt', 'cobalt-aurora', 'cobalt-platinum']) {
-    assert.ok(bar.includes(`data-theme-set="${name}"`), `в плашке нет кнопки ${name}`);
-    assert.ok(theme.includes(`'${name}'`), `в theme.ts нет темы ${name}`);
-  }
-  // старые имена остаются только как алиасы, а не как отдельные кнопки
-  for (const gone of ['sage', 'gold', 'amber', 'teal']) {
-    assert.ok(!bar.includes(`data-theme-set="${gone}"`), `в плашке осталась кнопка ${gone}`);
-  }
-  assert.match(theme, /root\.setAttribute\('data-theme', name\)/, 'theme.ts не ставит data-theme');
-  assert.match(theme, /localStorage\.setItem\(THEME_KEY, name\)/, 'theme.ts не запоминает выбор');
-  assert.match(theme, /return 'cobalt';/, 'тема по умолчанию в theme.ts не кобальт');
+  assert.ok(base.includes('<html lang="ru">'), 'в Base.astro нет <html lang="ru">');
+  assert.ok(base.includes('name="theme-color" content="#080e18"'), 'theme-color должен быть #080e18 — фон Авроры');
+
+  // сами файлы переключателя удалены из репозитория
+  assert.ok(!existsSync(new URL('../src/components/ThemePreviewBar.astro', import.meta.url)), 'ThemePreviewBar.astro не удалён');
+  assert.ok(!existsSync(new URL('../src/client/theme.ts', import.meta.url)), 'client/theme.ts не удалён');
 });
 
-test('точки палитр в плашке покрашены под три компаньона', () => {
-  for (const dot of ['champagne', 'aurora', 'platinum']) {
-    assert.match(
-      plainComponents,
-      new RegExp(`\\.theme-bar-dot--${dot}\\s*\\{`),
-      `нет стиля .theme-bar-dot--${dot}`,
-    );
-  }
-  for (const gone of ['sage', 'gold', 'amber', 'teal']) {
-    assert.ok(
-      !new RegExp(`\\.theme-bar-dot--${gone}\\s*\\{`).test(plainComponents),
-      `в components.css остался .theme-bar-dot--${gone}`,
-    );
-  }
-});
-
-test('плашка палитр никого не перекрывает: док на телефоне, куки на ПК', () => {
-  const block = plainComponents.slice(plainComponents.indexOf('.theme-bar {'));
-  const mobileBlocks = [...block.matchAll(/@media \(max-width: 768px\)\s*\{([\s\S]*?)\n\}/g)].map((m) => m[1]);
-  const mobile = mobileBlocks[mobileBlocks.length - 1] ?? '';
-
-  // телефон: плашка над доком (68px), куки и «Настройки cookie» ещё выше
-  assert.match(mobile, /\.theme-bar\s*\{[^}]*bottom:\s*calc\(76px/, 'на телефоне плашка не поднимается над .dock');
-  // баннер свёрстан через шорткат inset: auto 8px <низ> 8px
-  assert.match(mobile, /\.cookie-consent\s*\{[^}]*inset:\s*auto\s+8px\s+calc\(126px/, 'баннер куки перекрывает плашку палитр');
-  assert.match(mobile, /\.cookie-consent__manage\s*\{[^}]*bottom:\s*calc\(126px/, 'кнопка «Настройки cookie» осталась под плашкой');
-
-  // компьютер: плашка слева, кнопка настроек куки справа — не пересекаются
-  assert.match(plainComponents, /\.theme-bar\s*\{[^}]*left:\s*16px/, 'плашка палитр не слева');
-  assert.match(plainComponents, /\.cookie-consent\s*\{[^}]*bottom:\s*78px/, 'на ПК куки-баннер не поднят над плашкой');
+test('баннер куки не перекрывает док на телефоне', () => {
+  // плашки палитр больше нет — стопка снизу вверх заканчивается доком (68px)
+  assert.ok(!plainComponents.includes('.theme-bar'), 'в components.css остался мёртвый CSS плашки палитр');
+  assert.ok(plainComponents.includes('inset: auto 8px calc(76px + env(safe-area-inset-bottom)) 8px !important'), 'баннер куки не поднимается над .dock на телефоне');
+  assert.ok(plainComponents.includes('bottom: calc(76px + env(safe-area-inset-bottom)) !important'), 'кнопка «Настройки cookie» ниже дока');
+  assert.ok(!plainComponents.includes('bottom: 78px !important'), 'на ПК остался подъём баннера под удалённую плашку');
 });
