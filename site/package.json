@@ -1,0 +1,27 @@
+{
+  "name": "kadry-pro-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "build:pages": "astro build && node scripts/export-pages.mjs",
+    "check:pages": "node scripts/check-pages.mjs --dir pages-dist",
+    "check:media": "node scripts/check-media-budget.mjs",
+    "check": "npm run check:media && npm run check:pages",
+    "images": "node scripts/build-images.mjs"
+  },
+  "dependencies": {
+    "astro": "^5.14.1",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "fontkit": "^3.0.0",
+    "jsdom": "^31.0.1"
+  }
+}
