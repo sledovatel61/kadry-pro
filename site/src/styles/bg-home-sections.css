@@ -1,0 +1,394 @@
+/* ============================================================================
+   BG-HOME-SECTIONS — атмосферные фоны секций главной страницы
+   ----------------------------------------------------------------------------
+   Первый экран (bg-hero-main) владельцу понравился, а всё, что ниже, лежало на
+   пустом чёрно-синем фоне. Здесь четыре фактуры в той же эстетике, каждая под
+   свою секцию:
+
+     #problems            bg-home-problems    риски слева / решения справа
+     #calculator          bg-home-calc        призмы и восходящий свет
+     #stats, #what-i-do   bg-home-services    панорама вечернего атриума в расфокусе
+     #materials, отзывы   bg-home-knowledge   шёлковые переливы северной авроры
+
+   ГЛАВНОЕ ПРАВИЛО ЭТОГО ФАЙЛА — яркость скрима.
+   Скрим не «глушит картинку ровным одеялом», а работает как виньетка:
+   • 0–10 % и 90–100 % — ровно rgb(var(--bg-scrim)), то есть чистый #070c18:
+     на стыке секций нет ни одной горизонтальной линии, потому что у границы
+     блока уже стоит цвет страницы;
+   • в середине (25–75 %) скрим прозрачный — 0,22…0,38, — и стеклянные грани,
+     лучи и боке читаются глазами вокруг карточек, как на первом экране.
+
+   Читаемость не страдает: карточки лежат на своих плотных подложках
+   (--grad-card), а контраст белого текста на них проверяется отдельным тестом.
+   Скрим ослабляет только ФОН между карточками.
+
+   .hero и bg-hero-main здесь СОЗНАТЕЛЬНО не упоминаются: первый экран не трогаем.
+
+   Слои внутри каждой секции (сверху вниз):
+     .container       контент
+     ::before         скрим-виньетка          z-index: -1
+     ::after          фотография              z-index: -2
+     сам блок         фон секции из style.css
+   ============================================================================ */
+
+:root {
+  /* Скрим = цвет фона страницы. Переменная общая с aurora-backgrounds.css,
+     но объявлена и здесь: файл должен работать, даже если порядок
+     подключения когда-нибудь поменяют. */
+  --bg-scrim: 7, 12, 24;
+}
+
+/* Секции с атмосферным фоном. Список — единственное место, где их надо
+   перечислить: дальше всё строится на нём через общие правила. */
+#problems,
+#calculator,
+#stats,
+#services-overview,
+#materials,
+#reviews-home {
+  position: relative;
+  isolation: isolate; /* картинка → скрим → контент, строго по порядку */
+}
+
+#problems > .container,
+#calculator > .container,
+#stats > .container,
+#services-overview > .container,
+#materials > .container,
+#reviews-home > .container {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Фотография ---------------------------------------------------------- */
+#problems::after,
+#calculator::after,
+#stats::after,
+#services-overview::after,
+#materials::after,
+#reviews-home::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-repeat: no-repeat;
+  background-size: cover;
+  pointer-events: none;
+}
+
+/* --- Скрим-виньетка: базовый рецепт --------------------------------------
+   Верх и низ — глухой цвет страницы, середина — почти прозрачная плёнка.
+   Отдельные секции ниже подкручивают только средние точки. */
+#problems::before,
+#calculator::before,
+#stats::before,
+#services-overview::before,
+#materials::before,
+#reviews-home::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--bg-scrim)) 0%,
+    rgba(var(--bg-scrim), 0.92) 4%,
+    rgba(var(--bg-scrim), 0.86) 10%,
+    rgba(var(--bg-scrim), 0.3) 25%,
+    rgba(var(--bg-scrim), 0.26) 50%,
+    rgba(var(--bg-scrim), 0.32) 75%,
+    rgba(var(--bg-scrim), 0.88) 90%,
+    rgba(var(--bg-scrim), 0.97) 94%,
+    rgb(var(--bg-scrim)) 100%
+  );
+}
+
+/* Старые служебные псевдоэлементы этих секций отключены: на атмосферной
+   фактуре они читаются как случайные штрихи.
+     • .section-alt::before/::after — боковые 3px-полосы по краям экрана;
+     • .section:not(.section-alt)::before — световая линия 1px, она же занимает
+       ::before у #problems, #stats и #reviews-home;
+     • #stats::before — короткая горизонтальная черта над цифрами.
+   Селекторы по id перебивают классовые правила из style.css, поэтому границы,
+   размеры и заливку старых линий гасим здесь. */
+#problems::before,
+#calculator::before,
+#calculator::after,
+#stats::before,
+#stats::after,
+#services-overview::before,
+#services-overview::after,
+#materials::before,
+#materials::after,
+#reviews-home::before,
+#reviews-home::after {
+  border: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+/* У .section-alt подложка секции больше не нужна: её закрывает фотография. */
+#calculator,
+#services-overview,
+#materials {
+  background-image: none;
+}
+
+/* ---------------------------------------------------------------------------
+   1. #problems — «Знакомые проблемы?»
+
+   Слева глухое стекло с тёплым рубиновым отсветом (за карточкой рисков),
+   справа чистое сапфирово-бирюзовое сияние с боке (за карточкой решений).
+   Скрим слева чуть плотнее: тревога должна читаться и в фоне.
+   ------------------------------------------------------------------------- */
+#problems::after {
+  background-image: image-set(
+    url('/img/bg/bg-home-problems.avif') type('image/avif'),
+    url('/img/bg/bg-home-problems.webp') type('image/webp')
+  );
+  background-position: center 45%;
+}
+
+#problems::before {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(var(--bg-scrim), 0.46) 0%,
+      rgba(var(--bg-scrim), 0.2) 36%,
+      rgba(var(--bg-scrim), 0.12) 64%,
+      rgba(var(--bg-scrim), 0.22) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(var(--bg-scrim)) 0%,
+      rgba(var(--bg-scrim), 0.92) 4%,
+      rgba(var(--bg-scrim), 0.86) 10%,
+      rgba(var(--bg-scrim), 0.3) 25%,
+      rgba(var(--bg-scrim), 0.24) 50%,
+      rgba(var(--bg-scrim), 0.3) 75%,
+      rgba(var(--bg-scrim), 0.88) 90%,
+      rgba(var(--bg-scrim), 0.97) 94%,
+      rgb(var(--bg-scrim)) 100%
+    );
+}
+
+/* ---------------------------------------------------------------------------
+   2. #calculator — «Рассчитайте выгоду»
+
+   Призмы тёмного сапфира и восходящие линии бирюзы. Световой акцент — в
+   правой трети, там стоит карточка «Ваша экономия»: подсветка ведёт к ней глаз.
+   ------------------------------------------------------------------------- */
+#calculator::after {
+  background-image: image-set(
+    url('/img/bg/bg-home-calc.avif') type('image/avif'),
+    url('/img/bg/bg-home-calc.webp') type('image/webp')
+  );
+  background-position: center;
+}
+
+#calculator::before {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(var(--bg-scrim), 0.2) 0%,
+      rgba(var(--bg-scrim), 0.12) 40%,
+      rgba(var(--bg-scrim), 0.08) 68%,
+      rgba(var(--bg-scrim), 0.2) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(var(--bg-scrim)) 0%,
+      rgba(var(--bg-scrim), 0.92) 4%,
+      rgba(var(--bg-scrim), 0.86) 10%,
+      rgba(var(--bg-scrim), 0.26) 25%,
+      rgba(var(--bg-scrim), 0.22) 50%,
+      rgba(var(--bg-scrim), 0.28) 75%,
+      rgba(var(--bg-scrim), 0.88) 90%,
+      rgba(var(--bg-scrim), 0.97) 94%,
+      rgb(var(--bg-scrim)) 100%
+    );
+}
+
+/* ---------------------------------------------------------------------------
+   3. #stats + «Что я делаю» — счётчики и услуги
+
+   Одна панорама на две соседние секции: счётчики на тёмной части, услуги — на
+   светлой. Переход между блоками не читается как смена фона.
+
+   У счётчиков своя плотная карточка, поэтому скрим мягче: цифры должны
+   «парить» над атриумом, а не лежать на чёрном.
+   ------------------------------------------------------------------------- */
+#stats::after,
+#services-overview::after {
+  background-image: image-set(
+    url('/img/bg/bg-home-services.avif') type('image/avif'),
+    url('/img/bg/bg-home-services.webp') type('image/webp')
+  );
+}
+
+#stats::after {
+  /* Панорама видна нижней половиной: сверху идёт тёмный скат атриума. */
+  background-position: center 65%;
+}
+
+#services-overview::after {
+  background-position: center 30%;
+}
+
+#stats::before {
+  background:
+    linear-gradient(
+      180deg,
+      rgb(var(--bg-scrim)) 0%,
+      rgba(var(--bg-scrim), 0.9) 5%,
+      rgba(var(--bg-scrim), 0.7) 15%,
+      rgba(var(--bg-scrim), 0.34) 28%,
+      rgba(var(--bg-scrim), 0.3) 52%,
+      rgba(var(--bg-scrim), 0.42) 78%,
+      rgba(var(--bg-scrim), 0.92) 92%,
+      rgba(var(--bg-scrim), 0.98) 96%,
+      rgb(var(--bg-scrim)) 100%
+    );
+}
+
+#services-overview::before {
+  background:
+    linear-gradient(
+      180deg,
+      rgb(var(--bg-scrim)) 0%,
+      rgba(var(--bg-scrim), 0.9) 5%,
+      rgba(var(--bg-scrim), 0.5) 15%,
+      rgba(var(--bg-scrim), 0.28) 34%,
+      rgba(var(--bg-scrim), 0.26) 55%,
+      rgba(var(--bg-scrim), 0.34) 78%,
+      rgba(var(--bg-scrim), 0.86) 92%,
+      rgba(var(--bg-scrim), 0.97) 96%,
+      rgb(var(--bg-scrim)) 100%
+    );
+}
+
+/* ---------------------------------------------------------------------------
+   4. #materials + отзывы — «Полезные материалы» и «Отзывы клиентов»
+
+   Самый «тихий» блок страницы: здесь читают, поэтому шума минимум. Но и
+   «стекло» должно читаться: сама фактура очень тёмная (пик ~6,125,187 до
+   скрима), и при плотности 0,38 от неё оставался едва различимый градиент.
+   Остановились на 0,25–0,30: пик даёт ≈2,6:1 к подложке — заметно глазу,
+   и при этом карточки отзывов с текстом остаются на своих плотных подложках.
+   ------------------------------------------------------------------------- */
+#materials::after,
+#reviews-home::after {
+  background-image: image-set(
+    url('/img/bg/bg-home-knowledge.avif') type('image/avif'),
+    url('/img/bg/bg-home-knowledge.webp') type('image/webp')
+  );
+  background-position: center 40%;
+}
+
+#materials::before {
+  background:
+    linear-gradient(
+      180deg,
+      rgb(var(--bg-scrim)) 0%,
+      rgba(var(--bg-scrim), 0.93) 5%,
+      rgba(var(--bg-scrim), 0.8) 12%,
+      rgba(var(--bg-scrim), 0.3) 26%,
+      rgba(var(--bg-scrim), 0.25) 50%,
+      rgba(var(--bg-scrim), 0.29) 74%,
+      rgba(var(--bg-scrim), 0.82) 90%,
+      rgba(var(--bg-scrim), 0.96) 95%,
+      rgb(var(--bg-scrim)) 100%
+    );
+}
+
+#reviews-home::before {
+  background:
+    linear-gradient(
+      180deg,
+      rgb(var(--bg-scrim)) 0%,
+      rgba(var(--bg-scrim), 0.94) 5%,
+      rgba(var(--bg-scrim), 0.84) 12%,
+      rgba(var(--bg-scrim), 0.3) 26%,
+      rgba(var(--bg-scrim), 0.26) 50%,
+      rgba(var(--bg-scrim), 0.3) 74%,
+      rgba(var(--bg-scrim), 0.86) 90%,
+      rgba(var(--bg-scrim), 0.97) 95%,
+      rgb(var(--bg-scrim)) 100%
+    );
+}
+
+/* ---------------------------------------------------------------------------
+   5. #contact-form — приоткрываем фактуру
+
+   Здесь скрим был слишком глухим: bg-cta-aurora почти не читалась. Открываем
+   середину так же, как у остальных секций. За карточкой «Бесплатная
+   консультация» стоит плотная подложка формы, поэтому читаемость полей не
+   страдает — фактура играет вокруг них.
+   ------------------------------------------------------------------------- */
+#contact-form::after {
+  background:
+    linear-gradient(
+      180deg,
+      rgb(var(--bg-scrim)) 0%,
+      rgba(var(--bg-scrim), 0.9) 5%,
+      rgba(var(--bg-scrim), 0.66) 14%,
+      rgba(var(--bg-scrim), 0.26) 32%,
+      rgba(var(--bg-scrim), 0.24) 58%,
+      rgba(var(--bg-scrim), 0.38) 82%,
+      rgba(var(--bg-scrim), 0.9) 95%,
+      rgb(var(--bg-scrim)) 100%
+    );
+}
+
+/* ---------------------------------------------------------------------------
+   6. Узкие экраны
+
+   На телефоне секции короткие: картинка обрезается до узкой полосы, и
+   прозрачная середина работает уже не как «воздух», а как случайное пятно.
+   Поэтому на мобильном скрим плотнее — фактура остаётся намёком.
+   ------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  #problems::before,
+  #calculator::before,
+  #stats::before,
+  #services-overview::before,
+  #materials::before,
+  #reviews-home::before,
+  #contact-form::after {
+    background: linear-gradient(
+      180deg,
+      rgb(var(--bg-scrim)) 0%,
+      rgba(var(--bg-scrim), 0.94) 6%,
+      rgba(var(--bg-scrim), 0.8) 16%,
+      rgba(var(--bg-scrim), 0.6) 40%,
+      rgba(var(--bg-scrim), 0.6) 60%,
+      rgba(var(--bg-scrim), 0.84) 88%,
+      rgb(var(--bg-scrim)) 100%
+    );
+  }
+}
+
+/* Экономия трафика: картинки не грузим, остаётся ровный тёмный фон. */
+@media (prefers-reduced-data: reduce) {
+  #problems::after,
+  #calculator::after,
+  #stats::after,
+  #services-overview::after,
+  #materials::after,
+  #reviews-home::after {
+    background-image: none;
+  }
+}
+
+/* Печать: на бумаге фоны дают серую заливку. */
+@media print {
+  #problems::after,
+  #calculator::after,
+  #stats::after,
+  #services-overview::after,
+  #materials::after,
+  #reviews-home::after {
+    display: none;
+  }
+}
