@@ -42,10 +42,17 @@ test('три атмосферных фона лежат в public/img/bg в AVIF
   }
 });
 
-test('styles/aurora-backgrounds.css подключён в Base.astro последним', () => {
+test('styles/aurora-backgrounds.css подключён после общей темы, а layout-polish — последним', () => {
   assert.match(base, /import '\.\.\/styles\/aurora-backgrounds\.css'/, 'файл не подключён');
   const order = [...base.matchAll(/import '\.\.\/styles\/([\w-]+\.css)'/g)].map((m) => m[1]);
-  assert.equal(order.at(-1), 'aurora-backgrounds.css', 'подключён не последним — скрим перекроют старые фоны');
+  // скримы авроры должны перекрывать старые фоны style.css, поэтому aurora —
+  // после общей темы; layout-polish идёт последним (стыковочный порядок ревьюера)
+  assert.deepEqual(
+    order.slice(-3),
+    ['reviews.css', 'aurora-backgrounds.css', 'layout-polish.css'],
+    `порядок стилей нарушен: ${order.join(' → ')}`,
+  );
+  assert.equal(order.at(-1), 'layout-polish.css', 'уплотнения layout-polish должны перекрывать базовые отступы');
 });
 
 test('фон первого экрана: картинка, позиция справа, горизонтальный скрим под заголовком', () => {
