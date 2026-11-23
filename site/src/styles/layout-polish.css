@@ -1,4 +1,5 @@
 /* Agent 02 — compact layouts and glass depth, layered after shared components. */
+@import './bg-inner-sections.css';
 
 /* Inner-page headers: reclaim the first viewport below the fixed navigation. */
 .hero-sub {

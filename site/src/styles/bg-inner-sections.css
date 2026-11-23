@@ -1,0 +1,101 @@
+/* Атмосферные сцены внутренних разделов. Подключается через layout-polish.css,
+   чтобы не менять каркас и каскад общих шапок. */
+:root {
+  --inner-bg-scrim: 7, 12, 24; /* #070c18 */
+}
+
+.bg-inner-scene {
+  position: relative;
+  isolation: isolate;
+}
+
+.bg-inner-scene::before,
+.bg-inner-scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bg-inner-scene::before {
+  z-index: -2;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* На каждом изображении края сходят точно в фон страницы. В центральной
+   полосе скрим остаётся лёгким (24–40%), чтобы стекло и лучи читались. */
+.bg-inner-scene::after {
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--inner-bg-scrim)) 0%,
+    rgba(var(--inner-bg-scrim), .96) 4%,
+    rgba(var(--inner-bg-scrim), .68) 10%,
+    rgba(var(--inner-bg-scrim), .40) 25%,
+    rgba(var(--inner-bg-scrim), .32) 50%,
+    rgba(var(--inner-bg-scrim), .40) 75%,
+    rgba(var(--inner-bg-scrim), .68) 90%,
+    rgba(var(--inner-bg-scrim), .96) 96%,
+    rgb(var(--inner-bg-scrim)) 100%
+  );
+}
+
+.bg-inner-scene.bg-services-scene::before {
+  background-image: image-set(
+    url('/img/bg/bg-services-crystal.avif') type('image/avif'),
+    url('/img/bg/bg-services-crystal.webp') type('image/webp')
+  );
+  background-position: center 48%;
+}
+
+.bg-inner-scene.bg-podbor-scene::before {
+  background-image: image-set(
+    url('/img/bg/bg-podbor-horizon.avif') type('image/avif'),
+    url('/img/bg/bg-podbor-horizon.webp') type('image/webp')
+  );
+  background-position: center 58%;
+}
+
+.bg-inner-scene.bg-about-scene::before {
+  background-image: image-set(
+    url('/img/bg/bg-about-atrium.avif') type('image/avif'),
+    url('/img/bg/bg-about-atrium.webp') type('image/webp')
+  );
+  background-position: center 42%;
+}
+
+.bg-inner-scene.bg-gallery-scene::before {
+  background-image: image-set(
+    url('/img/bg/bg-templates-gallery.avif') type('image/avif'),
+    url('/img/bg/bg-templates-gallery.webp') type('image/webp')
+  );
+  background-position: center;
+}
+
+/* У hero уже есть отдельное правило для стандартной панорамы. Эти более
+   специфичные селекторы выбирают уникальную сцену на нужной внутренней странице. */
+.hero-sub.bg-inner-scene::after,
+.templates-hero.bg-inner-scene::after,
+.article-hero.bg-inner-scene::after {
+  background: linear-gradient(
+    180deg,
+    rgb(var(--inner-bg-scrim)) 0%,
+    rgba(var(--inner-bg-scrim), .96) 4%,
+    rgba(var(--inner-bg-scrim), .68) 10%,
+    rgba(var(--inner-bg-scrim), .40) 25%,
+    rgba(var(--inner-bg-scrim), .32) 50%,
+    rgba(var(--inner-bg-scrim), .40) 75%,
+    rgba(var(--inner-bg-scrim), .68) 90%,
+    rgba(var(--inner-bg-scrim), .96) 96%,
+    rgb(var(--inner-bg-scrim)) 100%
+  );
+}
+
+@media (prefers-reduced-data: reduce), print {
+  .bg-inner-scene::before,
+  .bg-inner-scene::after {
+    display: none;
+  }
+}
