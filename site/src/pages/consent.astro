@@ -1,0 +1,6 @@
+---
+import { settings } from '../server/settings';
+const title = 'Согласие на обработку данных';
+---
+<html lang="ru"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>{title} — Кадры-Про</title></head>
+<body><main><h1>{title}</h1><p>Я, пользователь сайта Кадры-Про, добровольно разрешаю обработку предоставленных мной персональных данных для ответа на обращение и оказания запрошенных услуг.</p><p>Оператор: {settings.owner.name}, ИНН {settings.owner.inn}. Данные не передаются для рекламного профилирования. Согласие можно отозвать, направив запрос на {settings.owner.email}.</p><p>Необязательная аналитика включается только после отдельного нажатия «Принять все» в настройках cookies. Отказ не ограничивает отправку обращения.</p><p>Версия документа: {settings.consent.policyVersion}.</p><a href="/privacy/">Политика конфиденциальности</a></main></body></html>

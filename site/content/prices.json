@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "currency": "RUB",
+  "updatedAt": "2026-11-23",
+  "prices": {
+    "template.single": { "amount": 500, "label": "500 ₽" },
+    "template.bundle": { "amount": 3500, "label": "3 500 ₽" },
+    "audit.express": { "amount": 7900, "label": "7 900 ₽" },
+    "audit.standard": { "amount": 9900, "label": "9 900 ₽" },
+    "audit.full": { "amount": 19900, "label": "19 900 ₽" },
+    "service.start": { "amount": 14000, "label": "14 000 ₽/мес" },
+    "service.business": { "amount": 24000, "label": "24 000 ₽/мес" },
+    "service.maximum": { "amount": 36000, "label": "36 000 ₽/мес" }
+  }
+}
