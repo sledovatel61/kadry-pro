@@ -1,0 +1,66 @@
+---
+import Base from '../layouts/Base.astro';
+import catalog from '../../content/templates.json';
+const categories = [...new Set(catalog.items.map((item) => item.category))];
+const freeCount = catalog.items.filter((item) => item.free).length;
+const paidCount = catalog.items.length - freeCount;
+---
+<Base title="Кадровые шаблоны: 20 бесплатно и 44 платных — Кадры-Про" description="Каталог из 64 кадровых документов: 20 шаблонов можно скачать бесплатно, платные доступны с водяным превью первой страницы." page="shablony">
+  <section class="templates-hero">
+    <div class="templates-hero__inner">
+      <p class="eyebrow">Практические материалы · 2026</p>
+      <h1>Кадровые документы<br /><span>для реальной работы</span></h1>
+      <p class="templates-hero__lead">Каталог из {catalog.items.length} документов: {freeCount} бесплатно, ещё {paidCount} можно предварительно посмотреть по водяной копии первой страницы.</p>
+      <div class="templates-hero__actions"><a class="templates-primary" href="/shablony/free-bundle-20.zip" download>Скачать бесплатный набор из 20</a><a class="templates-secondary" href="#catalog">Выбрать документ <span aria-hidden="true">↓</span></a></div>
+      <div class="templates-proof"><span><b>20</b> бесплатных PDF</span><span><b>{paidCount}</b> водяных превью</span><span><b>0</b> платных PDF в открытой папке</span></div>
+    </div>
+    <div class="templates-hero__orb" aria-hidden="true">КП</div>
+  </section>
+
+  <section class="template-catalog" id="catalog" aria-labelledby="catalog-title">
+    <div class="template-catalog__heading"><div><p class="eyebrow">Библиотека</p><h2 id="catalog-title">Все шаблоны</h2><p>Бесплатные документы доступны сразу. Платные файлы не размещены в открытом доступе.</p></div>
+      <label class="template-search"><span class="sr-only">Поиск документов</span><span aria-hidden="true">⌕</span><input type="search" id="template-search" placeholder="Найти документ…" autocomplete="off" /></label>
+    </div>
+    <div class="template-filters" role="group" aria-label="Фильтр по категории"><button type="button" class="is-active" data-filter="all" aria-pressed="true">Все <span>{catalog.items.length}</span></button>{categories.map((category) => <button type="button" data-filter={category} aria-pressed="false">{category}</button>)}</div>
+    <p class="template-results" id="template-results" aria-live="polite">Показано {catalog.items.length} из {catalog.items.length} документов</p>
+    <div class="template-grid" id="template-grid">
+      {catalog.items.map((item) => <article class="template-tile" data-template-card data-category={item.category} data-title={`${item.name} ${item.description}`.toLocaleLowerCase('ru')}>
+        <div class="template-tile__visual">{item.free ? <div class="template-tile__free-cover" aria-hidden="true"><span>{item.icon}</span><small>КАДРЫ-ПРО · PDF</small></div> : <img src={item.preview} alt={`Водяное превью первой страницы документа «${item.name}»`} loading="lazy" width="280" height="396" />}<span class:list={['template-badge', item.free ? 'template-badge--free' : 'template-badge--paid']}>{item.free ? 'Бесплатно' : `${item.price.toLocaleString('ru-RU')} ₽`}</span><span class="template-tile__number">№ {item.id}</span></div>
+        <div class="template-tile__content"><span class="template-tile__category">{item.category}</span><h3>{item.name}</h3><p>{item.description}</p><div class="template-tile__footer">{item.free ? <a class="template-download" href={item.file} download>Скачать PDF <span aria-hidden="true">↗</span></a> : <><span class="template-price">{item.price.toLocaleString('ru-RU')} ₽</span><a class="template-request" href="/contact.html?service=templates">Уточнить покупку</a></>}</div></div>
+      </article>)}
+    </div>
+    <p class="template-empty" id="template-empty" hidden>По этому запросу документы не найдены. Попробуйте изменить слова поиска.</p>
+  </section>
+  <section class="templates-assurance"><span class="templates-assurance__mark">✓</span><div><h2>Без скрытой раздачи платных файлов</h2><p>Платные документы доступны только после подтверждения оплаты. Свяжитесь с Марией, чтобы уточнить состав, актуальность и способ получения. Оплата проводится по индивидуально согласованным реквизитам — никаких ненастроенных платёжных кнопок на сайте.</p></div><a href="/contact.html?service=templates">Задать вопрос</a></section>
+</Base>
+<script>
+  const cards = [...document.querySelectorAll<HTMLElement>('[data-template-card]')];
+  const filters = [...document.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+  const search = document.querySelector<HTMLInputElement>('#template-search');
+  const results = document.querySelector<HTMLElement>('#template-results');
+  const empty = document.querySelector<HTMLElement>('#template-empty');
+  let category = 'all';
+  function updateCatalog() {
+    const query = (search?.value ?? '').trim().toLocaleLowerCase('ru');
+    let visible = 0;
+    for (const card of cards) {
+      const matches = (category === 'all' || card.dataset.category === category) && (!query || (card.dataset.title ?? '').includes(query));
+      card.hidden = !matches;
+      if (matches) visible++;
+    }
+    if (results) results.textContent = `Показано ${visible} из ${cards.length} документов`;
+    if (empty) empty.hidden = visible !== 0;
+  }
+  filters.forEach((button) => button.addEventListener('click', () => {
+    category = button.dataset.filter ?? 'all';
+    filters.forEach((item) => { const active = item === button; item.classList.toggle('is-active', active); item.setAttribute('aria-pressed', String(active)); });
+    updateCatalog();
+  }));
+  search?.addEventListener('input', updateCatalog);
+</script>
+<style>
+  .templates-hero{position:relative;overflow:hidden;min-height:490px;padding:clamp(75px,10vw,130px) 22px 72px;background:radial-gradient(ellipse at 80% 10%,#193522 0,transparent 42%),linear-gradient(130deg,#0a0f0c,#0a0a0a 72%);border-bottom:1px solid #253329}.templates-hero__inner{position:relative;z-index:1;max-width:1180px;margin:auto}.eyebrow{margin:0 0 12px;color:#4ade80;font-size:.76rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase}.templates-hero h1{max-width:790px;margin:0;color:#f4f8f4;font-size:clamp(2.8rem,7vw,5.5rem);line-height:.98;letter-spacing:-.055em}.templates-hero h1 span{color:#4ade80}.templates-hero__lead{max-width:660px;margin:24px 0 27px;color:#bdc8bf;font-size:1.12rem;line-height:1.65}.templates-hero__actions{display:flex;flex-wrap:wrap;gap:12px}.templates-primary,.templates-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 20px;border-radius:11px;text-decoration:none;font-weight:750}.templates-primary{background:#4ade80;color:#082010}.templates-secondary{border:1px solid #47544a;color:#eff8f0}.templates-proof{display:flex;gap:28px;margin-top:36px;color:#aeb9b1;font-size:.9rem}.templates-proof b{color:#f4fff5;font-size:1.12rem}.templates-hero__orb{position:absolute;right:8%;top:19%;display:grid;place-items:center;width:220px;height:220px;border:1px solid #4ade804d;border-radius:50%;color:#4ade80;font:700 5rem 'JetBrains Mono',monospace;box-shadow:0 0 100px #4ade8014,inset 0 0 60px #4ade8010;transform:rotate(-12deg)}.template-catalog{max-width:1280px;margin:auto;padding:76px 22px 88px}.template-catalog__heading{display:flex;justify-content:space-between;align-items:end;gap:28px}.template-catalog h2{margin:0;font-size:clamp(2rem,4vw,3rem);letter-spacing:-.04em}.template-catalog__heading p:not(.eyebrow){color:#aeb9b1}.template-search{display:flex;align-items:center;gap:11px;width:min(100%,330px);padding:0 15px;border:1px solid #354238;border-radius:12px;background:#121714;color:#4ade80;font-size:1.55rem}.template-search input{width:100%;min-height:48px;border:0;outline:0;background:transparent;color:#f5f8f5;font:inherit;font-size:.95rem}.template-search input::placeholder{color:#929d95}.template-filters{display:flex;gap:9px;overflow:auto;padding:24px 0 8px;scrollbar-width:thin}.template-filters button{flex:0 0 auto;min-height:39px;padding:0 13px;border:1px solid #354238;border-radius:999px;color:#d4ddd6;background:#141a16;font:600 .83rem inherit;cursor:pointer}.template-filters button.is-active{border-color:#4ade80;color:#06170b;background:#4ade80}.template-filters button span{margin-left:4px;opacity:.7}.template-results{color:#89978d;font-size:.85rem}.template-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:17px;margin-top:18px}.template-tile{overflow:hidden;border:1px solid #28342c;border-radius:17px;background:linear-gradient(160deg,#171d19,#101411);transition:transform .2s,border-color .2s}.template-tile:hover{transform:translateY(-4px);border-color:#4ade8073}.template-tile[hidden]{display:none}.template-tile__visual{position:relative;aspect-ratio:1.12;background:#edf0ec;overflow:hidden}.template-tile__visual img{display:block;width:100%;height:100%;object-fit:cover;object-position:top center}.template-tile__free-cover{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#193923;background:radial-gradient(circle at 50% 45%,#fafff8,#dce9dc)}.template-tile__free-cover span{font-size:3rem}.template-tile__free-cover small{font:700 .62rem 'JetBrains Mono',monospace;letter-spacing:.1em}.template-badge{position:absolute;top:11px;left:11px;padding:6px 10px;border-radius:999px;font-size:.73rem;font-weight:800}.template-badge--free{background:#4ade80;color:#06200d}.template-badge--paid{background:#17221aee;border:1px solid #4ade8066;color:#d3ffe0}.template-tile__number{position:absolute;right:10px;bottom:10px;padding:5px 8px;border-radius:7px;background:#09100dbd;color:#fff;font:600 .7rem 'JetBrains Mono',monospace}.template-tile__content{padding:17px;display:flex;flex-direction:column;min-height:205px}.template-tile__category{color:#6ee795;font-size:.72rem;font-weight:700}.template-tile h3{margin:8px 0;font-size:1.04rem;line-height:1.35;color:#f2f6f2}.template-tile p{margin:0;color:#9eaaa1;font-size:.83rem;line-height:1.5}.template-tile__footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:18px}.template-download,.template-request{font-weight:700;font-size:.82rem;text-decoration:none}.template-download{color:#4ade80}.template-request{padding:9px 11px;border:1px solid #435247;border-radius:9px;color:#eff7f0}.template-price{font-weight:800;color:#f5fff6}.template-empty{padding:30px;border:1px dashed #46534a;border-radius:14px;color:#c9d3cb;text-align:center}.templates-assurance{max-width:1236px;margin:0 auto 80px;padding:25px;display:flex;align-items:center;gap:18px;border:1px solid #304434;border-radius:18px;background:#131a15}.templates-assurance__mark{display:grid;flex:0 0 42px;place-items:center;width:42px;height:42px;border-radius:50%;background:#183e26;color:#4ade80;font-size:1.4rem}.templates-assurance h2{margin:0 0 6px;font-size:1.1rem}.templates-assurance p{margin:0;color:#aebbb1;font-size:.88rem;line-height:1.6}.templates-assurance>a{flex:0 0 auto;color:#4ade80;font-weight:700;text-decoration:none}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  @media(max-width:1050px){.template-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.templates-hero__orb{right:4%;width:170px;height:170px;font-size:4rem}}
+  @media(max-width:740px){.template-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.template-catalog__heading{align-items:stretch;flex-direction:column}.template-search{width:100%}.templates-hero__orb{right:-75px;top:30px;width:160px;height:160px;opacity:.35}.templates-proof{gap:12px;flex-wrap:wrap}.templates-assurance{margin-inline:14px;align-items:flex-start;flex-wrap:wrap}.templates-assurance>a{margin-left:60px}}
+  @media(max-width:460px){.template-grid{grid-template-columns:1fr}.template-tile{display:grid;grid-template-columns:112px minmax(0,1fr)}.template-tile__visual{aspect-ratio:1/1.42}.template-tile__content{min-height:unset;padding:13px}.template-tile h3{font-size:.94rem}.template-tile p{font-size:.78rem}.template-badge{top:7px;left:6px;padding:5px 7px;font-size:.63rem}.template-tile__number{right:5px;bottom:5px}.template-tile__footer{align-items:flex-start;flex-direction:column}.template-request{font-size:.76rem}}
+</style>
