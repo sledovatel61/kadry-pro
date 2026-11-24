@@ -543,11 +543,25 @@ export function wireLeadForms(options: WireOptions = {}): void {
 
       void (async () => {
         try {
-          const res = await leadsFetch(leadsUrl('leads'), {
+          /* 409 «ключ идемпотентности уже использован с другими данными»:
+             человек поправил телефон после прошлой попытки, а ключ остался
+             прежним — без этой ветки каждый повтор упирался бы в 409 с общим
+             «не получилось» (тупик до перезагрузки страницы). Крутим ключ и
+             повторяем ОДИН раз: это та же заявка, которую просили отправить,
+             а уже доставленная под старым ключом не задваивается. */
+          let res = await leadsFetch(leadsUrl('leads'), {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(buildPayload(form, startedAt, idem)),
           });
+          if (res.status === 409) {
+            idem = makeIdempotencyKey();
+            res = await leadsFetch(leadsUrl('leads'), {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(buildPayload(form, startedAt, idem)),
+            });
+          }
           const data = await res.json().catch(() => null) as
             | {
                 ticket?: string;
