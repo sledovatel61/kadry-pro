@@ -317,20 +317,21 @@ document.querySelectorAll('.accordion-header').forEach(function(header) {
      подключён — показывает под кнопкой телефон и Telegram, чтобы человек
      точно мог связаться, а не видел «ошибка отправки». */
 
-  /* Формы заявок здесь НЕ обрабатываются: их отправляет leads-form.ts, и только
-     он показывает результат. Раньше оба модуля вешали submit на одну и ту же
-     форму (проверка флага `leadsBound` не работала — в leads-form.ts он
-     называется `leadWired`), и человек получал два противоречащих сообщения:
-     «Заявка почти ушла — позвоните» от этого файла и настоящий результат
-     следом. Такой дубль и был причиной путаницы в бою.
-     Здесь остаётся только подстраховка на случай, если модуль заявок вообще не
-     загрузился (сеть, блокировщик): тогда форма без обработчика молча
-     перезагрузила бы страницу, и человек не понял бы, ушла заявка или нет. */
-  var orphanForms = document.querySelectorAll('form[data-validate]:not([data-lead-form])');
+  /* Формы заявок ведёт leads-form.ts, и только он показывает результат. Раньше
+     оба модуля вешали submit на одну и ту же форму (проверка флага `leadsBound`
+     не работала — в leads-form.ts он называется `leadWired`), и человек получал
+     два противоречащих сообщения: «Заявка почти ушла — позвоните» от этого
+     файла и настоящий результат следом. Такой дубль и был причиной путаницы.
+     Теперь проверка ПРАВИЛЬНОГО флага `leadWired` — в момент submit (не при
+     навешивании: порядок загрузки модулей не гарантирован). Если leads-form.ts
+     не загрузился вовсе (сеть, блокировщик) — форма без обработчика молча
+     перезагрузила бы страницу; здесь остаётся подстраховка с телефоном. */
+  var orphanForms = document.querySelectorAll('form[data-validate], form[data-lead-form]');
   for (var lf = 0; lf < orphanForms.length; lf++) {
     orphanForms[lf].addEventListener('submit', function (e) {
-      e.preventDefault();
       var form = this;
+      if (form.dataset.leadWired === '1') return;
+      e.preventDefault();
       var status = form.querySelector('.quick-lead-status');
       if (!status) {
         status = document.createElement('p');

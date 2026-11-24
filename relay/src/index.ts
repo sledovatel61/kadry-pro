@@ -196,7 +196,15 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
      клиент не мог отличить реальную доставку от тишины. */
 
   if (lead.honeypot_hidden === true && lead.honeypot.trim() !== '') {
-    return json({ ticket: makeTicket(), status: 'accepted', duplicate: false }, 201);
+    /* Боту отвечаем формальным успехом, но БЕЗ обещаний доставки: клиент по
+       `delivered: false/false` покажет «подтверждения доставки нет» с телефоном,
+       а не ложное «Мария ответит». Так и бот не отличим от «оба канала легли»
+       (та же форма ответа), и живой человек, чьё автозаполнение умудрилось
+       заполнить display:none-ловушку, получит шанс позвонить. */
+    return json({
+      ticket: makeTicket(), status: 'accepted', duplicate: false,
+      delivered: { telegram: false, email: false },
+    }, 201);
   }
 
   const suspicious: string[] = [];

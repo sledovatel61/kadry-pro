@@ -22,22 +22,26 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const site = readFileSync(join(root, 'src/client/site.ts'), 'utf8');
 const leads = readFileSync(join(root, 'src/client/leads-form.ts'), 'utf8');
 
-test('site.ts не вешает submit на формы заявок (иначе два обработчика)', () => {
-  /* Ищем строку с querySelectorAll, которая выбирает формы для старой проверки. */
+test('site.ts не дублирует обработчик форм заявок: отбой по флагу leadWired в момент submit', () => {
+  /* Ищем строку с querySelectorAll, которая выбирает формы для подстраховки. */
   const line = site
     .split('\n')
     .find((l) => l.includes('querySelectorAll') && l.includes('data-validate'));
   assert.ok(line, 'в site.ts должен остаться обработчик для форм без модуля заявок');
 
+  /* Подстраховка должна покрывать и формы заявок: если leads-form.ts не
+     загрузился, форма молча перезагрузила бы страницу. Двойного сообщения нет
+     за счёт проверки флага ПРИ ОТПРАВКЕ (порядок загрузки модулей не
+     гарантирован — проверять флаг при навешивании нельзя). */
   assert.match(
     line,
-    /:not\(\[data-lead-form\]\)/,
-    'формы [data-lead-form] обслуживает leads-form.ts — site.ts обязан их исключить',
-  );
-  assert.doesNotMatch(
-    line,
     /form\[data-lead-form\]/,
-    'селектор не должен включать формы заявок',
+    'селектор должен включать формы заявок — иначе без leads-form.ts они молча перезагрузят страницу',
+  );
+  assert.match(
+    site,
+    /if \(form\.dataset\.leadWired === '1'\) return;/,
+    'submit в site.ts обязан выходить, если форму уже ведёт leads-form.ts (leadWired)',
   );
 });
 
@@ -66,6 +70,17 @@ test('тексты ошибок называют причину: сеть, та�
   assert.match(leads, /\(сеть\)/, 'сетевая ошибка должна быть отличима от таймаута');
   assert.match(leads, /таймаут/, 'таймаут должен называться таймаутом');
   assert.match(leads, /не JSON/, 'нераспознанный ответ должен быть виден');
+});
+
+test('409 «ключ использован»: ключ крутится и отправка повторяется один раз', () => {
+  /* Без этой ветки человек, поправивший телефон после неудачной попытки,
+     навсегда упирался в 409: ключ идемпотентности оставался от старых данных,
+     а клиент показывал общий «не получилось». */
+  const conflictIdx = leads.indexOf('res.status === 409');
+  assert.ok(conflictIdx > -1, '409 должен обрабатываться явно');
+  const block = leads.slice(conflictIdx, conflictIdx + 400);
+  assert.match(block, /idem = makeIdempotencyKey\(\)/, 'после 409 ключ идемпотентности должен обновиться');
+  assert.match(block, /leadsFetch/, 'после смены ключа отправка должна повториться');
 });
 
 test('поля ужимаются до лимитов воркера — заявка не теряется на 400', () => {

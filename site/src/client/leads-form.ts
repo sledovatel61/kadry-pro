@@ -122,16 +122,31 @@ function isReallyHidden(el: HTMLElement | null): boolean {
 }
 
 /**
- * Поле-ловушка, из которого берём `honeypot`, — в том же порядке приоритета,
- * что и значение. Нужно, чтобы флаг `honeypot_hidden` относился к тому же
- * элементу, а не к первому попавшемуся.
+ * Поле-ловушка, из которого пришло ЗНАЧЕНИЕ `honeypot`, — в том же порядке
+ * приоритета, что и значение: первое НЕПУСТОЕ поле. Флаг `honeypot_hidden`
+ * должен описывать именно этот элемент, а не первый попавшийся.
+ *
+ * Регрессия K-1123: на формах с двумя ловушками (офскрин `company_website`
+ * и `display:none` `_gotcha`) значение приходило из офскрина (его заполнило
+ * автозаполнение), а флаг считался от `_gotcha` как первого найденного —
+ * `hidden=true`. Воркер считал такую заявку ботом, молча выбрасывал её и
+ * отвечал 201 с талоном: человек видел успех, заявка не доходила.
  */
-function honeypotField(form: HTMLElement): HTMLElement | null {
-  return (
-    form.querySelector<HTMLElement>(`[name="${form.dataset.honeypot || 'honeypot'}"]`)
-    ?? form.querySelector<HTMLElement>('[name="_gotcha"]')
-    ?? form.querySelector<HTMLElement>('[name="company_website"]')
-  );
+function honeypotSource(form: HTMLElement): HTMLElement | null {
+  const names = [form.dataset.honeypot || 'honeypot', '_gotcha', 'company_website'];
+  const byName = (name: string): (HTMLElement & { value?: string }) | null =>
+    form.querySelector<HTMLElement>(`[name="${name}"]`);
+  for (const name of names) {
+    const el = byName(name);
+    if (el && typeof el.value === 'string' && el.value) return el;
+  }
+  /* Ловушки пусты — для флага берём первую существующую (значение всё равно
+     пустое, и воркер от него ничего не решает). */
+  for (const name of names) {
+    const el = byName(name);
+    if (el) return el;
+  }
+  return null;
 }
 
 /** Значение поля по имени (первое совпадение внутри формы). */
@@ -356,7 +371,7 @@ export function buildPayload(form: HTMLFormElement, startedAt: number, idem: str
     ),
     /* Флаг нужен воркеру: заполненная офскрин-ловушка — это, скорее всего,
        автозаполнение, а не бот. Доставляем, но с пометкой «проверить». */
-    honeypot_hidden: isReallyHidden(honeypotField(form)),
+    honeypot_hidden: isReallyHidden(honeypotSource(form)),
     form_started_at: startedAt,
   };
 
@@ -528,11 +543,25 @@ export function wireLeadForms(options: WireOptions = {}): void {
 
       void (async () => {
         try {
-          const res = await leadsFetch(leadsUrl('leads'), {
+          /* 409 «ключ идемпотентности уже использован с другими данными»:
+             человек поправил телефон после прошлой попытки, а ключ остался
+             прежним — без этой ветки каждый повтор упирался бы в 409 с общим
+             «не получилось» (тупик до перезагрузки страницы). Крутим ключ и
+             повторяем ОДИН раз: это та же заявка, которую просили отправить,
+             а уже доставленная под старым ключом не задваивается. */
+          let res = await leadsFetch(leadsUrl('leads'), {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(buildPayload(form, startedAt, idem)),
           });
+          if (res.status === 409) {
+            idem = makeIdempotencyKey();
+            res = await leadsFetch(leadsUrl('leads'), {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(buildPayload(form, startedAt, idem)),
+            });
+          }
           const data = await res.json().catch(() => null) as
             | {
                 ticket?: string;
@@ -592,8 +621,12 @@ export function wireLeadForms(options: WireOptions = {}): void {
           /* Таймаут и сеть — человеку важен телефон, но и причину скрывать
              незачем: «network» и «timeout» различимы и не содержат его данных. */
           const name = (err as Error)?.name;
+          /* Таймаут не значит, что заявка потерялась: запрос мог дойти, а ответ —
+             нет. Повтор с тем же ключом идемпотентности дублей не создаёт,
+             поэтому честно говорим и про возможность успеха, и про безопасность
+             повтора. Сеть — случай обратный: запрос почти наверняка не ушёл. */
           showError(form, texts, name === 'AbortError'
-            ? `${texts.error} (таймаут ${Math.round(LEADS_TIMEOUT_MS / 1000)} с)`
+            ? `Ответ не пришёл за ${Math.round(LEADS_TIMEOUT_MS / 1000)} с (таймаут): возможно, заявка уже ушла. Повторная отправка безопасна — дубликатов не будет. Если срочно: +7 (961) 302-21-12.`
             : `${texts.error} (сеть)`);
         } finally {
           busy = false;
