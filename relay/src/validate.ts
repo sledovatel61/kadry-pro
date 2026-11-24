@@ -67,7 +67,7 @@ export interface CalcSummary {
 }
 
 export interface TemplateRequest {
-  /** Позиция каталога `t01`…`t64`; пусто — заявка на весь пакет. */
+  /** Позиция каталога `01`…`64` (или `t01`…`t64`); пусто — заявка на весь пакет. */
   id: string | null;
   title: string;
   package: TemplatePackage;
@@ -92,6 +92,7 @@ export interface TemplatePayload extends LeadBase {
   kind: 'template';
   template: TemplateRequest;
   email: string | null;
+  message: string | null;
 }
 
 export type LeadPayload = ConsultPayload | CalculatorPayload | TemplatePayload;
@@ -234,10 +235,10 @@ export function validateLead(body: unknown): Validated {
     } else {
       const idRaw = tRaw.id === undefined || tRaw.id === null ? '' : str(tRaw.id).trim();
       const tid = idRaw || null;
-      if (tid && !/^t\d{1,3}$/.test(tid)) bad('template.id', 'Шаблон: неверный номер');
+      if (tid && !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(tid)) bad('template.id', 'Шаблон: неверный номер');
       const title = str(tRaw.title).trim();
       if (title.length < 2 || title.length > 200) bad('template.title', 'Шаблон: не указано название');
-      const pkg = tRaw.package;
+      const pkg = tRaw.package === 'paid' ? 'single' : tRaw.package;
       if (!(TEMPLATE_PACKAGES as readonly unknown[]).includes(pkg)) {
         bad('template.package', 'Выберите пакет из списка');
       }
@@ -278,6 +279,7 @@ export function validateLead(body: unknown): Validated {
   if (kind === 'template') {
     const t = body.template as Record<string, unknown>;
     const idRaw = t.id === undefined || t.id === null ? '' : str(t.id).trim();
+    const pkgNorm = (t.package === 'paid' ? 'single' : t.package) as TemplatePackage;
     const priceRaw = t.price;
     return {
       ok: true,
@@ -285,10 +287,11 @@ export function validateLead(body: unknown): Validated {
         ...base,
         kind: 'template',
         email,
+        message,
         template: {
           id: idRaw || null,
           title: str(t.title).trim(),
-          package: t.package as TemplatePackage,
+          package: pkgNorm,
           price: priceRaw === undefined || priceRaw === null ? null : (priceRaw as number),
         },
       },
