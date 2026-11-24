@@ -213,6 +213,38 @@ test('отправка заявки по платной карточке и пе
   }
 });
 
+test('после ошибки повтор карточки сохраняет ключ, выбор другой карточки создаёт новый', async () => {
+  const { dom, doc, cleanup } = mountShablonyDom();
+  const prevFetch = globalThis.fetch;
+  const sent: Record<string, unknown>[] = [];
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    sent.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+    return new Response(JSON.stringify({ error: { code: 'delivery', message: 'Ошибка доставки' } }), { status: 502, headers: { 'content-type': 'application/json' } });
+  }) as typeof fetch;
+  try {
+    const form = doc.getElementById('template-lead-form') as HTMLFormElement;
+    doc.querySelector<HTMLButtonElement>('#s02 [data-open-template]')!.click();
+    (form.querySelector('[name="name"]') as HTMLInputElement).value = 'Тестовый клиент';
+    (form.querySelector('[name="phone"]') as HTMLInputElement).value = '89613022112';
+    (form.querySelector('[name="consent"]') as HTMLInputElement).checked = true;
+    const submit = async () => {
+      form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 30));
+    };
+    await submit();
+    await submit();
+    doc.querySelector<HTMLButtonElement>('#s53 [data-open-template]')!.click();
+    await submit();
+    assert.equal(sent.length, 3);
+    assert.equal(sent[0].idempotency_key, sent[1].idempotency_key);
+    assert.notEqual(sent[1].idempotency_key, sent[2].idempotency_key);
+    assert.equal((sent[2].template as { id: string }).id, '53');
+  } finally {
+    globalThis.fetch = prevFetch;
+    cleanup();
+  }
+});
+
 test('кнопка полного набора открывает модальное окно с package=full и ценой 3 500 ₽', () => {
   const { doc, cleanup } = mountShablonyDom();
   try {

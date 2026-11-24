@@ -5,7 +5,7 @@
  * Контракт (на него завязаны клиент сайта и тесты — менять нельзя):
  *   GET  /health             → { ok, service:'kadry-leads', time, telegram, email, emailTo,
  *                               consentVersion, kv, reviews, reviewsKv, reviewsModeration, files }
- *   POST /leads              → 201 { ticket, status:'accepted', duplicate, delivered{telegram,email}, download? }
+ *   POST /leads              → 201 { ticket, status:'accepted', duplicate, delivered{telegram,email} }
  *                              400 { error:{ code:'validation'|'bad_json'|'consent_version', message, fields? } }
  *                              403 { error:{ code:'origin', … } }
  *                              429 { error:{ code:'too_many', … } } + Retry-After
@@ -28,7 +28,7 @@ import { handleReview, reviewsHealth, type ReviewsStore } from './reviews.ts';
 import { handleLiveReviews, liveReviewsHealth } from './reviews-live.ts';
 import { allowedOrigins } from './origins.ts';
 import { hashIp, json, err } from './http.ts';
-import { signFileToken, verifyFileToken, serveFile, signingSecret, type R2Like } from './files.ts';
+import { verifyFileToken, serveFile, signingSecret, type R2Like } from './files.ts';
 
 export interface Env {
   BOT_TOKEN?: string;
@@ -218,7 +218,7 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
   const idemKey = `idem:${lead.idempotency_key}`;
   const seen = await kvGet(env, idemKey);
   if (seen) {
-    const [ticket, hash, download] = seen.split('|');
+    const [ticket, hash] = seen.split('|');
     if (hash !== (await hashIp(lead.phone))) {
       return err(409, 'conflict', 'Ключ идемпотентности уже использован');
     }
@@ -226,7 +226,6 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
        врём про неё. `delivered` неизвестен — значит его нет, а не true. */
     return json({
       ticket, status: 'accepted', duplicate: true,
-      ...(download ? { download } : {}),
     }, 201);
   }
 
@@ -302,19 +301,8 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
     return err(502, 'delivery', 'Не удалось доставить заявку. Позвоните нам, пожалуйста.');
   }
 
-  /* Заявка на шаблон: выдаём подписанную ссылку на файл, если файл вообще есть
-     в бакете. Пока бакета нет — ссылки нет, и Мария вышлет файл руками. */
-  let download: string | undefined;
-  if (lead.kind === 'template' && (lead.template.package === 'full' || lead.template.package === 'email')) {
-    const id = lead.template.package === 'full' ? 'full-bundle-64' : 'email-bundle-25';
-    const hasFiles = Boolean(env.TEMPLATES);
-    if (hasFiles && lead.template.package === 'full') {
-      const token = await signFileToken(env, id);
-      if (token) download = `/files/${token}`;
-    }
-  }
-
-  await kvPut(env, idemKey, `${ticket}|${await hashIp(lead.phone)}|${download ?? ''}`, 86400);
+  /* Заявка — не оплата: ссылки покупателю не выдаём даже при наличии R2. */
+  await kvPut(env, idemKey, `${ticket}|${await hashIp(lead.phone)}`, 86400);
   return json({
     ticket, status: 'accepted', duplicate: false, delivered,
     /* Какие каналы вообще были подключены на момент отправки. Клиент по этому
@@ -322,7 +310,6 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
        только почта (и наоборот). */
     channels: { telegram: telegramOn, email: emailOn },
     ...(suspicious.length ? { flagged: suspicious } : {}),
-    ...(download ? { download } : {}),
   }, 201);
 }
 

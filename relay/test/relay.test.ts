@@ -518,7 +518,7 @@ test('заявка на email-шаблон без адреса почты отв
   assert.ok(v.fields.email);
 });
 
-test('заявка на полный пакет возвращает подписанную ссылку только при подключённом бакете', async () => {
+test('заявка на полный пакет не выдаёт ссылку даже при подключённом бакете', async () => {
   const fake = mockFetch();
   const body = freshBody({
     kind: 'template',
@@ -536,7 +536,9 @@ test('заявка на полный пакет возвращает подпи�
   }));
   assert.equal(withBucket.status, 201);
   const b = await withBucket.json() as { download?: string };
-  assert.match(b.download ?? '', /^\/files\/full-bundle-64\.\d+\./);
+  assert.equal(b.download, undefined);
+  const duplicate = await post('/leads', { ...body, idempotency_key: body.idempotency_key }, baseEnv());
+  assert.equal(((await duplicate.json()) as { download?: string }).download, undefined);
   assert.ok(fake.calls.length >= 2);
 });
 

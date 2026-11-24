@@ -525,6 +525,7 @@ export function wireLeadForms(options: WireOptions = {}): void {
     let idem = makeIdempotencyKey();
     let busy = false;
     let retryUntil = 0;
+    let lastTemplateSelection: string | undefined;
 
     const phone = form.querySelector<HTMLInputElement>('[name="phone"]');
     if (options.mask && phone && !phone.dataset.maskAttached) {
@@ -554,6 +555,17 @@ export function wireLeadForms(options: WireOptions = {}): void {
         const first = form.querySelector<HTMLElement>('.error, [aria-invalid="true"]');
         first?.focus();
         return;
+      }
+
+      /* Повтор той же карточки сохраняет ключ после таймаута. Другая
+         карточка — новая заявка, даже если номер телефона не изменился. */
+      if (form.dataset.leadKind === 'template') {
+        const selected = dataTemplate(form);
+        const selection = JSON.stringify([selected?.pkg ?? '', selected?.id ?? '']);
+        if (lastTemplateSelection !== undefined && lastTemplateSelection !== selection) {
+          idem = makeIdempotencyKey();
+        }
+        lastTemplateSelection = selection;
       }
 
       busy = true;
@@ -645,11 +657,10 @@ export function wireLeadForms(options: WireOptions = {}): void {
              незачем: «network» и «timeout» различимы и не содержат его данных. */
           const name = (err as Error)?.name;
           /* Таймаут не значит, что заявка потерялась: запрос мог дойти, а ответ —
-             нет. Повтор с тем же ключом идемпотентности дублей не создаёт,
-             поэтому честно говорим и про возможность успеха, и про безопасность
-             повтора. Сеть — случай обратный: запрос почти наверняка не ушёл. */
+             нет. Тот же ключ снижает риск дубля, но без постоянного KV не гарантирует
+             его отсутствие между изолятами. Сеть — запрос мог не дойти. */
           showError(form, texts, name === 'AbortError'
-            ? `Ответ не пришёл за ${Math.round(LEADS_TIMEOUT_MS / 1000)} с (таймаут): возможно, заявка уже ушла. Повторная отправка безопасна — дубликатов не будет. Если срочно: +7 (961) 302-21-12.`
+            ? `Ответ не пришёл за ${Math.round(LEADS_TIMEOUT_MS / 1000)} с (таймаут): возможно, заявка уже ушла. При повторе возможен дубль. Если срочно: +7 (961) 302-21-12.`
             : `${texts.error} (сеть)`);
         } finally {
           busy = false;
