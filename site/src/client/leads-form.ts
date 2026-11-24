@@ -149,9 +149,13 @@ function honeypotSource(form: HTMLElement): HTMLElement | null {
   return null;
 }
 
-/** Значение поля по имени (первое совпадение внутри формы). */
+/** Значение поля по имени (первое совпадение внутри формы; для radio — выбранное). */
 function fieldValue(form: HTMLElement, name: string): string {
   const el = form.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[name="${name}"]`);
+  if ((el as HTMLInputElement | null)?.type === 'radio') {
+    const checked = form.querySelector<HTMLInputElement>(`input[type="radio"][name="${name}"]:checked`);
+    return (checked?.value ?? '').trim();
+  }
   return (el?.value ?? '').trim();
 }
 
@@ -352,11 +356,13 @@ export function buildPayload(form: HTMLFormElement, startedAt: number, idem: str
   const message = clip(fieldValue(form, 'message') || fieldValue(form, 'comment'), LIMIT.message);
   const kind = (form.dataset.leadKind as LeadKind) || 'consult';
 
+  const contactMethod = fieldValue(form, 'contact_method') || (form.dataset.contactMethod as string) || 'call';
+
   const base: Record<string, unknown> = {
     kind,
     name,
     phone,
-    contact_method: (form.dataset.contactMethod as string) || 'call',
+    contact_method: contactMethod,
     consent: isChecked(form, 'consent'),
     consent_version: form.dataset.consentVersion || CONSENT_VERSION,
     page: form.dataset.page || pageSlug(),
@@ -464,23 +470,40 @@ export interface WireOptions {
   mask?: boolean;
 }
 
-/** Маска телефона: +7 (999) 999-99-99, не мешая вставлять номер из буфера. */
+/**
+ * Форматирование телефона под маску +7 (999) 999-99-99 без поломки мобильного
+ * автозаполнения и вставки из буфера: если при фокусе уже стояло «+7» или «+7 (»,
+ * а поверх него вставили полный 11-значный номер («+7 961…» или «8 961…»),
+ * лишний префикс «+7» снимается, чтобы последняя цифра номера не обрезалась.
+ */
+export function formatPhoneMaskValue(raw: string): string {
+  const pastedAfterPrefix = /^\+7\s*\(?\s*(?:\+7|8)[\s()-]*(\d[\d\s()-]{9,})$/.exec(raw);
+  const source = pastedAfterPrefix ? `7${pastedAfterPrefix[1]}` : raw;
+  const d = source.replace(/\D/g, '').replace(/^8/, '7').replace(/^([^7])/, '7$1').slice(0, 11);
+  if (!d) return '';
+  const out = ['+' + d[0]];
+  if (d.length > 1) out.push(' (' + d.slice(1, 4));
+  if (d.length >= 5) out.push(') ' + d.slice(4, 7));
+  if (d.length >= 8) out.push('-' + d.slice(7, 9));
+  if (d.length >= 10) out.push('-' + d.slice(9, 11));
+  return out.join('');
+}
+
+/** Маска телефона: +7 (999) 999-99-99, не мешая вставлять номер из буфера и автозаполнению. */
 export function attachPhoneMask(input: HTMLInputElement): void {
-  const format = (digits: string): string => {
-    const d = digits.replace(/\D/g, '').replace(/^8/, '7').replace(/^([^7])/, '7$1').slice(0, 11);
-    if (!d) return '';
-    const out = ['+' + d[0]];
-    if (d.length > 1) out.push(' (' + d.slice(1, 4));
-    if (d.length >= 5) out.push(') ' + d.slice(4, 7));
-    if (d.length >= 8) out.push('-' + d.slice(7, 9));
-    if (d.length >= 10) out.push('-' + d.slice(9, 11));
-    return out.join('');
-  };
-  input.addEventListener('input', () => {
+  const sync = (): void => {
     const atEnd = input.selectionStart === input.value.length;
-    input.value = format(input.value);
-    if (atEnd) input.setSelectionRange(input.value.length, input.value.length);
-  });
+    input.value = formatPhoneMaskValue(input.value);
+    if (atEnd && typeof input.setSelectionRange === 'function') {
+      try {
+        input.setSelectionRange(input.value.length, input.value.length);
+      } catch {
+        /* Некоторые окружения не поддерживают selectionRange на type="tel". */
+      }
+    }
+  };
+  input.addEventListener('input', sync);
+  input.addEventListener('change', sync);
   input.addEventListener('focus', () => {
     if (!input.value.trim()) input.value = '+7 (';
   });

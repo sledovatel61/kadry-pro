@@ -7,9 +7,13 @@
  */
 import type { LeadPayload, TemplatePackage } from './validate.ts';
 import type { ReviewPayload } from './reviews-validate.ts';
+import { resolveTemplateNotice } from './paid-templates.ts';
 
 const esc = (s: string): string =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const escAttr = (s: string): string =>
+  esc(s).replace(/"/g, '&quot;');
 
 /** +79613022112 → +7 (961) 302-21-12 — так номер читается и набирается с телефона. */
 export function fmtPhone(normalized: string): string {
@@ -92,14 +96,22 @@ export function composeTelegram(lead: LeadPayload, ticket: string, opts: Compose
 
   if (lead.kind === 'template') {
     const t = lead.template;
+    const resolved = resolveTemplateNotice(t);
     return [
       '📄 <b>Заявка на шаблон</b>',
       warn,
       ...common,
-      `\nШаблон: <b>${esc(t.title)}</b>${t.id ? ` (${esc(t.id)})` : ''}`,
-      `\nПакет: <b>${PACKAGE_LABEL[t.package] ?? t.package}</b>`,
-      t.price !== null ? `\nЦена: <b>${rub(t.price)}</b>` : '',
+      `\nШаблон: <b>${esc(resolved.title)}</b>${resolved.id ? ` (ID: <code>${esc(resolved.id)}</code>)` : ''}`,
+      `\nПакет: <b>${PACKAGE_LABEL[t.package] ?? esc(t.package)}</b>`,
+      resolved.price !== null
+        ? `\nЦена на сайте (по каталогу): <b>${rub(resolved.price)}</b>`
+        : '\nЦена по каталогу: <b>не подтверждена (неизвестный ID)</b>',
       lead.email ? `\nПочта: ${esc(lead.email)}` : '',
+      lead.message ? `\nКомментарий: ${esc(lead.message)}` : '',
+      resolved.githubUrl && resolved.filename
+        ? `\nФайл для Марии: <a href="${escAttr(resolved.githubUrl)}">${esc(resolved.filename)}</a>\nПрямая ссылка: ${esc(resolved.githubUrl)}`
+        : '',
+      resolved.linkNote ? `\nℹ️ <i>${esc(resolved.linkNote)}</i>` : '',
       page,
       consent,
       footer,
