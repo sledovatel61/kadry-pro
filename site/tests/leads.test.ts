@@ -24,7 +24,7 @@ import {
   parseLeadsEndpoint,
   retryAfterSeconds,
 } from '../src/shared/leads-endpoint.ts';
-import { buildPayload, validateForm, DEFAULT_TEXTS } from '../src/client/leads-form.ts';
+import { buildPayload, validateForm, DEFAULT_TEXTS, successMessage } from '../src/client/leads-form.ts';
 import { fieldText, FIELD_TEXTS } from '../src/client/review-form.ts';
 import { pickNew, reviewKey, plural as livePlural, formatDayMonth } from '../src/client/reviews-live.ts';
 
@@ -406,6 +406,13 @@ test('дата в карточке отзыва — день и месяц, с �
   const now = new Date('2026-11-23T10:00:00Z');
   assert.equal(formatDayMonth('2026-11-20', now), '20 ноября');
   assert.equal(formatDayMonth('2025-12-31', now), '31 декабря 2025');
+});
+
+test('результат заявки называет только каналы, подтверждённые Worker', () => {
+  assert.match(successMessage({ telegram: true, email: true }), /Telegram и на почту/);
+  assert.match(successMessage({ telegram: true, email: false }), /Telegram/);
+  assert.match(successMessage({ telegram: false, email: true }), /на почту/);
+  assert.match(successMessage(), /свяжется с вами/);
 });
 
 test('тексты формы заявки — понятные и без Formspree', () => {

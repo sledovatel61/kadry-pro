@@ -42,13 +42,27 @@ export interface LeadFormTexts {
 
 export const DEFAULT_TEXTS: LeadFormTexts = {
   sending: 'Отправляем…',
-  success: 'Заявка ушла — Мария увидит её в Telegram и ответит в рабочее время.',
+  success: 'Заявка принята. Мария свяжется с вами в рабочее время.',
   ticket: 'Номер заявки',
   error: 'Не получилось отправить заявку. Позвоните, пожалуйста: +7 (961) 302-21-12.',
   phoneHint: 'Позвоните: +7 (961) 302-21-12 — или напишите в Telegram @Mariya061.',
   rateLimit: 'Слишком много заявок с вашего адреса. Повторите позже или позвоните.',
   retry: 'Повторить через',
 };
+
+export interface DeliveryChannels {
+  telegram?: boolean;
+  email?: boolean;
+}
+
+/** Сообщаем только о тех каналах, которые подтвердил Worker в своём ответе. */
+export function successMessage(delivered?: DeliveryChannels): string {
+  if (!delivered) return DEFAULT_TEXTS.success;
+  if (delivered.telegram && delivered.email) return 'Заявка доставлена Марии в Telegram и на почту.';
+  if (delivered.telegram) return 'Заявка доставлена Марии в Telegram.';
+  if (delivered.email) return 'Заявка доставлена Марии на почту.';
+  return DEFAULT_TEXTS.success;
+}
 
 const PHONE_RE = /^\d{11}$/;
 
@@ -385,11 +399,11 @@ export function wireLeadForms(options: WireOptions = {}): void {
             body: JSON.stringify(buildPayload(form, startedAt, idem)),
           });
           const data = await res.json().catch(() => null) as
-            | { ticket?: string; duplicate?: boolean; download?: string }
+            | { ticket?: string; duplicate?: boolean; download?: string; delivered?: DeliveryChannels }
             | null;
 
           if ((res.status === 201 || res.status === 200) && data?.ticket) {
-            showSuccess(form, data.ticket, texts, data.download);
+            showSuccess(form, data.ticket, { ...texts, success: successMessage(data.delivered) }, data.download);
             idem = makeIdempotencyKey();
             form.reset();
             return;
