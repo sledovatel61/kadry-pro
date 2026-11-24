@@ -285,24 +285,30 @@ document.querySelectorAll('.accordion-header').forEach(function(header) {
 });
 
   var phoneInputs = document.querySelectorAll('input[data-mask="phone"]');
+  function formatPhoneField() {
+    var raw = this.value || '';
+    var pasted = /^\+7\s*\(?\s*(?:\+7|8)[\s()-]*(\d[\d\s()-]{9,})$/.exec(raw);
+    var src = pasted ? ('7' + pasted[1]) : raw;
+    var val = src.replace(/\D/g, '');
+    if (val.length > 0 && val[0] === '8') val = '7' + val.slice(1);
+    if (val.length > 0 && val[0] !== '7') val = '7' + val;
+    val = val.slice(0, 11);
+    var formatted = '';
+    if (val.length > 0) formatted = '+7';
+    if (val.length > 1) formatted += ' (' + val.slice(1, 4);
+    if (val.length > 4) formatted += ') ' + val.slice(4, 7);
+    if (val.length > 7) formatted += '-' + val.slice(7, 9);
+    if (val.length > 9) formatted += '-' + val.slice(9, 11);
+    this.value = formatted;
+  }
   for (var i = 0; i < phoneInputs.length; i++) {
-    phoneInputs[i].addEventListener('input', function() {
-      var val = this.value.replace(/\D/g, '');
-      if (val.length > 0 && val[0] === '8') val = '7' + val.slice(1);
-      if (val.length > 0 && val[0] !== '7') val = '7' + val;
-      var formatted = '';
-      if (val.length > 0) formatted = '+7';
-      if (val.length > 1) formatted += ' (' + val.slice(1, 4);
-      if (val.length > 4) formatted += ') ' + val.slice(4, 7);
-      if (val.length > 7) formatted += '-' + val.slice(7, 9);
-      if (val.length > 9) formatted += '-' + val.slice(9, 11);
-      this.value = formatted;
-    });
+    phoneInputs[i].addEventListener('input', formatPhoneField);
+    phoneInputs[i].addEventListener('change', formatPhoneField);
     phoneInputs[i].addEventListener('focus', function() {
       if (!this.value) this.value = '+7';
     });
     phoneInputs[i].addEventListener('blur', function() {
-      if (this.value === '+7') this.value = '';
+      if (this.value === '+7' || this.value === '+7 (') this.value = '';
     });
   }
 
@@ -463,7 +469,14 @@ document.querySelectorAll('.accordion-header').forEach(function(header) {
   var dockLead = document.querySelector('[data-dock-lead]');
   if (dockLead) {
     dockLead.addEventListener('click', function (e) {
-      var form = document.querySelector('form[data-lead-form], form[data-validate]');
+      var candidates = document.querySelectorAll('form[data-lead-form], form[data-validate]');
+      var form = null;
+      for (var fi = 0; fi < candidates.length; fi++) {
+        var dlg = candidates[fi].closest ? candidates[fi].closest('dialog') : null;
+        if (dlg && !dlg.hasAttribute('open')) continue;
+        form = candidates[fi];
+        break;
+      }
       if (form) {
         e.preventDefault();
         var box = form.closest('section') || form;

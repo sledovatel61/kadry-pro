@@ -88,3 +88,8 @@ test('поля ужимаются до лимитов воркера — зая�
   assert.match(leads, /honeypot:\s*clip\(/);
   assert.match(leads, /message:\s*2000|LIMIT\s*=\s*\{[^}]*message:\s*2000/);
 });
+
+test('таймаут не обещает невозможного при повторе без постоянного KV', () => {
+  assert.match(leads, /При повторе возможен дубль/);
+  assert.doesNotMatch(leads, /дубликатов не будет/);
+});

@@ -17,6 +17,7 @@
 import type { LeadPayload, TemplatePackage } from './validate.ts';
 import type { ReviewPayload } from './reviews-validate.ts';
 import { fmtPhone } from './telegram.ts';
+import { resolveTemplateNotice, type ResolvedTemplateNotice } from './paid-templates.ts';
 
 export const DEFAULT_EMAIL_TO = 'm.perepechay@yandex.ru';
 
@@ -94,6 +95,7 @@ export function composeEmail(lead: LeadPayload, ticket: string, opts: EmailOpts)
   ];
 
   let subjectBase = 'Заявка с сайта';
+  let templateNotice: ResolvedTemplateNotice | null = null;
   if (lead.kind === 'calculator') {
     subjectBase = 'Расчёт с калькулятора';
     rows.push(['Штат', `${lead.calc.staff} чел.`]);
@@ -102,11 +104,17 @@ export function composeEmail(lead: LeadPayload, ticket: string, opts: EmailOpts)
     rows.push(['Экономия', `${rub(lead.calc.savings_month)}/мес · ${rub(lead.calc.savings_year)}/год`]);
     if (lead.message) rows.push(['Комментарий', lead.message]);
   } else if (lead.kind === 'template') {
-    subjectBase = `Заявка на шаблон: ${lead.template.title}`;
-    rows.push(['Шаблон', `${lead.template.title}${lead.template.id ? ` (${lead.template.id})` : ''}`]);
+    const resolved = resolveTemplateNotice(lead.template);
+    templateNotice = resolved;
+    subjectBase = `Заявка на шаблон: ${resolved.title}${resolved.id ? ` (ID ${resolved.id})` : ''}`;
+    rows.push(['Шаблон', `${resolved.title}${resolved.id ? ` (ID: ${resolved.id})` : ''}`]);
     rows.push(['Пакет', PACKAGE_LABEL[lead.template.package] ?? lead.template.package]);
-    if (lead.template.price !== null) rows.push(['Цена', rub(lead.template.price)]);
+    rows.push([
+      'Цена на сайте (по каталогу)',
+      resolved.price !== null ? rub(resolved.price) : 'не подтверждена (неизвестный ID)',
+    ]);
     if (lead.email) rows.push(['Почта', lead.email]);
+    if (lead.message) rows.push(['Комментарий', lead.message]);
   } else {
     if (lead.company) rows.push(['Компания', lead.company]);
     if (lead.email) rows.push(['Почта', lead.email]);
@@ -114,16 +122,52 @@ export function composeEmail(lead: LeadPayload, ticket: string, opts: EmailOpts)
     if (lead.message) rows.push(['Сообщение', lead.message]);
   }
 
-  const subject = `${subjectBase} — ${lead.name}, ${fmtPhone(lead.phone)} · ${ticket}`;
+  const subject = `${subjectBase} — ${lead.name}, ${fmtPhone(lead.phone)} · ${ticket}`.replace(/[\r\n]+/g, ' ');
+
+  const textFileLines: string[] = [];
+  if (templateNotice) {
+    if (templateNotice.githubUrl && templateNotice.filename) {
+      textFileLines.push('');
+      textFileLines.push(`Файл для Марии (${templateNotice.filename}): ${templateNotice.githubUrl}`);
+      if (templateNotice.linkNote) textFileLines.push(`Примечание: ${templateNotice.linkNote}`);
+    } else if (templateNotice.linkNote) {
+      textFileLines.push('');
+      textFileLines.push(`Файл: ${templateNotice.linkNote}`);
+    }
+  }
 
   const text = [
     subjectBase.toUpperCase(),
     opts.siteName + (opts.address ? `, ${opts.address}` : ''),
     '',
     ...rows.map(([k, v]) => `${k}: ${v}`),
+    ...textFileLines,
     '',
     'Ответить клиенту: ' + fmtPhone(lead.phone),
   ].join('\n');
+
+  const htmlFileBlock = templateNotice
+    ? (templateNotice.githubUrl && templateNotice.filename
+      ? `<tr><td style="padding:10px 24px 4px">
+      <div style="padding:14px 16px;border-radius:10px;background:#101b2d;border:1px solid #26436c">
+        <div style="font-size:13px;font-weight:700;color:#9fd0ff;margin-bottom:6px">Файл шаблона для Марии</div>
+        <div style="margin-bottom:8px">
+          <a href="${escHtml(templateNotice.githubUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#2563eb;color:#f8fbff;text-decoration:none;font-weight:700;font-size:14px">
+            Скачать PDF: ${escHtml(templateNotice.filename)}
+          </a>
+        </div>
+        <div style="font-size:12px;color:#9aa59d;word-break:break-all;margin-bottom:6px">${escHtml(templateNotice.githubUrl)}</div>
+        ${templateNotice.linkNote ? `<div style="font-size:12px;color:#cbd5e1">${escHtml(templateNotice.linkNote)}</div>` : ''}
+      </div>
+    </td></tr>`
+      : (templateNotice.linkNote
+        ? `<tr><td style="padding:10px 24px 4px">
+      <div style="padding:12px 14px;border-radius:10px;background:#1c1917;border:1px solid #44403c;font-size:13px;color:#fde4b8">
+        ${escHtml(templateNotice.linkNote)}
+      </div>
+    </td></tr>`
+        : ''))
+    : '';
 
   const html = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><title>${escHtml(subject)}</title></head>
@@ -143,6 +187,7 @@ export function composeEmail(lead: LeadPayload, ticket: string, opts: EmailOpts)
         </tr>`).join('')}
       </table>
     </td></tr>
+    ${htmlFileBlock}
     <tr><td style="padding:14px 24px 22px">
       <a href="tel:${escHtml(lead.phone)}" style="display:inline-block;padding:11px 18px;border-radius:10px;background:#4ade80;color:#0a0a0a;text-decoration:none;font-weight:700">
         Позвонить ${escHtml(fmtPhone(lead.phone))}
