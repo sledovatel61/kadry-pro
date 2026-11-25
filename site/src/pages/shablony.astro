@@ -160,7 +160,35 @@ const itemListJsonLd = {
               )}
               <div class="template-tile__footer">
                 {item.free ? (
-                  <a class="template-download" href={item.file} download>Скачать PDF <span aria-hidden="true">↗</span></a>
+                  <div class="template-tile__free-actions">
+                    <a
+                      class="template-download"
+                      href={item.file}
+                      download
+                      title="PDF старого образца (до переработки в редактируемый DOCX)"
+                    >
+                      Скачать PDF <span aria-hidden="true">↗</span>
+                    </a>
+                    <small class="template-format-note">
+                      {item.isReworkedDocx
+                        ? 'Это PDF прежнего образца. Обновлённый редактируемый DOCX для № 01 вышлем вручную по заявке.'
+                        : 'Формат: PDF.'}
+                    </small>
+                    {item.isReworkedDocx && (
+                      <button
+                        type="button"
+                        class="template-request template-request--ghost"
+                        data-open-template
+                        data-template-id={item.id}
+                        data-template-title={item.name}
+                        data-template-price="0"
+                        data-template-package="free"
+                        aria-haspopup="dialog"
+                      >
+                        Запросить обновлённый DOCX
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <>
                     <span class="template-price">{item.price.toLocaleString('ru-RU')} ₽</span>
@@ -215,7 +243,7 @@ const itemListJsonLd = {
             download
             hidden
           >
-            Скачать PDF бесплатно <span aria-hidden="true">↗</span>
+            <span data-preview-download-label>Скачать PDF бесплатно</span> <span aria-hidden="true">↗</span>
           </a>
           <button type="button" class="template-request template-preview__order" data-preview-order>
             Оставить заявку · 500 ₽
@@ -554,6 +582,8 @@ const itemListJsonLd = {
   .template-tile__footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .template-download,.template-request { font-weight: 700; font-size: .82rem; text-decoration: none; }
   .template-download { color: var(--accent-text,#b6daff); }
+  .template-tile__free-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .template-format-note { color: var(--text-secondary,#c1cbd8); font-size: .7rem; line-height: 1.35; font-weight: 500; }
   .template-request {
     display: inline-flex; align-items: center; justify-content: center; min-height: 38px;
     padding: 8px 13px; border: 1px solid var(--accent-border,rgba(88,166,255,.42)); border-radius: 9px;
@@ -561,6 +591,13 @@ const itemListJsonLd = {
     box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 6px 16px rgba(20,74,180,.28);
     font-family: inherit; cursor: pointer; transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
   }
+  .template-request--ghost {
+    border-color: var(--border-light,rgba(255,255,255,.26));
+    background: rgba(24, 38, 60, .82);
+    color: var(--accent-text,#b6daff);
+    box-shadow: none;
+  }
+  .template-request--ghost:hover { border-color: var(--accent,#58a6ff); background: rgba(32, 52, 84, .92); color: var(--text-primary,#f2f6fb); }
   .template-request:hover { background: var(--grad-btn-hover,linear-gradient(135deg,#3b82f6,#2563eb)); transform: translateY(-1px); }
   .template-price { color: var(--text-primary,#f2f6fb); font-weight: 800; }
   .template-empty { padding: 30px; border: 1px dashed var(--border-light,rgba(255,255,255,.28)); border-radius: 14px; color: var(--text-secondary,#c1cbd8); text-align: center; background: linear-gradient(145deg,rgba(26,39,64,.55),rgba(14,21,36,.72)); }
@@ -578,15 +615,26 @@ const itemListJsonLd = {
   }
   .template-bundle-btn:hover { border-color: rgba(234,185,104,.65); }
 
-  /* Лайтбокс предпросмотра первой страницы (крупно, без обрезки, с масштабированием) */
+  /* Лайтбокс предпросмотра первой страницы (крупно, без обрезки, с масштабированием).
+     Центрирование задаём явно: глобальный сброс `*, *::before, *::after { margin: 0 }`
+     перебивает стандартное `dialog { margin: auto }`, из-за чего окно прижималось
+     к левому верхнему углу вместо центра экрана. */
   .template-preview-modal {
+    position: fixed;
+    inset: 0;
+    margin: auto;
     border: 1px solid var(--border-color,rgba(255,255,255,.2));
     border-radius: 18px;
     background: var(--grad-card,linear-gradient(165deg,rgba(20,31,50,.99),rgba(10,16,28,.99)));
     box-shadow: inset 0 1px 0 rgba(186,220,255,.14), 0 36px 84px -18px rgba(0,0,0,.92);
     color: var(--text-primary,#f2f6fb);
     padding: 0;
-    width: min(920px, calc(100vw - 24px));
+    /* Широкое окно: страница читается крупно сразу, без «двух ползунков». */
+    width: 92vw;
+    max-width: 920px;
+    /* height: fit-content — чтобы авто-отступы сверху и снизу реально центрировали
+       окно по вертикали, а не прижимали его к верху экрана. */
+    height: fit-content;
     max-height: min(94dvh, calc(100vh - 16px));
     overflow: hidden;
   }
@@ -637,13 +685,19 @@ const itemListJsonLd = {
   .template-preview__close:hover { border-color: var(--accent,#58a6ff); color: var(--text-primary,#f2f6fb); }
   .template-preview__viewport {
     flex: 1 1 auto; min-height: 0;
-    overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+    /* Только вертикальная прокрутка: картинка вписана по ширине, второй ползунок
+       не нужен и сбивает чтение. */
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
     padding: 16px;
     background: #09111d;
   }
   .template-preview__img {
     display: block;
-    width: min(100%, 820px);
+    /* Страница сразу занимает всю ширину окна — читается без увеличения. */
+    width: 100%;
+    max-width: 100%;
     height: auto;
     margin: 0 auto;
     border-radius: 10px;
@@ -693,6 +747,12 @@ const itemListJsonLd = {
 
   /* Модальное окно заявки на платный шаблон (удобно и на десктопе, и на телефоне) */
   .template-modal {
+    /* Та же причина, что и у лайтбокса: глобальный сброс обнуляет margin,
+       поэтому центрирование диалога задаём явно. */
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    height: fit-content;
     border: 1px solid var(--border-color,rgba(255,255,255,.18));
     border-radius: 18px;
     background: var(--grad-card,linear-gradient(165deg,rgba(24,37,60,.98),rgba(12,19,32,.99)));
@@ -783,7 +843,7 @@ const itemListJsonLd = {
     .templates-assurance__actions { margin-left: 60px; flex-wrap: wrap; }
     .template-modal__row { grid-template-columns: 1fr; }
     .template-modal__body { padding: 18px 16px max(18px, env(safe-area-inset-bottom)); }
-    .template-preview-modal { width: calc(100vw - 12px); max-height: min(95dvh, calc(100vh - 10px)); border-radius: 14px; }
+    .template-preview-modal { width: calc(100vw - 12px); max-width: none; max-height: min(95dvh, calc(100vh - 10px)); border-radius: 14px; }
     .template-preview__panel { max-height: min(95dvh, calc(100vh - 10px)); }
     .template-preview__header { align-items: flex-start; padding: 11px 12px; gap: 8px; }
     .template-preview__title { font-size: .92rem; }

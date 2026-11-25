@@ -531,20 +531,115 @@ test('смена шаблона после сорванной отправки: 
   }
 });
 
+test('лайтбокс предпросмотра отцентрирован и открывается широко — без второго ползунка', () => {
+  /* Жалоба: окно прижималось к левому краю, а страница не читалась без
+     горизонтальной прокрутки. Причина смещения — глобальный сброс
+     `*, *::before, *::after { margin: 0 }`, который перебивает стандартное
+     `dialog { margin: auto }`. Проверяем по собранному CSS: важно именно
+     итоговое правило, а не намерение в исходнике. */
+  const previewModal = mountShablonyDom().doc.getElementById('template-preview-modal');
+  assert.ok(previewModal, 'лайтбокс должен быть в собранной странице');
+
+  const css = readFileSync(builtShablonyPath, 'utf8')
+    .match(/<link[^>]+href="([^"]+\.css)"/g)
+    ?.map((tag) => tag.match(/href="([^"]+)"/)![1])
+    .map((href) => resolve(REPO_ROOT, href.replace(/^\//, '')))
+    .filter((file) => existsSync(file))
+    .map((file) => readFileSync(file, 'utf8'))
+    .join('\n') ?? '';
+  assert.ok(css.length > 0, 'должны найтись стили собранной страницы');
+
+  /* Astro добавляет к селекторам атрибут области действия
+     (`[data-astro-cid-...]`), поэтому берём текст первого правила с этим
+     префиксом — без регулярных выражений с экранированием. */
+  const rule = (selector: string): string => {
+    const at = css.indexOf(selector);
+    if (at < 0) return '';
+    const open = css.indexOf('{', at);
+    const close = css.indexOf('}', open);
+    return open < 0 || close < 0 ? '' : css.slice(open + 1, close);
+  };
+
+  /* 1. Центрирование по горизонтали и вертикали. */
+  const dialog = rule('.template-preview-modal[');
+  assert.match(dialog, /margin:auto/, 'без margin:auto окно снова прижмётся к левому краю');
+  assert.match(dialog, /position:fixed/, 'диалог должен позиционироваться относительно экрана');
+  assert.match(dialog, /inset:0/, 'inset:0 вместе с margin:auto центрирует окно');
+  assert.match(dialog, /height:fit-content/, 'иначе вертикальные авто-отступы не работают');
+
+  /* 2. Ширина: 92vw, но не шире 920px. */
+  assert.match(dialog, /width:92vw/);
+  assert.match(dialog, /max-width:920px/);
+
+  /* 3. Один вертикальный ползунок: страница занимает всю ширину окна. */
+  const viewport = rule('.template-preview__viewport[');
+  assert.match(viewport, /overflow-x:hidden/);
+  assert.match(viewport, /overflow-y:auto/);
+  const img = rule('.template-preview__img[');
+  assert.match(img, /width:100%/, 'картинка должна сразу занимать ширину окна');
+});
+
+test('карточка № 01: рядом со «Скачать PDF» назван формат и предложен обновлённый DOCX', () => {
+  /* Несоответствие из отчёта: № 01 помечена как «Бесплатно» и обещает DOCX
+     (входит в комплект 01–10), но скачивается PDF прежнего образца. Человек
+     должен видеть формат прямо на карточке, а не узнавать о нём после. */
+  const { doc, cleanup } = mountShablonyDom();
+  try {
+    const card = doc.getElementById('s01');
+    assert.ok(card, 'карточка № 01 должна быть на странице');
+
+    const download = card.querySelector<HTMLAnchorElement>('a.template-download[download]');
+    assert.ok(download, 'бесплатное скачивание № 01 должно сохраниться');
+    assert.equal(download.getAttribute('href'), '/shablony/free/01_Трудовой_договор_бессрочный.pdf');
+    assert.match(download.title, /PDF/i, 'у ссылки должно быть пояснение про формат');
+
+    const note = card.querySelector<HTMLElement>('.template-format-note');
+    assert.ok(note, 'рядом со скачиванием нужна подпись про формат');
+    assert.match(note.textContent ?? '', /PDF прежнего образца/i);
+    assert.match(note.textContent ?? '', /DOCX/i);
+    assert.match(note.textContent ?? '', /по заявке/i, 'обновлённый DOCX выдаётся по заявке, а не скачиванием');
+    assert.doesNotMatch(note.textContent ?? '', /актуальный/i, 'без приёмки слово «актуальный» не обещаем');
+
+    /* Запрос обновлённого DOCX — это заявка на бесплатную позицию. */
+    const request = card.querySelector<HTMLButtonElement>('button[data-open-template]');
+    assert.ok(request, 'у № 01 должна быть кнопка запроса обновлённого DOCX');
+    assert.equal(request.dataset.templatePackage, 'free');
+    assert.equal(request.dataset.templateId, '01');
+    assert.equal(request.dataset.templatePrice, '0');
+    assert.match(request.textContent ?? '', /Запросить обновлённый DOCX/);
+
+    /* Остальные 19 бесплатных карточек не должны получить эту кнопку: у них
+       обновлённого DOCX нет, просить нечего. */
+    const otherFreeRequests = [...doc.querySelectorAll<HTMLButtonElement>('button[data-open-template][data-template-package="free"]')];
+    assert.equal(otherFreeRequests.length, 1, 'запрос DOCX только у подтверждённой позиции № 01');
+  } finally {
+    cleanup();
+  }
+});
+
 test('обещание DOCX ограничено подтверждёнными № 01–10: старые карточки обещают только PDF', () => {
   const { doc, cleanup } = mountShablonyDom();
   try {
     const previewModal = doc.getElementById('template-preview-modal') as HTMLDialogElement;
     const caption = previewModal.querySelector<HTMLElement>('[data-preview-modal-caption]')!;
 
-    /* Подтверждённые позиции 01–10: подпись про редактируемый DOCX. */
+    /* Подтверждённые позиции 01–10: подпись про редактируемый DOCX.
+       № 01 — бесплатная позиция, у которой скачивается PDF прежнего образца:
+       подпись обязана называть формат, иначе кнопка «Скачать PDF» рядом с
+       обещанием DOCX читается как несоответствие. */
     for (let i = 1; i <= 10; i++) {
       const id = String(i).padStart(2, '0');
       const trigger = doc.querySelector<HTMLElement>(`#s${id} [data-open-preview]`);
       assert.ok(trigger, `нет триггера предпросмотра у #s${id}`);
       assert.equal(trigger.dataset.previewDocx, '1', `#s${id} должен быть помечен как подтверждённый DOCX`);
       trigger.click();
-      assert.match(caption.textContent ?? '', /пришлёт редактируемый DOCX вручную/i, `#s${id}: ожидалась подпись про DOCX`);
+      const free = trigger.dataset.previewFree === '1';
+      if (free) {
+        assert.match(caption.textContent ?? '', /PDF прежнего образца/i, `#s${id}: у бесплатной позиции нужно назвать формат`);
+        assert.match(caption.textContent ?? '', /редактируемый DOCX[^.]*по заявке/i, `#s${id}: DOCX выдаётся только по заявке`);
+      } else {
+        assert.match(caption.textContent ?? '', /пришлёт редактируемый DOCX вручную/i, `#s${id}: ожидалась подпись про DOCX`);
+      }
       assert.doesNotMatch(caption.textContent ?? '', /актуальный/i, `#s${id}: без приёмки слово «актуальный» не обещаем`);
       previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
     }
