@@ -581,24 +581,28 @@ test('неоднозначная старая запись: предупрежд
   let call = 0;
 
   /* Сервер нашёл запись прежнего формата: заявка под этим ключом уже была, но
-     что именно отправляли — неизвестно. Он ответил 200 + ambiguous и НИЧЕГО не
-     доставил. Клиент обязан показать предупреждение и НЕ повторять отправку:
-     иначе при потерянном ответе появлялся молчаливый дубль. */
+     что именно отправляли — неизвестно. Он ответил 422 + `idempotency_legacy`
+     (не 2xx и не 409, чтобы и старый клиент не счёл это успехом и не повторил)
+     и НИЧЕГО не доставил. Новый клиент показывает предупреждение и не
+     повторяет отправку: иначе при потерянном ответе появлялся молчаливый дубль. */
   globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
     call++;
     sent.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
     return new Response(
       JSON.stringify({
         ticket: 'K-1121-4242',
-        status: 'accepted',
+        status: 'ambiguous',
         duplicate: true,
         ambiguous: true,
         delivered: { telegram: false, email: false },
-        message:
-          'По этому ключу уже была отправка в прежнем формате, и что именно в ней отправляли — неизвестно. '
-          + 'Повторно ничего не отправлено, чтобы не создать дубль. Если вы выбрали другой шаблон или изменили данные — отправьте заявку ещё раз, будет новый номер.',
+        error: {
+          code: 'idempotency_legacy',
+          message:
+            'Заявка с этим ключом уже отправлялась раньше (номер K-1121-4242), и что именно в ней было — неизвестно. '
+            + 'Повторно ничего не отправлено, чтобы не создать дубль. Если вы выбрали другой шаблон или изменили данные — отправьте заявку ещё раз, будет новый номер.',
+        },
       }),
-      { status: 200, headers: { 'content-type': 'application/json' } },
+      { status: 422, headers: { 'content-type': 'application/json' } },
     );
   }) as typeof fetch;
 
@@ -620,7 +624,8 @@ test('неоднозначная старая запись: предупрежд
 
     assert.equal(errorBox.hidden, false, 'предупреждение должно быть видно');
     assert.equal(errorBox.getAttribute('data-level'), 'warning');
-    assert.match(errorBox.textContent ?? '', /уже была отправка/i);
+    assert.match(errorBox.textContent ?? '', /уже отправлялась раньше/i);
+    assert.match(errorBox.textContent ?? '', /K-1121-4242/);
     assert.match(errorBox.textContent ?? '', /ничего не отправлено, чтобы не создать дубль/i);
     assert.match(errorBox.textContent ?? '', /другой шаблон/i);
 

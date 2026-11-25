@@ -6,6 +6,7 @@
     "src/client/manage.ts",
     "src/client/review-form.ts",
     "src/client/reviews-live.ts",
-    "tests/*.test.ts"
+    "tests/*.test.ts",
+    "tests/fixtures/*.ts"
   ]
 }

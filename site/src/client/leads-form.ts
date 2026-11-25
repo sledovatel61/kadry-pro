@@ -651,6 +651,7 @@ export function wireLeadForms(options: WireOptions = {}): void {
                 /** Заявка под ключом была, но что отправляли — неизвестно. */
                 ambiguous?: boolean;
                 message?: string;
+                error?: { code?: string; message?: string };
                 download?: string;
                 /** Подтверждение каналов от воркера. Может отсутствовать
                  *  у старых сборок — тогда текст остаётся нейтральным. */
@@ -658,14 +659,19 @@ export function wireLeadForms(options: WireOptions = {}): void {
               }
             | null;
 
-          /* Неоднозначная старая запись: сервер уже принял заявку под этим
-             ключом раньше, но что именно отправляли — неизвестно. Повторно он
-             НИЧЕГО не доставил. Показываем предупреждение и оставляем форму
-             заполненной: человек сам решит, отправлять ли ещё раз (тогда новый
-             ключ и новая заявка — это его осознанный шаг, а не наш автоповтор). */
-          if (data?.ambiguous === true) {
+          /* Неоднозначная старая запись: под этим ключом заявка уже была, но
+             что именно отправляли — неизвестно, и сервер повторно НИЧЕГО не
+             доставил. Ответ 422 с `error.code = idempotency_legacy` (и флагом
+             `ambiguous`) — единственный вариант, который и старый клиент из
+             `main` показывает как текст, не скрывая форму и не повторяя сам.
+
+             Здесь мы делаем то же, но человечнее: показываем предупреждение
+             (не красную ошибку), ключ перевыпускаем заранее — если человек
+             нажмёт «Отправить» ещё раз, уйдёт НОВАЯ заявка. */
+          if (data?.ambiguous === true || data?.error?.code === 'idempotency_legacy') {
             idem = makeIdempotencyKey();
-            showWarning(form, data.message?.trim() || texts.ambiguous);
+            const message = data?.error?.message?.trim() || data?.message?.trim() || texts.ambiguous;
+            showWarning(form, message);
             return;
           }
 

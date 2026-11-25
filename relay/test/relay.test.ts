@@ -492,12 +492,15 @@ test('конфликт: тот же ключ идемпотентности с �
   assert.equal(payload.error.code, 'conflict');
 });
 
-test('старая запись идемпотентности: 200 + ambiguous, повтор не создаётся ни для шаблона, ни для смены шаблона, ни для консультации', async () => {
+test('старая запись идемпотентности: 422 + idempotency_legacy, повтор не создаётся ни для шаблона, ни для смены шаблона, ни для консультации', async () => {
   /* Запись прежнего формата — `талон|хеш телефона`, без отпечатка шаблона.
-     В ней НЕИЗВЕСТНО, что именно отправляли. Клиент из main повторяет ЛЮБОЙ
-     409 автоматически новым ключом — то есть 409 создавал молчаливый дубль уже
-     доставленной заявки. Поэтому ответ — 200 с `ambiguous: true`: и старый, и
-     новый клиент не отправляют ничего повторно, а человек видит предупреждение. */
+     В ней НЕИЗВЕСТНО, что именно отправляли.
+       • 409 — клиент из main повторяет автоматически новым ключом: молчаливый
+         дубль уже доставленной заявки;
+       • 2xx — тот же клиент показывает «Заявка принята» и скрывает форму,
+         хотя исправленные данные не доставлены.
+     Поэтому ответ — 422 с `error.message`: старый клиент показывает текст, не
+     скрывает форму и ничего не повторяет. */
   const { hashIp } = await import('../src/http.ts');
   const phone = '+7 (961) 302-21-12';
   const phoneHash = await hashIp(normalizePhone(phone) as string);
@@ -531,22 +534,26 @@ test('старая запись идемпотентности: 200 + ambiguous,
 
     const res = await post('/leads', freshBody({ ...scenario.body, phone, idempotency_key: key }), env);
 
-    assert.equal(res.status, 200, `${scenario.name}: не 4xx — иначе клиент автоматически повторит отправку`);
+    assert.equal(res.status, 422, `${scenario.name}: не 2xx (старый клиент счёл бы это успехом) и не 409 (автоповтор)`);
     const body = await res.json() as {
       ticket: string;
       duplicate?: boolean;
       ambiguous?: boolean;
-      message?: string;
+      status?: string;
+      error?: { code: string; message: string };
       delivered?: { telegram: boolean; email: boolean };
     };
     assert.equal(body.ticket, 'K-1121-4242', `${scenario.name}: показываем прежний талон`);
+    assert.equal(body.error?.code, 'idempotency_legacy', `${scenario.name}: нужен стабильный код для нового клиента`);
     assert.equal(body.ambiguous, true, `${scenario.name}: исход должен быть помечен как неоднозначный`);
+    assert.equal(body.status, 'ambiguous');
     assert.equal(body.duplicate, true);
     assert.deepEqual(body.delivered, { telegram: false, email: false }, `${scenario.name}: доставку не подтверждаем`);
-    assert.match(body.message ?? '', /уже была отправка/i, `${scenario.name}: нужен понятный текст`);
-    assert.match(body.message ?? '', /не отправлено, чтобы не создать дубль/i);
+    assert.match(body.error?.message ?? '', /уже отправлялась раньше/i, `${scenario.name}: нужен понятный текст`);
+    assert.match(body.error?.message ?? '', /ничего не отправлено, чтобы не создать дубль/i);
+    assert.match(body.error?.message ?? '', new RegExp(body.ticket), `${scenario.name}: показываем прежний номер`);
     if (scenario.body.kind === 'template') {
-      assert.match(body.message ?? '', /другой шаблон/i, `${scenario.name}: подсказка про смену шаблона`);
+      assert.match(body.error?.message ?? '', /другой шаблон/i, `${scenario.name}: подсказка про смену шаблона`);
     }
 
     /* Ничего не доставлено и ничего не записано под этим ключом. */
