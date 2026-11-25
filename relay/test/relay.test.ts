@@ -492,6 +492,54 @@ test('конфликт: тот же ключ идемпотентности с �
   assert.equal(payload.error.code, 'conflict');
 });
 
+test('миграция старой записи идемпотентности: повтор после обновления relay не даёт 409', async () => {
+  /* Запись прежнего формата — `талон|хеш телефона` без отпечатка шаблона.
+     После деплоя такой повтор обязан остаться повтором: 409 заставил бы клиент
+     молча отправить заявку заново, и Мария увидела бы её дважды. */
+  mockFetch();
+  const key = crypto.randomUUID();
+  const phone = '+7 (961) 302-21-12';
+  const stored = new Map<string, string>();
+
+  /* Хеш телефона считаем тем же способом, что и воркер: он хеширует
+     НОРМАЛИЗОВАННЫЙ номер (+79613022112), а не то, что напечатал человек. */
+  const { hashIp } = await import('../src/http.ts');
+  stored.set(`idem:${key}`, `K-1121-4242|${await hashIp(normalizePhone(phone) as string)}`);
+
+  const env = baseEnv({
+    KADRY_KV: {
+      get: async (k: string) => stored.get(k) ?? null,
+      put: async (k: string, v: string) => { stored.set(k, v); },
+    },
+  });
+
+  const res = await post('/leads', freshBody({
+    kind: 'template',
+    phone,
+    idempotency_key: key,
+    template: { id: '02', title: 'Срочный трудовой договор', package: 'single', price: 500 },
+  }), env);
+
+  assert.equal(res.status, 201, 'старая запись должна приниматься как повтор, а не 409');
+  const body = await res.json() as { ticket: string; duplicate?: boolean };
+  assert.equal(body.ticket, 'K-1121-4242');
+  assert.equal(body.duplicate, true);
+
+  /* Запись переписана в новый формат — с отпечатком шаблона. */
+  const migrated = stored.get(`idem:${key}`) ?? '';
+  assert.equal(migrated.split('|').length, 4);
+  assert.equal(migrated.split('|')[3], 'single:02');
+
+  /* И теперь тот же ключ с ДРУГИМ шаблоном корректно даёт 409. */
+  const other = await post('/leads', freshBody({
+    kind: 'template',
+    phone,
+    idempotency_key: key,
+    template: { id: '53', title: 'Табель учёта рабочего времени Т-12', package: 'single', price: 500 },
+  }), env);
+  assert.equal(other.status, 409);
+});
+
 test('тот же ключ идемпотентности с ДРУГИМ шаблоном — 409, а не чужой талон', async () => {
   mockFetch();
   const key = crypto.randomUUID();

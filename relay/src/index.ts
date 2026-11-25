@@ -226,9 +226,27 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
     : '';
   const seen = await kvGet(env, idemKey);
   if (seen) {
-    const [ticket, hash, , seenTpl] = seen.split('|');
-    if (hash !== (await hashIp(lead.phone)) || (seenTpl ?? '') !== tplSig) {
+    /* Формат записи. Сейчас: `талон|хеш телефона|(резерв)|отпечаток шаблона`.
+       Записи, созданные до этого обновления, короче — в них нет последнего
+       поля. Поэтому «нет отпечатка» и «другой отпечаток» — РАЗНЫЕ случаи:
+       старую запись принимаем как повтор (проверять нечего, кроме телефона) и
+       тут же переписываем в новый формат, чтобы следующая сверка была точной.
+       Иначе после деплоя человек с валидным повтором получал бы 409, клиент
+       молча отправлял заявку заново и Мария видела бы её дважды. */
+    const parts = seen.split('|');
+    const ticket = parts[0] ?? '';
+    const storedHash = parts[1] ?? '';
+    const storedTpl: string | null = parts.length >= 4 ? (parts[3] ?? '') : null;
+
+    if (storedHash !== (await hashIp(lead.phone))) {
       return err(409, 'conflict', 'Ключ идемпотентности уже использован');
+    }
+    if (storedTpl !== null && storedTpl !== tplSig) {
+      return err(409, 'conflict', 'Ключ идемпотентности уже использован');
+    }
+    if (storedTpl === null) {
+      /* Миграция старой записи: дописываем отпечаток текущей заявки. */
+      await kvPut(env, idemKey, `${ticket}|${storedHash}||${tplSig}`, 86400);
     }
     /* Повторная отправка: доставку не повторяем (заявка уже ушла), но и не
        врём про неё. `delivered` неизвестен — значит его нет, а не true. */

@@ -117,7 +117,7 @@ export function composeEmail(lead: LeadPayload, ticket: string, opts: EmailOpts)
     if (lead.message) rows.push(['Комментарий', lead.message]);
     /* Лайтбокс обещает редактируемый DOCX после заявки — задание для Марии
        должно совпадать с этим обещанием, а не отсылать к старому PDF. */
-    rows.push(['Что сделать', templateHandoffNote(lead.template.package)]);
+    rows.push(['Что сделать', templateHandoffNote(lead.template)]);
   } else {
     if (lead.company) rows.push(['Компания', lead.company]);
     if (lead.email) rows.push(['Почта', lead.email]);

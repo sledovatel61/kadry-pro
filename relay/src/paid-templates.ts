@@ -23,6 +23,24 @@
 import type { TemplatePackage, TemplateRequest } from './validate.ts';
 
 export const PAID_TEMPLATES_REPO = 'sledovatel61/kadry-pro';
+
+/**
+ * Позиции, для которых ПОДТВЕРЖДЁН актуальный редактируемый DOCX.
+ *
+ * Источник — комплект `agents/agent-02/docx-01-10/*.docx` из коммита
+ * c70ac32e5f54404483357e33f0bc2de0f9ee315d (10 файлов, побайтово сверены с
+ * превью 01.jpg–10.jpg). Только для этих ID обещание «пришлём DOCX вручную»
+ * честно: у остальных 34 платных позиций в репозитории есть лишь старый PDF.
+ */
+export const DOCX_READY_IDS: ReadonlySet<string> = new Set([
+  '01', '02', '03', '04', '05', '06', '07', '08', '09', '10',
+]);
+
+/** Есть ли подтверждённый DOCX для позиции каталога (01…64). */
+export function hasConfirmedDocx(id: string | null | undefined): boolean {
+  if (!id) return false;
+  return DOCX_READY_IDS.has(String(id).replace(/^t/i, '').padStart(2, '0'));
+}
 export const PAID_TEMPLATES_COMMIT = 'ac75af6c9352be4c874cc84650e0401c59216e7c';
 
 export interface PaidTemplateEntry {
@@ -96,20 +114,36 @@ export function buildPaidTemplateGithubUrl(entry: PaidTemplateEntry): string {
 export const MARIA_GITHUB_LINK_NOTE =
   'Ссылка только для удобства Марии — ведёт на публичный GitHub (коммит ac75af6, не защищённая выдача и не секрет; покупателю не показывается). Это СТАРЫЙ PDF, а не актуальный DOCX: что отправить покупателю — в задании ниже.';
 
-/** Что именно делать Марии по заявке на платный шаблон — одинаково в Telegram и в письме. */
+/**
+ * Что именно делать Марии — одинаково в Telegram и в письме.
+ *
+ * ВАЖНО: обещание DOCX даётся только там, где он подтверждён (№ 01–10). Для
+ * остальных 34 платных позиций в репозитории есть лишь старый PDF образца
+ * 27.03.2026, поэтому задание звучит иначе — отправить проверенный PDF,
+ * а DOCX обещать нельзя.
+ */
 export const MARIA_DOCX_HANDOFF_NOTE =
-  'Вышлите покупателю актуальный редактируемый DOCX вручную после согласования оплаты — в открытой сборке DOCX нет.';
+  'Вышлите покупателю актуальный редактируемый DOCX из комплекта 01–10 вручную после согласования оплаты — в открытой сборке DOCX нет.';
 
 export const MARIA_FREE_DOCX_HANDOFF_NOTE =
-  'Клиент просит DOCX бесплатного шаблона (PDF он скачивает сам): отправьте ему актуальный редактируемый DOCX вручную на почту — в открытой сборке DOCX нет.';
+  'Клиент просит DOCX бесплатного шаблона (PDF он скачивает сам): отправьте ему актуальный редактируемый DOCX из комплекта 01–10 вручную на почту — в открытой сборке DOCX нет.';
 
-/**
- * Одна и та же формулировка задания для Марии в Telegram и в письме.
- * Лайтбокс на сайте обещает редактируемый DOCX после заявки, поэтому
- * уведомление не должно выглядеть так, будто ответ клиенту — старый PDF.
- */
-export function templateHandoffNote(pkg: TemplatePackage): string {
-  return pkg === 'free' ? MARIA_FREE_DOCX_HANDOFF_NOTE : MARIA_DOCX_HANDOFF_NOTE;
+export const MARIA_LEGACY_PDF_HANDOFF_NOTE =
+  'DOCX для этой позиции не подтверждён: в репозитории есть только PDF образца 27.03.2026. Отправьте покупателю проверенный PDF (ссылка выше) и не обещайте редактируемый DOCX, пока комплект не выложен.';
+
+export const FULL_BUNDLE_HANDOFF_NOTE =
+  'Архива полного набора в репозитории нет: соберите комплект вручную после согласования оплаты и отправьте покупателю.';
+
+/** Задание для Марии по конкретной заявке на шаблон. */
+export function templateHandoffNote(req: TemplateRequest): string {
+  if (req.package === 'full') return FULL_BUNDLE_HANDOFF_NOTE;
+  if (req.package === 'free') {
+    return hasConfirmedDocx(req.id) ? MARIA_FREE_DOCX_HANDOFF_NOTE : MARIA_LEGACY_PDF_HANDOFF_NOTE;
+  }
+  if (req.package === 'email') {
+    return 'Пакет из 25 шаблонов за email: соберите архив вручную после согласования и отправьте на почту покупателю.';
+  }
+  return hasConfirmedDocx(req.id) ? MARIA_DOCX_HANDOFF_NOTE : MARIA_LEGACY_PDF_HANDOFF_NOTE;
 }
 
 export const FULL_BUNDLE_NO_ARCHIVE_NOTE =
@@ -133,6 +167,8 @@ export interface ResolvedTemplateNotice {
   githubUrl: string | null;
   /** Пояснение к ссылке (или причине её отсутствия) для уведомления Марии. */
   linkNote: string | null;
+  /** Подтверждён ли для позиции актуальный редактируемый DOCX (только № 01–10). */
+  docxReady: boolean;
 }
 
 /** Сверка заявки на шаблон с серверным каталогом без доверия цене из браузера. */
@@ -146,6 +182,7 @@ export function resolveTemplateNotice(req: TemplateRequest): ResolvedTemplateNot
       filename: null,
       githubUrl: null,
       linkNote: FULL_BUNDLE_NO_ARCHIVE_NOTE,
+      docxReady: false,
     };
   }
 
@@ -158,6 +195,7 @@ export function resolveTemplateNotice(req: TemplateRequest): ResolvedTemplateNot
       filename: null,
       githubUrl: null,
       linkNote: null,
+      docxReady: hasConfirmedDocx(req.id),
     };
   }
 
@@ -172,6 +210,7 @@ export function resolveTemplateNotice(req: TemplateRequest): ResolvedTemplateNot
       filename: null,
       githubUrl: null,
       linkNote: UNKNOWN_TEMPLATE_NOTE,
+      docxReady: false,
     };
   }
 
@@ -183,5 +222,6 @@ export function resolveTemplateNotice(req: TemplateRequest): ResolvedTemplateNot
     filename: entry.filename,
     githubUrl: buildPaidTemplateGithubUrl(entry),
     linkNote: MARIA_GITHUB_LINK_NOTE,
+    docxReady: hasConfirmedDocx(entry.id),
   };
 }

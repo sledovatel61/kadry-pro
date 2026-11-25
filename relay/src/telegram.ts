@@ -112,7 +112,7 @@ export function composeTelegram(lead: LeadPayload, ticket: string, opts: Compose
         ? `\nФайл для Марии: <a href="${escAttr(resolved.githubUrl)}">${esc(resolved.filename)}</a>\nПрямая ссылка: ${esc(resolved.githubUrl)}`
         : '',
       resolved.linkNote ? `\nℹ️ <i>${esc(resolved.linkNote)}</i>` : '',
-      `\n✍️ <i>${esc(templateHandoffNote(t.package))}</i>`,
+      `\n✍️ <i>${esc(templateHandoffNote(t))}</i>`,
       page,
       consent,
       footer,

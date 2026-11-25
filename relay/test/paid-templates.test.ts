@@ -32,6 +32,8 @@ import {
   FULL_BUNDLE_OFFER,
   buildPaidTemplateGithubUrl,
   resolveTemplateNotice,
+  DOCX_READY_IDS,
+  hasConfirmedDocx,
 } from '../src/paid-templates.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '../..');
@@ -138,6 +140,43 @@ test('серверный каталог платных шаблонов совп
     ).subarray(0, 5).toString('latin1');
     assert.equal(header, '%PDF-', `некорректный PDF для ${serverEntry.filename}`);
   }
+});
+
+test('DOCX подтверждён только для № 01–10 и файлы реально есть в зафиксированном коммите', () => {
+  /* Обещание «пришлём редактируемый DOCX» даётся только там, где комплект
+     существует. Проверяем по git, а не по тексту: в коммите c70ac32 должно
+     лежать ровно 10 .docx, по одному на каждый подтверждённый ID. */
+  const DOCX_COMMIT = 'c70ac32e5f54404483357e33f0bc2de0f9ee315d';
+  const ls = execFileSync(
+    'git',
+    ['-c', 'core.quotepath=false', 'ls-tree', '-r', '--name-only', DOCX_COMMIT, 'agents/agent-02/docx-01-10/'],
+    { cwd: REPO_ROOT, encoding: 'utf8' },
+  ).trim().split('\n').filter(Boolean);
+
+  const docxNames = ls.filter((name) => name.toLowerCase().endsWith('.docx'));
+  assert.equal(docxNames.length, 10, 'в коммите должно быть ровно 10 DOCX комплекта 01–10');
+
+  const idsInGit = docxNames.map((name) => name.split('/').pop()!.slice(0, 2)).sort();
+  assert.deepEqual(idsInGit, [...DOCX_READY_IDS].sort(), 'подтверждённые ID должны совпадать с комплектом в git');
+
+  for (const name of docxNames) {
+    const header = execFileSync('git', ['cat-file', '-p', `${DOCX_COMMIT}:${name}`], { cwd: REPO_ROOT, maxBuffer: 5 * 1024 * 1024 })
+      .subarray(0, 2).toString('latin1');
+    /* DOCX — это ZIP-контейнер. */
+    assert.equal(header, 'PK', `файл ${name} не похож на DOCX`);
+  }
+
+  /* Все остальные платные позиции DOCX не обещают. */
+  for (const entry of PAID_TEMPLATES) {
+    assert.equal(
+      hasConfirmedDocx(entry.id),
+      DOCX_READY_IDS.has(entry.id),
+      `для ID ${entry.id} обещание DOCX должно совпадать с подтверждённым комплектом`,
+    );
+  }
+  assert.equal(hasConfirmedDocx('14'), false);
+  assert.equal(hasConfirmedDocx('t07'), true);
+  assert.equal(hasConfirmedDocx(null), false);
 });
 
 test('русские имена файлов (включая «ё» и дефисы) кодируются в чистый ASCII URL и декодируются обратно', () => {
@@ -324,14 +363,15 @@ test('неизвестный ID и бесплатный ID: ссылка НЕ ф
   }
 });
 
-test('уведомление Марии согласовано с обещанием лайтбокса: актуальный DOCX вручную, а не старый PDF', () => {
-  /* Лайтбокс на сайте обещает: после заявки Мария свяжется и пришлёт
-     редактируемый DOCX вручную. В уведомлении раньше была только ссылка на
-     старый PDF (а для № 01 — вообще ничего). Проверяем, что задание для
-     Марии одинаково и в Telegram, и в текстовой, и в HTML-версии письма. */
+test('обещание DOCX ограничено подтверждёнными № 01–10, для старых карточек — только PDF', () => {
+  /* Комплект редактируемых DOCX в репозитории подтверждён ровно для № 01–10.
+     Для остальных 34 платных позиций есть лишь PDF образца 27.03.2026,
+     поэтому и лайтбокс, и уведомление Марии не должны обещать DOCX. */
   const cases = [
-    { id: '02', title: 'Срочный трудовой договор', package: 'single' as const, links: true },
-    { id: '01', title: 'Трудовой договор бессрочный', package: 'free' as const, links: false },
+    { id: '02', title: 'Срочный трудовой договор', package: 'single' as const, docx: true },
+    { id: '01', title: 'Трудовой договор бессрочный', package: 'free' as const, docx: true },
+    { id: '14', title: 'Приказ об увольнении за прогул', package: 'single' as const, docx: false },
+    { id: '53', title: 'Табель учёта рабочего времени Т-12', package: 'single' as const, docx: false },
   ];
 
   for (const item of cases) {
@@ -350,30 +390,50 @@ test('уведомление Марии согласовано с обещани
       template: { id: item.id, title: item.title, package: item.package, price: 500 },
     });
     assert.equal(v.ok, true);
-    if (!v.ok) continue;
+    if (!v.ok || v.value.kind !== 'template') continue;
+
+    /* Сверка с серверным каталогом: docxReady только у подтверждённых. */
+    const notice = resolveTemplateNotice(v.value.template);
+    assert.equal(notice.docxReady, item.docx, `docxReady для ID ${item.id}`);
 
     const tg = composeTelegram(v.value, 'K-1124-0001', { siteName: 'Кадры-Про' });
     const mail = composeEmail(v.value, 'K-1124-0001', { siteName: 'Кадры-Про' });
 
     for (const out of [tg, mail.text, mail.html]) {
-      assert.match(
-        out,
-        /актуальный редактируемый DOCX вручную/i,
-        `уведомление должно требовать ручную отправку DOCX (ID ${item.id})`,
-      );
-      assert.match(out, /в открытой сборке DOCX нет|DOCX в открытой сборке нет/i);
+      if (item.docx) {
+        assert.match(out, /актуальный редактируемый DOCX/i, `ID ${item.id}: ожидалось обещание DOCX`);
+        assert.match(out, /в открытой сборке DOCX нет/i);
+      } else {
+        assert.doesNotMatch(out, /актуальный редактируемый DOCX/i, `ID ${item.id}: DOCX НЕ подтверждён — обещать нельзя`);
+        assert.match(out, /DOCX для этой позиции не подтверждён/i);
+        assert.match(out, /PDF образца/i);
+      }
     }
+  }
 
-    if (!item.links) {
-      /* № 01 бесплатный: PDF в открытой папке есть, но ссылка на старый
-         PDF не должна выдаваться как «ответ клиенту». */
-      assert.doesNotMatch(tg, /Файл для Марии/);
-      assert.doesNotMatch(mail.text, /Файл для Марии/);
-    } else {
-      /* Платный: ссылка на старый PDF помечена как ориентир, а не как выдача. */
-      assert.match(tg, /СТАРЫЙ PDF/i);
-      assert.match(mail.text, /СТАРЫЙ PDF/i);
-      assert.match(mail.html, /СТАРЫЙ PDF/i);
+  /* Пакеты: полный набор и email — без обещания DOCX, с ручной сборкой. */
+  for (const pkg of ['full', 'email'] as const) {
+    const v = validateLead({
+      kind: 'template',
+      name: 'Олег Орлов',
+      phone: '89613022112',
+      contact_method: 'call',
+      email: 'oleg@example.ru',
+      consent: true,
+      consent_version: '2026-11-21',
+      page: 'shablony',
+      idempotency_key: crypto.randomUUID(),
+      honeypot: '',
+      form_started_at: 1,
+      template: { id: pkg === 'email' ? '21' : null, title: 'Пакет', package: pkg, price: 3500 },
+    });
+    assert.equal(v.ok, true);
+    if (!v.ok || v.value.kind !== 'template') continue;
+    const tg = composeTelegram(v.value, 'K-1124-0002', { siteName: 'Кадры-Про' });
+    const mail = composeEmail(v.value, 'K-1124-0002', { siteName: 'Кадры-Про' });
+    for (const out of [tg, mail.text, mail.html]) {
+      assert.doesNotMatch(out, /актуальный редактируемый DOCX/i, `package=${pkg}: DOCX не подтверждён`);
+      assert.match(out, /соберите (комплект|архив) вручную/i);
     }
   }
 });

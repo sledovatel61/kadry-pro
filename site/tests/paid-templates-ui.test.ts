@@ -384,7 +384,7 @@ test('предпросмотр первой страницы № 01–10: мин
 
     assert.match(modalImg.getAttribute('src') ?? '', /\/shablony\/previews\/08\.jpg$/);
     assert.match(modalImg.getAttribute('alt') ?? '', /Договор с директором \(генеральным директором\)/);
-    /* Обещание честное: DOCX в открытой сборке нет, его присылают вручную. */
+    /* № 08 входит в подтверждённый комплект 01–10: обещаем DOCX вручную. */
     assert.equal(
       modalCaption.textContent?.trim(),
       'Первая страница шаблона. В открытой сборке DOCX нет: после заявки Мария свяжется с вами и пришлёт актуальный редактируемый DOCX вручную.',
@@ -527,6 +527,48 @@ test('смена шаблона после сорванной отправки: 
     assert.doesNotMatch(successBox.textContent ?? '', /дубликат/i);
   } finally {
     globalThis.fetch = prevFetch;
+    cleanup();
+  }
+});
+
+test('обещание DOCX ограничено подтверждёнными № 01–10: старые карточки обещают только PDF', () => {
+  const { doc, cleanup } = mountShablonyDom();
+  try {
+    const previewModal = doc.getElementById('template-preview-modal') as HTMLDialogElement;
+    const caption = previewModal.querySelector<HTMLElement>('[data-preview-modal-caption]')!;
+
+    /* Подтверждённые позиции 01–10: подпись про редактируемый DOCX. */
+    for (let i = 1; i <= 10; i++) {
+      const id = String(i).padStart(2, '0');
+      const trigger = doc.querySelector<HTMLElement>(`#s${id} [data-open-preview]`);
+      assert.ok(trigger, `нет триггера предпросмотра у #s${id}`);
+      assert.equal(trigger.dataset.previewDocx, '1', `#s${id} должен быть помечен как подтверждённый DOCX`);
+      trigger.click();
+      assert.match(caption.textContent ?? '', /актуальный редактируемый DOCX вручную/i, `#s${id}: ожидалась подпись про DOCX`);
+      previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
+    }
+
+    /* Все остальные карточки с превью (№ 14–62): DOCX не подтверждён. */
+    const others = [...doc.querySelectorAll<HTMLElement>('[data-open-preview]')]
+      .filter((el) => !/^0[1-9]$|^10$/.test(el.dataset.previewId ?? ''));
+    assert.ok(others.length >= 30, `ожидались старые карточки с превью, найдено ${others.length}`);
+
+    for (const trigger of others) {
+      const id = trigger.dataset.previewId ?? '';
+      assert.equal(trigger.dataset.previewDocx, '0', `#s${id} не должен обещать DOCX`);
+      trigger.click();
+      const text = caption.textContent ?? '';
+      assert.doesNotMatch(text, /актуальный редактируемый DOCX/i, `#s${id}: DOCX для этой позиции не подтверждён`);
+      assert.match(text, /пришлёт документ \(PDF\) вручную/i);
+      assert.match(text, /DOCX для этой позиции пока не подтверждён/i);
+      previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
+    }
+
+    /* В собранном HTML обещание DOCX встречается только в подтверждённом блоке. */
+    const rawHtml = readFileSync(builtShablonyPath, 'utf8');
+    const docxPromises = (rawHtml.match(/data-preview-docx="1"/g) ?? []).length;
+    assert.equal(docxPromises, 20, 'по 2 триггера (миниатюра + кнопка) на 10 подтверждённых карточек');
+  } finally {
     cleanup();
   }
 });

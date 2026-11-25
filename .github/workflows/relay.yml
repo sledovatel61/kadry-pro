@@ -116,6 +116,43 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
+      # Деплой не должен трогать действующие секреты воркера.
+      # Если секрет не задан в GitHub, его НЕ отправляем и не затираем пустым
+      # значением: воркер продолжит работать на прежних секретах. Значения
+      # секретов нигде не печатаются — только имена и статус «задан/не задан».
+      - name: Preflight — конфигурация секретов до деплоя
+        id: preflight
+        run: |
+          set -e
+          missing=""
+          [ -n "$BOT_TOKEN" ] || missing="$missing BOT_TOKEN"
+          [ -n "$TELEGRAM_CHAT_ID" ] || missing="$missing TELEGRAM_CHAT_ID"
+
+          # Живой воркер (если адрес известен) подтверждает, что заявки сейчас
+          # принимаются. Значения секретов из /health не видны — только флаги.
+          live_tg=0
+          if [ -n "$LIVE_URL" ]; then
+            code=$(curl -sS -o /tmp/live-health.json -w '%{http_code}' "$LIVE_URL/health" || echo 000)
+            if [ "$code" = "200" ] && grep -q '"telegram":true' /tmp/live-health.json; then live_tg=1; fi
+            echo "Живой воркер: HTTP $code, telegram=$live_tg"
+          else
+            echo "Переменная PUBLIC_LEADS_ENDPOINT не задана — живую проверку пропускаю."
+          fi
+
+          if [ -n "$missing" ]; then
+            if [ "$live_tg" = "1" ]; then
+              echo "::warning::В GitHub не заданы:$missing. Действующие секреты воркера НЕ перезаписываю: заявки продолжат приходить."
+            else
+              echo "::error::В GitHub не заданы:$missing, и действующий воркер не подтверждает Telegram. Такой деплой оставит заявки без доставки — задайте секреты (Settings → Secrets and variables → Actions) и запустите снова."
+              exit 1
+            fi
+          fi
+          echo "push_tg=$([ -z "$missing" ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          LIVE_URL: ${{ vars.PUBLIC_LEADS_ENDPOINT }}
+
       - name: Deploy worker
         id: deploy
         run: |
@@ -131,8 +168,18 @@ jobs:
       - name: Push secrets to worker
         run: |
           set -e
-          printf '%s' "$BOT_TOKEN" | npx wrangler secret put BOT_TOKEN
-          printf '%s' "$TELEGRAM_CHAT_ID" | npx wrangler secret put TELEGRAM_CHAT_ID
+          # Пустой секрет не отправляем: `wrangler secret put` с пустым значением
+          # перезаписал бы действующий секрет воркера и сломал приём заявок.
+          if [ -n "$BOT_TOKEN" ]; then
+            printf '%s' "$BOT_TOKEN" | npx wrangler secret put BOT_TOKEN
+          else
+            echo "::warning::BOT_TOKEN не задан в GitHub — действующий секрет воркера не меняю"
+          fi
+          if [ -n "$TELEGRAM_CHAT_ID" ]; then
+            printf '%s' "$TELEGRAM_CHAT_ID" | npx wrangler secret put TELEGRAM_CHAT_ID
+          else
+            echo "::warning::TELEGRAM_CHAT_ID не задан в GitHub — действующий секрет воркера не меняю"
+          fi
           # Подпись ссылок на платные файлы: без неё ссылка не выдаётся.
           if [ -n "$FILE_TOKEN_SECRET" ]; then
             printf '%s' "$FILE_TOKEN_SECRET" | npx wrangler secret put FILE_TOKEN_SECRET
