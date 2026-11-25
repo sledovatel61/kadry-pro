@@ -492,78 +492,72 @@ test('конфликт: тот же ключ идемпотентности с �
   assert.equal(payload.error.code, 'conflict');
 });
 
-test('старая запись идемпотентности: шаблон не угадывается, запись не переписывается, заявка уходит заново', async () => {
+test('старая запись идемпотентности: 200 + ambiguous, повтор не создаётся ни для шаблона, ни для смены шаблона, ни для консультации', async () => {
   /* Запись прежнего формата — `талон|хеш телефона`, без отпечатка шаблона.
-     В ней НЕИЗВЕСТНО, на какой шаблон была заявка. Раньше сервер принимал её
-     как повтор: заявка на № 03 с ключом от № 02 получала чужой талон, до Марии
-     не доходила, а в запись дописывалась подпись № 03. Теперь исход
-     неоднозначен и сервер его не угадывает. */
-  mockFetch();
-  const key = crypto.randomUUID();
-  const phone = '+7 (961) 302-21-12';
-  const stored = new Map<string, string>();
-
-  /* Хеш телефона считаем тем же способом, что и воркер: он хеширует
-     НОРМАЛИЗОВАННЫЙ номер (+79613022112), а не то, что напечатал человек. */
+     В ней НЕИЗВЕСТНО, что именно отправляли. Клиент из main повторяет ЛЮБОЙ
+     409 автоматически новым ключом — то есть 409 создавал молчаливый дубль уже
+     доставленной заявки. Поэтому ответ — 200 с `ambiguous: true`: и старый, и
+     новый клиент не отправляют ничего повторно, а человек видит предупреждение. */
   const { hashIp } = await import('../src/http.ts');
-  const legacyValue = `K-1121-4242|${await hashIp(normalizePhone(phone) as string)}`;
-  stored.set(`idem:${key}`, legacyValue);
+  const phone = '+7 (961) 302-21-12';
+  const phoneHash = await hashIp(normalizePhone(phone) as string);
 
-  const env = baseEnv({
-    KADRY_KV: {
-      get: async (k: string) => stored.get(k) ?? null,
-      put: async (k: string, v: string) => { stored.set(k, v); },
+  const scenarios = [
+    {
+      name: 'та же заявка на шаблон',
+      body: { kind: 'template', template: { id: '02', title: 'Срочный трудовой договор', package: 'single', price: 500 } },
     },
-  });
+    {
+      name: 'смена шаблона',
+      body: { kind: 'template', template: { id: '03', title: 'Договор с материальной ответственностью', package: 'single', price: 500 } },
+    },
+    {
+      name: 'консультация',
+      body: { kind: 'consult', message: 'Нужен аудит кадрового учёта' },
+    },
+  ];
 
-  const res = await post('/leads', freshBody({
-    kind: 'template',
-    phone,
-    idempotency_key: key,
-    template: { id: '03', title: 'Договор с материальной ответственностью', package: 'single', price: 500 },
-  }), env);
+  for (const scenario of scenarios) {
+    const fake = mockFetch();
+    const key = crypto.randomUUID();
+    const legacyValue = `K-1121-4242|${phoneHash}`;
+    const stored = new Map<string, string>([[`idem:${key}`, legacyValue]]);
+    const env = baseEnv({
+      KADRY_KV: {
+        get: async (k: string) => stored.get(k) ?? null,
+        put: async (k: string, v: string) => { stored.set(k, v); },
+      },
+    });
 
-  assert.equal(res.status, 409, 'неизвестный исходный шаблон нельзя считать совпавшим');
-  const body = await res.json() as { error: { code: string; message: string } };
-  assert.equal(body.error.code, 'idempotency_legacy');
-  assert.match(body.error.message, /какой шаблон/i, 'человеку нужно объяснить причину');
-  assert.match(body.error.message, /Отправьте заявку ещё раз/i);
+    const res = await post('/leads', freshBody({ ...scenario.body, phone, idempotency_key: key }), env);
 
-  /* Главное: старая запись НЕ переписана подписью нового шаблона. */
-  assert.equal(stored.get(`idem:${key}`), legacyValue);
+    assert.equal(res.status, 200, `${scenario.name}: не 4xx — иначе клиент автоматически повторит отправку`);
+    const body = await res.json() as {
+      ticket: string;
+      duplicate?: boolean;
+      ambiguous?: boolean;
+      message?: string;
+      delivered?: { telegram: boolean; email: boolean };
+    };
+    assert.equal(body.ticket, 'K-1121-4242', `${scenario.name}: показываем прежний талон`);
+    assert.equal(body.ambiguous, true, `${scenario.name}: исход должен быть помечен как неоднозначный`);
+    assert.equal(body.duplicate, true);
+    assert.deepEqual(body.delivered, { telegram: false, email: false }, `${scenario.name}: доставку не подтверждаем`);
+    assert.match(body.message ?? '', /уже была отправка/i, `${scenario.name}: нужен понятный текст`);
+    assert.match(body.message ?? '', /не отправлено, чтобы не создать дубль/i);
+    if (scenario.body.kind === 'template') {
+      assert.match(body.message ?? '', /другой шаблон/i, `${scenario.name}: подсказка про смену шаблона`);
+    }
 
-  /* Клиент в этом случае перевыпускает ключ — и заявка доходит до Марии. */
-  const retryKey = crypto.randomUUID();
-  const retry = await post('/leads', freshBody({
-    kind: 'template',
-    phone,
-    idempotency_key: retryKey,
-    template: { id: '03', title: 'Договор с материальной ответственностью', package: 'single', price: 500 },
-  }), env);
-  assert.equal(retry.status, 201);
-  const retryBody = await retry.json() as { duplicate?: boolean; delivered?: { telegram: boolean } };
-  assert.equal(retryBody.duplicate, false, 'заявка на № 03 должна быть доставлена как новая');
-  assert.equal(retryBody.delivered?.telegram, true);
+    /* Ничего не доставлено и ничего не записано под этим ключом. */
+    assert.equal(fake.calls.length, 0, `${scenario.name}: повторное уведомление Марии не должно уходить`);
+    assert.equal(stored.get(`idem:${key}`), legacyValue, `${scenario.name}: старая запись не переписывается`);
 
-  /* И только новый формат записи считается повтором. */
-  const repeat = await post('/leads', freshBody({
-    kind: 'template',
-    phone,
-    idempotency_key: retryKey,
-    template: { id: '03', title: 'Договор с материальной ответственностью', package: 'single', price: 500 },
-  }), env);
-  assert.equal(repeat.status, 201);
-  assert.equal((await repeat.json() as { duplicate?: boolean }).duplicate, true);
-
-  /* Чужой телефон по тому же ключу — по-прежнему 409, без утечки талона. */
-  const foreign = await post('/leads', freshBody({
-    kind: 'template',
-    phone: '8 900 000-00-00',
-    idempotency_key: key,
-    template: { id: '03', title: 'Договор с материальной ответственностью', package: 'single', price: 500 },
-  }), env);
-  assert.equal(foreign.status, 409);
-  assert.equal((await foreign.json() as { error: { code: string } }).error.code, 'conflict');
+    /* Осознанный повтор человеком — с новым ключом — доходит нормально. */
+    const retry = await post('/leads', freshBody({ ...scenario.body, phone, idempotency_key: crypto.randomUUID() }), env);
+    assert.equal(retry.status, 201, `${scenario.name}: новая отправка должна проходить`);
+    assert.equal((await retry.json() as { duplicate?: boolean }).duplicate, false);
+  }
 });
 
 test('тот же ключ идемпотентности с ДРУГИМ шаблоном — 409, а не чужой талон', async () => {

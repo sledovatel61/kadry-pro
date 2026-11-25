@@ -574,60 +574,76 @@ test('обещание DOCX ограничено подтверждёнными 
   }
 });
 
-test('409 idempotency_legacy: ключ перевыпускается, заявка уходит заново и не теряется', async () => {
+test('неоднозначная старая запись: предупреждение вместо автоповтора, дубль не создаётся', async () => {
   const { dom, doc, cleanup } = mountShablonyDom();
   const prevFetch = globalThis.fetch;
   const sent: Record<string, unknown>[] = [];
   let call = 0;
 
-  /* Сервер нашёл запись прежнего формата, где шаблон неизвестен: отвечает 409 с
-     кодом idempotency_legacy. Клиент обязан перевыпустить ключ и повторить —
-     иначе человек увидит «не получилось» и заявка потеряется. */
+  /* Сервер нашёл запись прежнего формата: заявка под этим ключом уже была, но
+     что именно отправляли — неизвестно. Он ответил 200 + ambiguous и НИЧЕГО не
+     доставил. Клиент обязан показать предупреждение и НЕ повторять отправку:
+     иначе при потерянном ответе появлялся молчаливый дубль. */
   globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
     call++;
     sent.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
-    if (call === 1) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'idempotency_legacy',
-            message: 'По этому ключу уже была отправка в прежнем формате, и какой шаблон в ней был — неизвестно. Отправьте заявку ещё раз: ничего не потеряется.',
-          },
-        }),
-        { status: 409, headers: { 'content-type': 'application/json' } },
-      );
-    }
     return new Response(
-      JSON.stringify({ ticket: 'K-1124-0103', status: 'accepted', duplicate: false, delivered: { telegram: true, email: false } }),
-      { status: 201, headers: { 'content-type': 'application/json' } },
+      JSON.stringify({
+        ticket: 'K-1121-4242',
+        status: 'accepted',
+        duplicate: true,
+        ambiguous: true,
+        delivered: { telegram: false, email: false },
+        message:
+          'По этому ключу уже была отправка в прежнем формате, и что именно в ней отправляли — неизвестно. '
+          + 'Повторно ничего не отправлено, чтобы не создать дубль. Если вы выбрали другой шаблон или изменили данные — отправьте заявку ещё раз, будет новый номер.',
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
     );
   }) as typeof fetch;
 
   try {
     const form = doc.getElementById('template-lead-form') as HTMLFormElement;
     const successBox = doc.querySelector<HTMLElement>('[data-lead-success="template-lead-form"]')!;
+    const errorBox = doc.querySelector<HTMLElement>('[data-lead-error="template-lead-form"]')!;
 
-    doc.querySelector<HTMLButtonElement>('#s03 [data-open-template]')!.click();
-    (form.querySelector('[name="name"]') as HTMLInputElement).value = 'Ирина Белова';
+    doc.querySelector<HTMLButtonElement>('#s02 [data-open-template]')!.click();
+    (form.querySelector('[name="name"]') as HTMLInputElement).value = 'Марина Соколова';
     (form.querySelector('[name="phone"]') as HTMLInputElement).value = '+7 (961) 302-21-12';
     (form.querySelector('[name="consent"]') as HTMLInputElement).checked = true;
 
     form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     await new Promise((r) => setTimeout(r, 30));
 
-    assert.equal(sent.length, 2, 'после 409 должен быть ровно один автоматический повтор');
-    assert.notEqual(sent[0].idempotency_key, sent[1].idempotency_key, 'ключ обязан перевыпуститься');
-    assert.deepEqual(
-      (sent[1] as { template: { id: string } }).template.id,
-      '03',
-      'повтор должен нести тот же выбранный шаблон',
-    );
+    assert.equal(sent.length, 1, 'никакого автоматического повтора быть не должно');
+    assert.equal(call, 1);
 
-    assert.equal(form.hidden, true);
+    assert.equal(errorBox.hidden, false, 'предупреждение должно быть видно');
+    assert.equal(errorBox.getAttribute('data-level'), 'warning');
+    assert.match(errorBox.textContent ?? '', /уже была отправка/i);
+    assert.match(errorBox.textContent ?? '', /ничего не отправлено, чтобы не создать дубль/i);
+    assert.match(errorBox.textContent ?? '', /другой шаблон/i);
+
+    assert.equal(successBox.hidden, true, 'успех не показываем: доставка не подтверждена');
+    assert.equal(form.hidden, false, 'форма остаётся заполненной — человек решает сам');
+
+    /* Осознанная повторная отправка человеком: ключ перевыпущен заранее, жмём
+       «Отправить» ещё раз — теперь сервер примет заявку как новую. */
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sent.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+      return new Response(
+        JSON.stringify({ ticket: 'K-1124-0777', status: 'accepted', duplicate: false, delivered: { telegram: true, email: false } }),
+        { status: 201, headers: { 'content-type': 'application/json' } },
+      );
+    }) as typeof fetch;
+
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    assert.equal(sent.length, 2);
+    assert.notEqual(sent[0].idempotency_key, sent[1].idempotency_key, 'повтор человека идёт с новым ключом');
     assert.equal(successBox.hidden, false);
-    assert.match(successBox.textContent ?? '', /K-1124-0103/);
-    const errorText = doc.querySelector<HTMLElement>('[data-lead-error]')?.textContent ?? '';
-    assert.equal(errorText.trim(), '', 'после успешного повтора ошибка не должна висеть');
+    assert.match(successBox.textContent ?? '', /K-1124-0777/);
   } finally {
     globalThis.fetch = prevFetch;
     cleanup();
