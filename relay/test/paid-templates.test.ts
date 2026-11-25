@@ -324,6 +324,60 @@ test('неизвестный ID и бесплатный ID: ссылка НЕ ф
   }
 });
 
+test('уведомление Марии согласовано с обещанием лайтбокса: актуальный DOCX вручную, а не старый PDF', () => {
+  /* Лайтбокс на сайте обещает: после заявки Мария свяжется и пришлёт
+     редактируемый DOCX вручную. В уведомлении раньше была только ссылка на
+     старый PDF (а для № 01 — вообще ничего). Проверяем, что задание для
+     Марии одинаково и в Telegram, и в текстовой, и в HTML-версии письма. */
+  const cases = [
+    { id: '02', title: 'Срочный трудовой договор', package: 'single' as const, links: true },
+    { id: '01', title: 'Трудовой договор бессрочный', package: 'free' as const, links: false },
+  ];
+
+  for (const item of cases) {
+    const v = validateLead({
+      kind: 'template',
+      name: 'Наталья Орлова',
+      phone: '89613022112',
+      contact_method: 'telegram',
+      email: 'natalia@example.ru',
+      consent: true,
+      consent_version: '2026-11-21',
+      page: 'shablony',
+      idempotency_key: crypto.randomUUID(),
+      honeypot: '',
+      form_started_at: 1,
+      template: { id: item.id, title: item.title, package: item.package, price: 500 },
+    });
+    assert.equal(v.ok, true);
+    if (!v.ok) continue;
+
+    const tg = composeTelegram(v.value, 'K-1124-0001', { siteName: 'Кадры-Про' });
+    const mail = composeEmail(v.value, 'K-1124-0001', { siteName: 'Кадры-Про' });
+
+    for (const out of [tg, mail.text, mail.html]) {
+      assert.match(
+        out,
+        /актуальный редактируемый DOCX вручную/i,
+        `уведомление должно требовать ручную отправку DOCX (ID ${item.id})`,
+      );
+      assert.match(out, /в открытой сборке DOCX нет|DOCX в открытой сборке нет/i);
+    }
+
+    if (!item.links) {
+      /* № 01 бесплатный: PDF в открытой папке есть, но ссылка на старый
+         PDF не должна выдаваться как «ответ клиенту». */
+      assert.doesNotMatch(tg, /Файл для Марии/);
+      assert.doesNotMatch(mail.text, /Файл для Марии/);
+    } else {
+      /* Платный: ссылка на старый PDF помечена как ориентир, а не как выдача. */
+      assert.match(tg, /СТАРЫЙ PDF/i);
+      assert.match(mail.text, /СТАРЫЙ PDF/i);
+      assert.match(mail.html, /СТАРЫЙ PDF/i);
+    }
+  }
+});
+
 test('полный пакет (package: full): сервер ставит цену 3 500 ₽ и НЕ придумывает ссылку на архив', () => {
   const notice = resolveTemplateNotice({
     id: '02',

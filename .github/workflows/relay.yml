@@ -40,7 +40,12 @@ jobs:
       run:
         working-directory: relay
     steps:
+      # Тесты relay/test/paid-templates.test.ts читают исторический коммит
+      # ac75af6 (ls-tree / cat-file по 44 PDF). На shallow checkout git падает
+      # с «fatal: not a tree object», поэтому нужна вся история.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:

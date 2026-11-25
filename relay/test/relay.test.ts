@@ -492,6 +492,50 @@ test('конфликт: тот же ключ идемпотентности с �
   assert.equal(payload.error.code, 'conflict');
 });
 
+test('тот же ключ идемпотентности с ДРУГИМ шаблоном — 409, а не чужой талон', async () => {
+  mockFetch();
+  const key = crypto.randomUUID();
+  const base = freshBody({
+    kind: 'template',
+    page: 'shablony',
+    idempotency_key: key,
+    template: { id: '02', title: 'Срочный трудовой договор', package: 'single', price: 500 },
+  });
+
+  const first = await post('/leads', base, baseEnv());
+  assert.equal(first.status, 201);
+  const firstBody = await first.json() as { ticket: string; duplicate?: boolean };
+  assert.ok(firstBody.ticket);
+  assert.equal(firstBody.duplicate, false);
+
+  /* Тот же ключ, тот же шаблон — это честный повтор. */
+  const repeat = await post('/leads', base, baseEnv());
+  assert.equal(repeat.status, 201);
+  const repeatBody = await repeat.json() as { ticket: string; duplicate?: boolean };
+  assert.equal(repeatBody.ticket, firstBody.ticket);
+  assert.equal(repeatBody.duplicate, true);
+
+  /* Тот же ключ, НО другой шаблон: раньше сервер вернул бы талон от № 02, и
+     заявка на № 53 потерялась бы. Теперь — 409, клиент перевыпускает ключ. */
+  const other = await post('/leads', {
+    ...base,
+    template: { id: '53', title: 'Табель учёта рабочего времени Т-12', package: 'single', price: 500 },
+  }, baseEnv());
+  assert.equal(other.status, 409);
+  const otherBody = await other.json() as { error: { code: string } };
+  assert.equal(otherBody.error.code, 'conflict');
+
+  /* С новым ключом заявка на № 53 проходит и получает свой талон. */
+  const fresh = await post('/leads', {
+    ...base,
+    idempotency_key: crypto.randomUUID(),
+    template: { id: '53', title: 'Табель учёта рабочего времени Т-12', package: 'single', price: 500 },
+  }, baseEnv());
+  assert.equal(fresh.status, 201);
+  const freshPayload = await fresh.json() as { ticket: string; duplicate?: boolean };
+  assert.equal(freshPayload.duplicate, false);
+});
+
 test('заявка с калькулятора несёт штат, зарплату и экономию', async () => {
   const fake = mockFetch();
   const res = await post('/leads', freshBody({
@@ -518,26 +562,51 @@ test('заявка на email-шаблон без адреса почты отв
   assert.ok(v.fields.email);
 });
 
-test('заявка на полный пакет возвращает подписанную ссылку только при подключённом бакете', async () => {
+test('заявка НЕ является оплатой: даже с подключённым бакетом R2 ссылка на полный пакет не выдаётся', async () => {
   const fake = mockFetch();
-  const body = freshBody({
-    kind: 'template',
-    page: 'shablony',
-    template: { id: null, title: 'Полный пакет 64 документа', package: 'full', price: 3500 },
-  });
-  const without = await post('/leads', body, baseEnv());
-  assert.equal(without.status, 201);
-  const a = await without.json() as { download?: string };
-  assert.equal(a.download, undefined);
+  let bucketAsked = 0;
+  const bucket = {
+    get: async () => {
+      bucketAsked++;
+      return null;
+    },
+  } as unknown as Env['TEMPLATES'];
 
-  const withBucket = await post('/leads', { ...body, idempotency_key: crypto.randomUUID() }, baseEnv({
-    FILE_TOKEN_SECRET: 'secret',
-    TEMPLATES: { get: async () => null } as unknown as Env['TEMPLATES'],
-  }));
-  assert.equal(withBucket.status, 201);
-  const b = await withBucket.json() as { download?: string };
-  assert.match(b.download ?? '', /^\/files\/full-bundle-64\.\d+\./);
-  assert.ok(fake.calls.length >= 2);
+  /* Проверяем оба «дорогих» пакета — full и email: раньше любой из них мог
+     принести подписанную ссылку на приватный объект сразу после заявки, то
+     есть без оплаты. */
+  for (const pkg of ['full', 'email'] as const) {
+    const res = await post('/leads', freshBody({
+      kind: 'template',
+      email: 'buyer@example.ru',
+      page: 'shablony',
+      template: {
+        id: pkg === 'email' ? '21' : null,
+        title: pkg === 'email' ? 'Приказ о командировке' : 'Полный пакет 64 документа',
+        package: pkg,
+        price: pkg === 'email' ? 0 : 3500,
+      },
+    }), baseEnv({
+      FILE_TOKEN_SECRET: 'secret',
+      TEMPLATES: bucket,
+    }));
+
+    assert.equal(res.status, 201, `заявка (${pkg}) должна приниматься`);
+    const raw = await res.text();
+    const body = JSON.parse(raw) as { download?: string; ticket?: string };
+    assert.ok(body.ticket);
+    assert.equal(body.download, undefined, `для package=${pkg} ссылки на файл быть не должно`);
+    assert.doesNotMatch(raw, /\/files\/|full-bundle-64|email-bundle-25/i);
+  }
+
+  /* Бакет при этом настроен (/health это показывает), но заявка его не трогает. */
+  const health = await worker.fetch(
+    new Request('https://relay.test/health'),
+    baseEnv({ FILE_TOKEN_SECRET: 'secret', TEMPLATES: bucket }),
+  );
+  assert.equal((await health.json() as { files: boolean }).files, true);
+  assert.equal(bucketAsked, 0, 'заявка не должна обращаться к бакету в обход оплаты');
+  assert.ok(fake.calls.length >= 2, 'уведомления Марии при этом уходят');
 });
 
 test('CORS: разрешённому источнику возвращается его Origin, чужому — null', async () => {

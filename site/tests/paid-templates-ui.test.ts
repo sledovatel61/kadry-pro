@@ -37,9 +37,35 @@ const catalog = JSON.parse(
   items: { id: string; name: string; price: number; free: boolean; file: string | null }[];
 };
 
-const builtShablonyPath = existsSync(resolve(SITE_DIR, 'pages-dist/shablony.html'))
-  ? resolve(SITE_DIR, 'pages-dist/shablony.html')
+/**
+ * Откуда берём собранную страницу.
+ *
+ * Приоритет — свежая сборка `site/pages-dist`, но `npm test` обязан проходить и
+ * на чистом дереве (после `git clone` без `npm run build:root`), поэтому есть
+ * второй источник: закоммиченный в корень репозитория `shablony.html`.
+ */
+const pagesDistShablonyPath = resolve(SITE_DIR, 'pages-dist/shablony.html');
+const builtShablonyPath = existsSync(pagesDistShablonyPath)
+  ? pagesDistShablonyPath
   : resolve(REPO_ROOT, 'shablony.html');
+
+/**
+ * Файл сборки (CSS/JS), на который ссылается страница: ищем рядом со сборкой,
+ * затем в корне репозитория. Без этого на чистом дереве ссылки вида
+ * `/assets/shablony.<hash>.css` не находились и проверка стилей модалки
+ * молча пропускалась.
+ */
+function readBuiltAsset(href: string): string {
+  const rel = href.replace(/^\//, '');
+  const candidates = [
+    resolve(SITE_DIR, 'pages-dist', rel),
+    resolve(REPO_ROOT, rel),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return readFileSync(candidate, 'utf8');
+  }
+  assert.fail(`не найден файл сборки «${href}»: ни в site/pages-dist, ни в корне репозитория`);
+}
 
 function mountShablonyDom() {
   const html = readFileSync(builtShablonyPath, 'utf8');
@@ -257,10 +283,7 @@ test('мобильная форма и автозаполнение: без iOS-
     const linkedStyles = [...doc.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')]
       .map((l) => l.getAttribute('href') ?? '')
       .filter(Boolean)
-      .map((href) => {
-        const p = resolve(SITE_DIR, 'pages-dist', href.replace(/^\//, ''));
-        return existsSync(p) ? readFileSync(p, 'utf8') : '';
-      });
+      .map((href) => readBuiltAsset(href));
     const cssText = [
       ...[...doc.querySelectorAll('style')].map((s) => s.textContent ?? ''),
       ...linkedStyles,
@@ -361,9 +384,15 @@ test('предпросмотр первой страницы № 01–10: мин
 
     assert.match(modalImg.getAttribute('src') ?? '', /\/shablony\/previews\/08\.jpg$/);
     assert.match(modalImg.getAttribute('alt') ?? '', /Договор с директором \(генеральным директором\)/);
+    /* Обещание честное: DOCX в открытой сборке нет, его присылают вручную. */
     assert.equal(
       modalCaption.textContent?.trim(),
-      'Первая страница шаблона. Полная версия — редактируемый DOCX без водяного знака.',
+      'Первая страница шаблона. В открытой сборке DOCX нет: после заявки Мария свяжется с вами и пришлёт актуальный редактируемый DOCX вручную.',
+    );
+    assert.doesNotMatch(
+      modalCaption.textContent ?? '',
+      /Полная версия — редактируемый DOCX/,
+      'нельзя обещать мгновенную выдачу DOCX',
     );
     assert.equal(downloadBtn.hidden, true, 'у платного шаблона в лайтбоксе нет прямой ссылки на скачивание');
     assert.equal(orderBtn.hidden, false);
@@ -414,6 +443,90 @@ test('предпросмотр первой страницы № 01–10: мин
     const rawHtml = readFileSync(builtShablonyPath, 'utf8');
     assert.doesNotMatch(rawHtml, /\.docx\b/i, 'в публичном HTML не должно быть ссылок на файлы .docx');
   } finally {
+    cleanup();
+  }
+});
+
+test('смена шаблона после сорванной отправки: новый ключ идемпотентности, без старого талона как дубля', async () => {
+  const { dom, doc, cleanup } = mountShablonyDom();
+  const prevFetch = globalThis.fetch;
+  const sentBodies: Record<string, unknown>[] = [];
+  let call = 0;
+
+  /* Сценарий жизни: человек выбрал № 02, отправка упала по таймауту (запрос
+     мог дойти), он выбрал № 53 и отправил снова. Сервер без ротации ключа
+     нашёл бы запись от № 02 и вернул её талон с duplicate:true — заявка на
+     № 53 потерялась бы. */
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    call++;
+    sentBodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+    if (call === 1) {
+      throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+    }
+    return new Response(
+      JSON.stringify({
+        ticket: 'K-1124-0053',
+        status: 'accepted',
+        duplicate: false,
+        delivered: { telegram: true, email: false },
+      }),
+      { status: 201, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+
+  try {
+    const form = doc.getElementById('template-lead-form') as HTMLFormElement;
+    const successBox = doc.querySelector<HTMLElement>('[data-lead-success="template-lead-form"]')!;
+    const nameInput = form.querySelector<HTMLInputElement>('[name="name"]')!;
+    const phoneInput = form.querySelector<HTMLInputElement>('[name="phone"]')!;
+    const consent = form.querySelector<HTMLInputElement>('[name="consent"]')!;
+
+    /* 1. Шаблон № 02 — отправка срывается таймаутом. */
+    doc.querySelector<HTMLButtonElement>('#s02 [data-open-template]')!.click();
+    nameInput.value = 'Марина Соколова';
+    phoneInput.value = '+7 (961) 302-21-12';
+    consent.checked = true;
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    assert.equal(sentBodies.length, 1);
+    assert.deepEqual(
+      (sentBodies[0] as { template: { id: string } }).template.id,
+      '02',
+    );
+    /* Никакой гарантии «дубликатов не будет»: постоянного KV нет. */
+    const errorText = doc.querySelector<HTMLElement>('[data-lead-error]')?.textContent ?? '';
+    assert.match(errorText, /таймаут/i);
+    assert.doesNotMatch(errorText, /дубликат/i, 'нельзя обещать отсутствие дублей без постоянного KV');
+
+    /* 2. Человек выбирает другой шаблон — № 53. */
+    doc.querySelector<HTMLButtonElement>('#s53 [data-open-template]')!.click();
+    assert.equal(
+      doc.querySelector('[data-template-modal-doc]')?.textContent,
+      'Табель учёта рабочего времени Т-12',
+    );
+
+    nameInput.value = 'Марина Соколова';
+    phoneInput.value = '+7 (961) 302-21-12';
+    consent.checked = true;
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    assert.equal(sentBodies.length, 2);
+    assert.deepEqual((sentBodies[1] as { template: { id: string } }).template.id, '53');
+    assert.notEqual(
+      sentBodies[0].idempotency_key,
+      sentBodies[1].idempotency_key,
+      'при смене шаблона ключ идемпотентности должен перевыпускаться, иначе вернётся старый талон',
+    );
+
+    /* 3. Заявка на № 53 реально ушла и показан её талон, а не талон № 02. */
+    assert.equal(form.hidden, true);
+    assert.equal(successBox.hidden, false);
+    assert.match(successBox.textContent ?? '', /K-1124-0053/);
+    assert.doesNotMatch(successBox.textContent ?? '', /дубликат/i);
+  } finally {
+    globalThis.fetch = prevFetch;
     cleanup();
   }
 });

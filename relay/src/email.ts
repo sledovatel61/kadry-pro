@@ -17,7 +17,7 @@
 import type { LeadPayload, TemplatePackage } from './validate.ts';
 import type { ReviewPayload } from './reviews-validate.ts';
 import { fmtPhone } from './telegram.ts';
-import { resolveTemplateNotice, type ResolvedTemplateNotice } from './paid-templates.ts';
+import { resolveTemplateNotice, templateHandoffNote, type ResolvedTemplateNotice } from './paid-templates.ts';
 
 export const DEFAULT_EMAIL_TO = 'm.perepechay@yandex.ru';
 
@@ -115,6 +115,9 @@ export function composeEmail(lead: LeadPayload, ticket: string, opts: EmailOpts)
     ]);
     if (lead.email) rows.push(['Почта', lead.email]);
     if (lead.message) rows.push(['Комментарий', lead.message]);
+    /* Лайтбокс обещает редактируемый DOCX после заявки — задание для Марии
+       должно совпадать с этим обещанием, а не отсылать к старому PDF. */
+    rows.push(['Что сделать', templateHandoffNote(lead.template.package)]);
   } else {
     if (lead.company) rows.push(['Компания', lead.company]);
     if (lead.email) rows.push(['Почта', lead.email]);
@@ -134,6 +137,7 @@ export function composeEmail(lead: LeadPayload, ticket: string, opts: EmailOpts)
       textFileLines.push('');
       textFileLines.push(`Файл: ${templateNotice.linkNote}`);
     }
+
   }
 
   const text = [

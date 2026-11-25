@@ -526,6 +526,24 @@ export function wireLeadForms(options: WireOptions = {}): void {
     let busy = false;
     let retryUntil = 0;
 
+    /* Ключ идемпотентности привязан к тому, ЧТО отправляют.
+     *
+     * Пока шаблон не менялся, повтор — это та же заявка, и старый ключ
+     * защищает от дубля. Но окно заявки на /shablony.html одно на все 64
+     * позиции: человек выбрал № 02, отправка сорвалась (таймаут — заявка при
+     * этом могла дойти), он выбрал № 53 и отправил снова. Со старым ключом
+     * сервер нашёл бы запись от № 02 и вернул её талон как «повтор» — заявка
+     * на № 53 потерялась бы совсем. Поэтому при смене выбранного шаблона
+     * ключ перевыпускается. */
+    let templateSig = form.dataset.template ?? '';
+    const rotateIdemForTemplate = (): void => {
+      const next = form.dataset.template ?? '';
+      if (next === templateSig) return;
+      templateSig = next;
+      idem = makeIdempotencyKey();
+    };
+    form.addEventListener('lead-template-change', rotateIdemForTemplate);
+
     const phone = form.querySelector<HTMLInputElement>('[name="phone"]');
     if (options.mask && phone && !phone.dataset.maskAttached) {
       phone.dataset.maskAttached = '1';
@@ -545,6 +563,9 @@ export function wireLeadForms(options: WireOptions = {}): void {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       if (busy) return;
+      /* Страховка на случай, если шаблон поменяли без события (другая сборка
+         модального окна): перед отправкой сверяем подпись ещё раз. */
+      rotateIdemForTemplate();
       if (Date.now() < retryUntil) {
         showError(form, texts, texts.rateLimit, Math.ceil((retryUntil - Date.now()) / 1000));
         return;
@@ -645,11 +666,12 @@ export function wireLeadForms(options: WireOptions = {}): void {
              незачем: «network» и «timeout» различимы и не содержат его данных. */
           const name = (err as Error)?.name;
           /* Таймаут не значит, что заявка потерялась: запрос мог дойти, а ответ —
-             нет. Повтор с тем же ключом идемпотентности дублей не создаёт,
-             поэтому честно говорим и про возможность успеха, и про безопасность
-             повтора. Сеть — случай обратный: запрос почти наверняка не ушёл. */
+             нет. Обещать «дубликатов не будет» нельзя: ключ идемпотентности
+             живёт в памяти изолята, если KV не подключён, а при смене шаблона
+             он вообще перевыпускается. Поэтому говорим только то, что мы точно
+             знаем: ответа нет, заявка могла уйти — и даём телефон. */
           showError(form, texts, name === 'AbortError'
-            ? `Ответ не пришёл за ${Math.round(LEADS_TIMEOUT_MS / 1000)} с (таймаут): возможно, заявка уже ушла. Повторная отправка безопасна — дубликатов не будет. Если срочно: +7 (961) 302-21-12.`
+            ? `Ответ не пришёл за ${Math.round(LEADS_TIMEOUT_MS / 1000)} с (таймаут): возможно, заявка уже ушла — проверьте, не ответила ли Мария. Если срочно: +7 (961) 302-21-12.`
             : `${texts.error} (сеть)`);
         } finally {
           busy = false;
