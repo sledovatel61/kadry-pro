@@ -492,7 +492,7 @@ test('конфликт: тот же ключ идемпотентности с �
   assert.equal(payload.error.code, 'conflict');
 });
 
-test('старая запись идемпотентности: 422 + idempotency_legacy, повтор не создаётся ни для шаблона, ни для смены шаблона, ни для консультации', async () => {
+test('старая запись идемпотентности: 422 + idempotency_legacy, затем повтор по инструкции доставляет заявку', async () => {
   /* Запись прежнего формата — `талон|хеш телефона`, без отпечатка шаблона.
      В ней НЕИЗВЕСТНО, что именно отправляли.
        • 409 — клиент из main повторяет автоматически новым ключом: молчаливый
@@ -551,20 +551,83 @@ test('старая запись идемпотентности: 422 + idempotenc
     assert.deepEqual(body.delivered, { telegram: false, email: false }, `${scenario.name}: доставку не подтверждаем`);
     assert.match(body.error?.message ?? '', /уже отправлялась раньше/i, `${scenario.name}: нужен понятный текст`);
     assert.match(body.error?.message ?? '', /ничего не отправлено, чтобы не создать дубль/i);
+    assert.match(body.error?.message ?? '', /могла быть уже доставлена/i, `${scenario.name}: честно предупреждаем о возможной доставке`);
     assert.match(body.error?.message ?? '', new RegExp(body.ticket), `${scenario.name}: показываем прежний номер`);
     if (scenario.body.kind === 'template') {
       assert.match(body.error?.message ?? '', /другой шаблон/i, `${scenario.name}: подсказка про смену шаблона`);
     }
 
-    /* Ничего не доставлено и ничего не записано под этим ключом. */
+    /* Первая попытка: ничего не доставлено и старая запись не переписана. */
     assert.equal(fake.calls.length, 0, `${scenario.name}: повторное уведомление Марии не должно уходить`);
     assert.equal(stored.get(`idem:${key}`), legacyValue, `${scenario.name}: старая запись не переписывается`);
 
-    /* Осознанный повтор человеком — с новым ключом — доходит нормально. */
+    /* Человек выполняет инструкцию из предупреждения: жмёт «Отправить» ещё раз.
+       Старый клиент из main сохраняет прежний ключ — значит запрос уходит с тем
+       же ключом и теми же данными. Это и есть проверка выполнимости текста:
+       второго 422 быть не должно, заявка обязана уйти. */
+    const pressed = await post('/leads', freshBody({ ...scenario.body, phone, idempotency_key: key }), env);
+    assert.equal(pressed.status, 201, `${scenario.name}: повтор по инструкции не должен упираться в тот же 422`);
+    const pressedBody = await pressed.json() as { ticket: string; duplicate?: boolean; delivered?: { telegram: boolean; email: boolean } };
+    assert.equal(pressedBody.duplicate, false, `${scenario.name}: это новая заявка, а не «повтор»`);
+    assert.notEqual(pressedBody.ticket, 'K-1121-4242', `${scenario.name}: у новой заявки свой номер`);
+    assert.deepEqual(pressedBody.delivered, { telegram: true, email: false }, `${scenario.name}: заявка реально доставлена`);
+    assert.ok(fake.calls.length > 0, `${scenario.name}: Мария должна получить уведомление`);
+
+    /* Запись стала однозначной: следующий повтор того же ключа — честный
+       duplicate без второй доставки (а не ещё одно предупреждение). */
+    const callsAfterDelivery = fake.calls.length;
+    const again = await post('/leads', freshBody({ ...scenario.body, phone, idempotency_key: key }), env);
+    assert.equal(again.status, 201, `${scenario.name}: повтор после доставки — обычный повтор`);
+    assert.equal((await again.json() as { duplicate?: boolean }).duplicate, true);
+    assert.equal(fake.calls.length, callsAfterDelivery, `${scenario.name}: повторно не уведомляем`);
+
+    /* Совсем другая сессия (новый ключ) доходит нормально. */
     const retry = await post('/leads', freshBody({ ...scenario.body, phone, idempotency_key: crypto.randomUUID() }), env);
     assert.equal(retry.status, 201, `${scenario.name}: новая отправка должна проходить`);
     assert.equal((await retry.json() as { duplicate?: boolean }).duplicate, false);
   }
+});
+
+test('после предупреждения повтор с ИЗМЕНЁННЫМ комментарием доставляет новую заявку, а чужой телефон по-прежнему 409', async () => {
+  /* Старый клиент после предупреждения может и исправить данные, и просто
+     нажать ещё раз. Оба пути должны вести к доставке — иначе человек либо
+     упирается в вечный отказ, либо его исправление теряется. */
+  const { hashIp } = await import('../src/http.ts');
+  const phone = '+7 (961) 302-21-12';
+  const phoneHash = await hashIp(normalizePhone(phone) as string);
+  const key = crypto.randomUUID();
+  const body = {
+    kind: 'template' as const,
+    template: { id: '02', title: 'Срочный трудовой договор', package: 'single' as const, price: 500 },
+    message: 'Первая версия комментария',
+  };
+
+  const fake = mockFetch();
+  const stored = new Map<string, string>([[`idem:${key}`, `K-1121-4242|${phoneHash}`]]);
+  const env = baseEnv({
+    KADRY_KV: {
+      get: async (k: string) => stored.get(k) ?? null,
+      put: async (k: string, v: string) => { stored.set(k, v); },
+    },
+  });
+
+  const first = await post('/leads', freshBody({ ...body, phone, idempotency_key: key }), env);
+  assert.equal(first.status, 422, 'сначала предупреждение');
+
+  /* Тот же ключ, исправленный комментарий: это другая заявка — доставляем. */
+  const fixed = await post('/leads', freshBody({
+    ...body, phone, idempotency_key: key, message: 'Исправленный комментарий: ООО «Север»',
+  }), env);
+  assert.equal(fixed.status, 201, 'исправленные данные должны дойти, а не застрять в 422');
+  const fixedBody = await fixed.json() as { ticket: string; duplicate?: boolean };
+  assert.equal(fixedBody.duplicate, false);
+  assert.notEqual(fixedBody.ticket, 'K-1121-4242');
+  assert.ok(fake.calls.length > 0, 'Мария должна получить уведомление');
+  assert.match(stored.get(`idem:${key}`) ?? '', /\|single:02\|2$/, 'запись переходит в новый формат');
+
+  /* Чужой телефон с тем же ключом остаётся конфликтом: это не наша заявка. */
+  const alien = await post('/leads', freshBody({ ...body, phone: '+7 (999) 111-22-33', idempotency_key: key }), env);
+  assert.equal(alien.status, 409, 'ключ, использованный другим телефоном, не переиспользуем');
 });
 
 test('тот же ключ идемпотентности с ДРУГИМ шаблоном — 409, а не чужой талон', async () => {
