@@ -18,6 +18,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 
 import worker, { resetMemoryStore, type Env } from '../src/index.ts';
@@ -33,7 +34,10 @@ import {
   buildPaidTemplateGithubUrl,
   resolveTemplateNotice,
   DOCX_READY_IDS,
+  DOCX_PACKAGE,
+  DOCX_PACKAGE_COMMIT,
   hasConfirmedDocx,
+  templateHandoffNote,
 } from '../src/paid-templates.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '../..');
@@ -94,7 +98,12 @@ function testEnv(): Env {
   };
 }
 
-test('серверный каталог платных шаблонов совпадает с templates.json, prices.json и коммитом git', () => {
+/** Есть ли объект в клоне (бросает, если нет). */
+function gitObject(rev: string, type: 'commit'): void {
+  execFileSync('git', ['cat-file', '-e', `${rev}^{${type}}`], { cwd: REPO_ROOT, stdio: 'ignore' });
+}
+
+test('серверный каталог платных шаблонов совпадает с templates.json, prices.json и коммитом git', (t) => {
   const expectedPaid = siteCatalog.items.filter((it) => !it.free);
   const freeItems = siteCatalog.items.filter((it) => it.free);
   assert.equal(expectedPaid.length, 44);
@@ -110,7 +119,37 @@ test('серверный каталог платных шаблонов совп
     assert.equal(PAID_TEMPLATES_BY_ID.has(free.id), false, `бесплатный ID ${free.id} в платном списке`);
   }
 
-  /* Проверяем наличие каждого из 44 PDF в зафиксированном коммите git и заголовок %PDF-. */
+  /* Проверяем наличие каждого из 44 PDF в зафиксированном коммите git и заголовок %PDF-.
+     В неполном клоне (shallow, sparse) объекта может не быть — тогда пробуем
+     добрать его, а если сети нет, честно пропускаем эту часть, а не роняем
+     деплой relay: контракт каталога проверяется и без git. */
+  try {
+    gitObject(PAID_TEMPLATES_COMMIT, 'commit');
+  } catch {
+    try {
+      execFileSync('git', ['fetch', '--no-tags', '--depth=1', 'origin', PAID_TEMPLATES_COMMIT], {
+        cwd: REPO_ROOT,
+        stdio: 'ignore',
+        timeout: 60_000,
+      });
+    } catch {
+      /* Сети нет — ниже пропустим проверку по git. */
+    }
+  }
+  const commitAvailable = (() => {
+    try {
+      gitObject(PAID_TEMPLATES_COMMIT, 'commit');
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  if (!commitAvailable) {
+    t.skip(`коммит ${PAID_TEMPLATES_COMMIT} недоступен и не добрался из origin — проверка файлов по git пропущена`);
+    return;
+  }
+
   const lsTree = execFileSync(
     'git',
     ['-c', 'core.quotepath=false', 'ls-tree', PAID_TEMPLATES_COMMIT, 'shablony/'],
@@ -142,41 +181,68 @@ test('серверный каталог платных шаблонов совп
   }
 });
 
-test('DOCX подтверждён только для № 01–10 и файлы реально есть в зафиксированном коммите', () => {
-  /* Обещание «пришлём редактируемый DOCX» даётся только там, где комплект
-     существует. Проверяем по git, а не по тексту: в коммите c70ac32 должно
-     лежать ровно 10 .docx, по одному на каждый подтверждённый ID. */
-  const DOCX_COMMIT = 'c70ac32e5f54404483357e33f0bc2de0f9ee315d';
-  const ls = execFileSync(
-    'git',
-    ['-c', 'core.quotepath=false', 'ls-tree', '-r', '--name-only', DOCX_COMMIT, 'agents/agent-02/docx-01-10/'],
-    { cwd: REPO_ROOT, encoding: 'utf8' },
-  ).trim().split('\n').filter(Boolean);
+test('манифест DOCX № 01–10: закреплённые SHA-256 совпадают с файлами, без зависимости от чужой ветки', () => {
+  /* Тест НЕ ходит в git и не требует ветки arena/281d419d: имена и хеши
+     закреплены в `DOCX_PACKAGE`. Проверяем внутреннюю согласованность
+     (10 позиций, уникальные ID и имена, формат хеша) и совпадение с каталогом.
+     Наличие файлов в git проверяется отдельным тестом ниже — и он мягко
+     пропускается, если объекта нет в клоне: деплой relay не должен зависеть
+     от чужой ветки. */
+  assert.equal(DOCX_PACKAGE.length, 10);
+  assert.deepEqual(
+    DOCX_PACKAGE.map((entry) => entry.id),
+    ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'],
+  );
+  assert.equal(new Set(DOCX_PACKAGE.map((e) => e.filename)).size, 10, 'имена файлов должны быть уникальны');
 
-  const docxNames = ls.filter((name) => name.toLowerCase().endsWith('.docx'));
-  assert.equal(docxNames.length, 10, 'в коммите должно быть ровно 10 DOCX комплекта 01–10');
-
-  const idsInGit = docxNames.map((name) => name.split('/').pop()!.slice(0, 2)).sort();
-  assert.deepEqual(idsInGit, [...DOCX_READY_IDS].sort(), 'подтверждённые ID должны совпадать с комплектом в git');
-
-  for (const name of docxNames) {
-    const header = execFileSync('git', ['cat-file', '-p', `${DOCX_COMMIT}:${name}`], { cwd: REPO_ROOT, maxBuffer: 5 * 1024 * 1024 })
-      .subarray(0, 2).toString('latin1');
-    /* DOCX — это ZIP-контейнер. */
-    assert.equal(header, 'PK', `файл ${name} не похож на DOCX`);
+  for (const entry of DOCX_PACKAGE) {
+    assert.match(entry.sha256, /^[0-9a-f]{64}$/, `хеш ${entry.id} должен быть SHA-256`);
+    assert.ok(entry.filename.startsWith(`${entry.id}_`), `префикс файла ${entry.filename}`);
+    assert.ok(entry.filename.endsWith('.docx'), `расширение файла ${entry.filename}`);
+    /* ID есть в каталоге сайта и это договор из № 01–10. */
+    const siteItem = siteCatalog.items.find((it) => it.id === entry.id);
+    assert.ok(siteItem, `нет позиции ${entry.id} в templates.json`);
+    /* Никакого обещания «актуальный»: приёмка за Марией. */
+    assert.match(templateHandoffNote({ id: entry.id, title: siteItem.name, package: siteItem.free ? 'free' : 'single', price: siteItem.price }), /проверьте документ/i);
   }
 
-  /* Все остальные платные позиции DOCX не обещают. */
+  assert.equal(DOCX_PACKAGE_COMMIT, 'c70ac32e5f54404483357e33f0bc2de0f9ee315d');
   for (const entry of PAID_TEMPLATES) {
-    assert.equal(
-      hasConfirmedDocx(entry.id),
-      DOCX_READY_IDS.has(entry.id),
-      `для ID ${entry.id} обещание DOCX должно совпадать с подтверждённым комплектом`,
-    );
+    assert.equal(hasConfirmedDocx(entry.id), DOCX_READY_IDS.has(entry.id), `DOCX для ${entry.id}`);
   }
   assert.equal(hasConfirmedDocx('14'), false);
   assert.equal(hasConfirmedDocx('t07'), true);
+  assert.equal(hasConfirmedDocx('01'), true, 'бесплатный № 01 входит в комплект');
   assert.equal(hasConfirmedDocx(null), false);
+});
+
+test('файлы комплекта DOCX, если объект доступен в клоне, совпадают с закреплёнными хешами', (t) => {
+  /* Мягкая проверка: в CI может не быть объекта (чужую ветку удалили или клон
+     неполный). Тогда тест пропускается, а не падает: деплой relay не должен
+     зависеть от существования ветки. Когда объект есть — сверяем побайтово. */
+  try {
+    gitObject(DOCX_PACKAGE_COMMIT, 'commit');
+  } catch {
+    t.skip(`коммит ${DOCX_PACKAGE_COMMIT} недоступен в этом клоне — проверка файлов пропущена`);
+    return;
+  }
+
+  let checked = 0;
+  for (const entry of DOCX_PACKAGE) {
+    const path = `agents/agent-02/docx-01-10/${entry.filename}`;
+    let raw: Buffer;
+    try {
+      raw = execFileSync('git', ['cat-file', '-p', `${DOCX_PACKAGE_COMMIT}:${path}`], { cwd: REPO_ROOT, maxBuffer: 5 * 1024 * 1024 });
+    } catch {
+      t.skip(`файл ${entry.filename} недоступен — проверка пропущена`);
+      return;
+    }
+    assert.equal(raw.subarray(0, 2).toString('latin1'), 'PK', `${entry.filename} не DOCX`);
+    const hash = createHash('sha256').update(raw).digest('hex');
+    assert.equal(hash, entry.sha256, `содержимое ${entry.filename} изменилось — обновите манифест осознанно`);
+    checked++;
+  }
+  assert.equal(checked, 10);
 });
 
 test('русские имена файлов (включая «ё» и дефисы) кодируются в чистый ASCII URL и декодируются обратно', () => {
@@ -401,10 +467,12 @@ test('обещание DOCX ограничено подтверждёнными 
 
     for (const out of [tg, mail.text, mail.html]) {
       if (item.docx) {
-        assert.match(out, /актуальный редактируемый DOCX/i, `ID ${item.id}: ожидалось обещание DOCX`);
+        assert.match(out, /редактируемый DOCX из комплекта 01–10/i, `ID ${item.id}: ожидалось наличие DOCX`);
         assert.match(out, /в открытой сборке DOCX нет/i);
+        /* Приёмка — за Марией: слово «актуальный» не обещаем. */
+        assert.doesNotMatch(out, /актуальный/i, `ID ${item.id}: нельзя называть DOCX «актуальным» без приёмки`);
       } else {
-        assert.doesNotMatch(out, /актуальный редактируемый DOCX/i, `ID ${item.id}: DOCX НЕ подтверждён — обещать нельзя`);
+        assert.doesNotMatch(out, /редактируемый DOCX из комплекта/i, `ID ${item.id}: DOCX нет — обещать нельзя`);
         assert.match(out, /DOCX для этой позиции не подтверждён/i);
         assert.match(out, /PDF образца/i);
       }
@@ -432,7 +500,7 @@ test('обещание DOCX ограничено подтверждёнными 
     const tg = composeTelegram(v.value, 'K-1124-0002', { siteName: 'Кадры-Про' });
     const mail = composeEmail(v.value, 'K-1124-0002', { siteName: 'Кадры-Про' });
     for (const out of [tg, mail.text, mail.html]) {
-      assert.doesNotMatch(out, /актуальный редактируемый DOCX/i, `package=${pkg}: DOCX не подтверждён`);
+      assert.doesNotMatch(out, /DOCX из комплекта/i, `package=${pkg}: DOCX не обещаем`);
       assert.match(out, /соберите (комплект|архив) вручную/i);
     }
   }

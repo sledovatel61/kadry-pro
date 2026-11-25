@@ -92,7 +92,7 @@ const itemListJsonLd = {
   </section>
 
   <section class="template-catalog bg-inner-scene bg-gallery-scene" id="catalog" aria-labelledby="catalog-title">
-    <div class="template-catalog__heading"><div><p class="eyebrow">Библиотека</p><h2 id="catalog-title">Все шаблоны</h2><p>Бесплатные документы доступны сразу. Платные файлы не размещены в открытом доступе. Редактируемый DOCX подтверждён для № 01–10 и отправляется вручную после заявки; у остальных позиций — проверенный PDF.</p></div>
+    <div class="template-catalog__heading"><div><p class="eyebrow">Библиотека</p><h2 id="catalog-title">Все шаблоны</h2><p>Бесплатные документы доступны сразу. Платные файлы не размещены в открытом доступе. Редактируемый DOCX есть для № 01–10 и отправляется вручную после заявки; у остальных позиций — PDF.</p></div>
       <label class="template-search"><span class="sr-only">Поиск документов</span><span aria-hidden="true">⌕</span><input type="search" id="template-search" placeholder="Найти документ…" autocomplete="off" /></label>
     </div>
     <div class="template-filters" role="group" aria-label="Фильтр по категории"><button type="button" class="is-active" data-filter="all" aria-pressed="true">Все <span>{catalog.items.length}</span></button>{categories.map((category) => <button type="button" data-filter={category} aria-pressed="false">{category}</button>)}</div>
@@ -205,7 +205,7 @@ const itemListJsonLd = {
 
       <div class="template-preview__footer">
         <p class="template-preview__caption" data-preview-modal-caption>
-          Первая страница шаблона. В открытой сборке DOCX нет: после заявки Мария свяжется с вами и пришлёт актуальный редактируемый DOCX вручную.
+          Первая страница шаблона. В открытой сборке DOCX нет: после заявки Мария свяжется с вами и пришлёт редактируемый DOCX вручную.
         </p>
         <div class="template-preview__actions">
           <a

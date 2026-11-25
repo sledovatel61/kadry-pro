@@ -14,6 +14,13 @@ name: Deploy leads relay
 #   EMAIL_TO / EMAIL_FROM — необязательно: адреса почты (по умолчанию в wrangler.toml)
 #   REVIEWS_INBOX_KEY     — необязательно: код доступа к журналу отзывов
 #
+# ВАЖНО ПРО СЕКРЕТЫ: обычный деплой (push в main) секреты воркера НЕ меняет —
+# они живут в Cloudflare и переживают выкладку кода. Перезапись значений из
+# GitHub возможна только явной ручной операцией: Actions → Deploy leads relay →
+# Run workflow → включить `update_secrets`. Тогда preflight требует, чтобы
+# BOT_TOKEN и TELEGRAM_CHAT_ID были заданы оба и chat_id был отрицательным,
+# иначе деплой останавливается, ничего не записав.
+#
 # Workflow запускается сам при изменении relay/ в ветке публикации и вручную
 # (Actions → Deploy leads relay → Run workflow). Адрес воркера печатается в
 # Summary — его нужно положить в переменную репозитория PUBLIC_LEADS_ENDPOINT.
@@ -25,6 +32,11 @@ on:
       - 'relay/**'
       - '.github/workflows/relay.yml'
   workflow_dispatch:
+    inputs:
+      update_secrets:
+        description: 'ОБНОВИТЬ СЕКРЕТЫ воркера значениями из GitHub (по умолчанию выключено — деплой секреты не трогает)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -116,38 +128,65 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      # Деплой не должен трогать действующие секреты воркера.
-      # Если секрет не задан в GitHub, его НЕ отправляем и не затираем пустым
-      # значением: воркер продолжит работать на прежних секретах. Значения
-      # секретов нигде не печатаются — только имена и статус «задан/не задан».
-      - name: Preflight — конфигурация секретов до деплоя
+      # ПОЛИТИКА СЕКРЕТОВ.
+      #
+      # Обычный деплой секреты воркера НЕ трогает вообще: значения живут в
+      # Cloudflare и переживают выкладку кода. Раньше каждый деплой перезаписывал
+      # BOT_TOKEN/TELEGRAM_CHAT_ID значениями из GitHub — и при частично заданных
+      # секретах получалась несовместимая пара (новый токен + старый chat_id),
+      # после чего заявки перестают приходить.
+      #
+      # Обновление секретов — отдельная ЯВНАЯ операция: workflow_dispatch с
+      # включённым `update_secrets`. Тогда preflight требует, чтобы значения были
+      # согласованной парой, и только после этого шаг ниже их записывает.
+      # Значения нигде не печатаются — только имена и статус «задан/не задан».
+      - name: Preflight — режим и проверка конфигурации
         id: preflight
         run: |
           set -e
-          missing=""
-          [ -n "$BOT_TOKEN" ] || missing="$missing BOT_TOKEN"
-          [ -n "$TELEGRAM_CHAT_ID" ] || missing="$missing TELEGRAM_CHAT_ID"
+          UPDATE="${{ inputs.update_secrets == true && '1' || '0' }}"
+          EVENT="${{ github.event_name }}"
+          echo "Событие: $EVENT. Обновление секретов: $UPDATE"
+          echo "update_secrets=$UPDATE" >> "$GITHUB_OUTPUT"
 
-          # Живой воркер (если адрес известен) подтверждает, что заявки сейчас
-          # принимаются. Значения секретов из /health не видны — только флаги.
+          # Состояние живого воркера (если адрес известен): только флаги,
+          # значения секретов из /health не видны и не запрашиваются.
+          live_code=000
           live_tg=0
           if [ -n "$LIVE_URL" ]; then
-            code=$(curl -sS -o /tmp/live-health.json -w '%{http_code}' "$LIVE_URL/health" || echo 000)
-            if [ "$code" = "200" ] && grep -q '"telegram":true' /tmp/live-health.json; then live_tg=1; fi
-            echo "Живой воркер: HTTP $code, telegram=$live_tg"
+            live_code=$(curl -sS -o /tmp/live-health.json -w '%{http_code}' "$LIVE_URL/health" || echo 000)
+            if [ "$live_code" = "200" ] && grep -q '"telegram":true' /tmp/live-health.json; then live_tg=1; fi
+            echo "Живой воркер: HTTP $live_code, telegram=$live_tg"
           else
             echo "Переменная PUBLIC_LEADS_ENDPOINT не задана — живую проверку пропускаю."
           fi
 
-          if [ -n "$missing" ]; then
-            if [ "$live_tg" = "1" ]; then
-              echo "::warning::В GitHub не заданы:$missing. Действующие секреты воркера НЕ перезаписываю: заявки продолжат приходить."
-            else
-              echo "::error::В GitHub не заданы:$missing, и действующий воркер не подтверждает Telegram. Такой деплой оставит заявки без доставки — задайте секреты (Settings → Secrets and variables → Actions) и запустите снова."
+          if [ "$UPDATE" = "1" ]; then
+            # Явная смена секретов: нужны ОБА значения и они должны быть парой.
+            missing=""
+            [ -n "$BOT_TOKEN" ] || missing="$missing BOT_TOKEN"
+            [ -n "$TELEGRAM_CHAT_ID" ] || missing="$missing TELEGRAM_CHAT_ID"
+            if [ -n "$missing" ]; then
+              echo "::error::Режим обновления секретов требует оба значения. Не заданы:$missing. Ничего не меняю — задайте секреты в Settings → Secrets and variables → Actions и запустите снова."
               exit 1
             fi
+            case "$TELEGRAM_CHAT_ID" in
+              -*) ;;
+              *) echo "::error::TELEGRAM_CHAT_ID должен быть отрицательным id группы (начинается с «-»). Ничего не меняю."; exit 1 ;;
+            esac
+            echo "Пара BOT_TOKEN + TELEGRAM_CHAT_ID задана целиком — можно обновлять."
+          else
+            # Обычный деплой: ничего не записываем. Только предупреждаем, если
+            # воркер явно без Telegram — но и тогда чинить это должен человек
+            # через явную операцию, а не побочный эффект выкладки кода.
+            if [ "$live_tg" = "1" ]; then
+              echo "Секреты не трогаю: живой воркер принимает заявки (telegram=true)."
+            elif [ "$live_code" = "200" ]; then
+              echo "::warning::Живой воркер отвечает, но telegram=false. Деплой это не исправит: запустите workflow вручную с включённым update_secrets."
+            else
+              echo "::warning::Живое состояние воркера не подтверждено (HTTP $live_code). Секреты не трогаю — проверьте /health после деплоя."
+            fi
           fi
-          echo "push_tg=$([ -z "$missing" ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -165,21 +204,15 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      - name: Push secrets to worker
+      - name: Push secrets to worker (только явная операция)
+        if: ${{ steps.preflight.outputs.update_secrets == '1' }}
         run: |
           set -e
-          # Пустой секрет не отправляем: `wrangler secret put` с пустым значением
-          # перезаписал бы действующий секрет воркера и сломал приём заявок.
-          if [ -n "$BOT_TOKEN" ]; then
-            printf '%s' "$BOT_TOKEN" | npx wrangler secret put BOT_TOKEN
-          else
-            echo "::warning::BOT_TOKEN не задан в GitHub — действующий секрет воркера не меняю"
-          fi
-          if [ -n "$TELEGRAM_CHAT_ID" ]; then
-            printf '%s' "$TELEGRAM_CHAT_ID" | npx wrangler secret put TELEGRAM_CHAT_ID
-          else
-            echo "::warning::TELEGRAM_CHAT_ID не задан в GitHub — действующий секрет воркера не меняю"
-          fi
+          # Пишем BOT_TOKEN и TELEGRAM_CHAT_ID только вместе: preflight уже
+          # проверил, что заданы оба и chat_id отрицательный. Пустых значений
+          # здесь быть не может — иначе получилась бы несовместимая пара.
+          printf '%s' "$BOT_TOKEN" | npx wrangler secret put BOT_TOKEN
+          printf '%s' "$TELEGRAM_CHAT_ID" | npx wrangler secret put TELEGRAM_CHAT_ID
           # Подпись ссылок на платные файлы: без неё ссылка не выдаётся.
           if [ -n "$FILE_TOKEN_SECRET" ]; then
             printf '%s' "$FILE_TOKEN_SECRET" | npx wrangler secret put FILE_TOKEN_SECRET
