@@ -13,11 +13,20 @@ const previewCount = catalog.items.filter((item) => Boolean(item.preview)).lengt
    (10 файлов в agents/agent-02/docx-01-10, коммит c70ac32). Для остальных
    карточек обещать DOCX нельзя — в репозитории есть лишь PDF образца. */
 const DOCX_READY_IDS = new Set(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']);
+/* Открытая прямая ссылка на DOCX есть только у бесплатного № 01.
+   Для платных № 02–10 ссылки Google Drive живут ТОЛЬКО в relay: клиенту они
+   не отдаются (ни в разметке, ни в ответе /leads) — иначе платный документ
+   уходил бы без оплаты. */
+const FREE_DOCX_LINKS: Record<string, string> = {
+  '01': 'https://drive.google.com/uc?export=download&id=1kJOeCWe6MjMgFuq1dGzuOXVzKy0t7hPR',
+};
 const enrichedItems = catalog.items.map((item, index) => {
   const isReworkedDocx = DOCX_READY_IDS.has(String(item.id).padStart(2, '0'));
   return {
     ...item,
     isReworkedDocx,
+    /* Прямая ссылка на редактируемый DOCX — только для бесплатного № 01. */
+    freeDocxUrl: item.free ? FREE_DOCX_LINKS[String(item.id).padStart(2, '0')] ?? null : null,
     previewW: isReworkedDocx ? 1080 : 595,
     previewH: isReworkedDocx ? 1528 : 842,
     loadingMode: (index < 4 ? 'eager' : 'lazy') as 'eager' | 'lazy',
@@ -49,7 +58,7 @@ const itemListJsonLd = {
       <h1>Кадровые документы<br /><span>для реальной работы</span></h1>
       <p class="templates-hero__lead">Каталог из {catalog.items.length} документов: {freeCount} бесплатно, ещё {paidCount} можно предварительно посмотреть по водяной копии первой страницы.</p>
       <div class="templates-hero__actions"><a class="templates-primary" href="/shablony/free-bundle-20.zip" download>Скачать бесплатный набор из 20</a><a class="templates-secondary" href="#catalog"><span>Выбрать документ</span> <span aria-hidden="true">↓</span></a></div>
-      <div class="templates-proof"><span><b>20</b> бесплатных PDF</span><span><b>{previewCount}</b> водяных превью</span><span><b>0</b> платных PDF в открытой папке</span></div>
+      <div class="templates-proof"><span><b>20</b> бесплатных шаблонов</span><span><b>{previewCount}</b> водяных превью</span><span><b>0</b> платных PDF в открытой папке</span></div>
     </div>
     <!-- Вместо одинокого кружка «КП» — композиция «Кобальт × Аврора»:
          веер из трёх стеклянных документов. Слой декоративный, поэтому
@@ -113,8 +122,9 @@ const itemListJsonLd = {
                 data-preview-height={String(item.previewH)}
                 data-preview-price={String(item.price)}
                 data-preview-free={item.free ? '1' : '0'}
-                data-href={item.free && item.file ? item.file : undefined}
+                data-href={item.free && item.file && !item.freeDocxUrl ? item.file : undefined}
                 data-preview-docx={item.isReworkedDocx ? '1' : '0'}
+                data-preview-docx-url={item.freeDocxUrl ?? undefined}
                 aria-haspopup="dialog"
                 aria-label={`Посмотреть первую страницу шаблона № ${item.id} «${item.name}»`}
               >
@@ -151,8 +161,9 @@ const itemListJsonLd = {
                   data-preview-height={String(item.previewH)}
                   data-preview-price={String(item.price)}
                   data-preview-free={item.free ? '1' : '0'}
-                  data-href={item.free && item.file ? item.file : undefined}
+                  data-href={item.free && item.file && !item.freeDocxUrl ? item.file : undefined}
                   data-preview-docx={item.isReworkedDocx ? '1' : '0'}
+                  data-preview-docx-url={item.freeDocxUrl ?? undefined}
                   aria-haspopup="dialog"
                 >
                   Посмотреть первую страницу
@@ -161,33 +172,21 @@ const itemListJsonLd = {
               <div class="template-tile__footer">
                 {item.free ? (
                   <div class="template-tile__free-actions">
-                    <a
-                      class="template-download"
-                      href={item.file}
-                      download
-                      title="PDF старого образца (до переработки в редактируемый DOCX)"
-                    >
-                      Скачать PDF <span aria-hidden="true">↗</span>
-                    </a>
-                    <small class="template-format-note">
-                      {item.isReworkedDocx
-                        ? 'Это PDF прежнего образца. Обновлённый редактируемый DOCX для № 01 вышлем вручную по заявке.'
-                        : 'Формат: PDF.'}
-                    </small>
-                    {item.isReworkedDocx && (
-                      <button
-                        type="button"
-                        class="template-request template-request--ghost"
-                        data-open-template
-                        data-template-id={item.id}
-                        data-template-title={item.name}
-                        data-template-price="0"
-                        data-template-package="free"
-                        aria-haspopup="dialog"
+                    {item.freeDocxUrl ? (
+                      /* Одна прямая кнопка: открытый DOCX в Google Drive. */
+                      <a
+                        class="template-download template-download--docx"
+                        href={item.freeDocxUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Скачать редактируемый DOCX (Google Drive)"
                       >
-                        Запросить обновлённый DOCX
-                      </button>
+                        Скачать DOCX <span aria-hidden="true">↗</span>
+                      </a>
+                    ) : (
+                      <a class="template-download" href={item.file} download>Скачать PDF <span aria-hidden="true">↗</span></a>
                     )}
+                    {!item.freeDocxUrl && <small class="template-format-note">Формат: PDF.</small>}
                   </div>
                 ) : (
                   <>
@@ -239,11 +238,12 @@ const itemListJsonLd = {
           <a
             class="template-preview__download"
             data-preview-download
-            href="/shablony/free/01_Трудовой_договор_бессрочный.pdf"
-            download
+            href={FREE_DOCX_LINKS['01']}
+            target="_blank"
+            rel="noopener noreferrer"
             hidden
           >
-            <span data-preview-download-label>Скачать PDF бесплатно</span> <span aria-hidden="true">↗</span>
+            <span data-preview-download-label>Скачать DOCX</span> <span aria-hidden="true">↗</span>
           </a>
           <button type="button" class="template-request template-preview__order" data-preview-order>
             Оставить заявку · 500 ₽
@@ -531,7 +531,10 @@ const itemListJsonLd = {
     position: relative; display: block; width: 100%; height: 100%; padding: 0; border: 0;
     background: transparent; color: inherit; cursor: zoom-in; text-align: left;
   }
-  .template-tile__thumb-btn--hd img { object-position: center 11%; }
+  /* Шапка «КАДРЫ-ПРО» стоит у верхнего края листа: при кадрировании по центру
+     она срезалась. Держим верх изображения (top center), чтобы логотип был
+     виден целиком. */
+  .template-tile__thumb-btn--hd img { object-position: top center; }
   .template-tile__thumb-btn:hover img,
   .template-tile__thumb-btn:focus-visible img { transform: scale(1.03); }
   .template-tile__zoom-pill {
@@ -632,6 +635,7 @@ const itemListJsonLd = {
     /* Широкое окно: страница читается крупно сразу, без «двух ползунков». */
     width: 92vw;
     max-width: 920px;
+    transition: max-width .22s ease, width .22s ease;
     /* height: fit-content — чтобы авто-отступы сверху и снизу реально центрировали
        окно по вертикали, а не прижимали его к верху экрана. */
     height: fit-content;
@@ -704,9 +708,16 @@ const itemListJsonLd = {
     box-shadow: 0 20px 50px rgba(0, 0, 0, .65);
     cursor: zoom-in;
   }
+  /* Режим «Крупнее для чтения +»: расширяем само окно почти на весь экран,
+     а не картинку внутри — иначе появлялся горизонтальный ползунок и правый
+     край листа обрезался. Вертикальная прокрутка остаётся одна. */
+  .template-preview-modal.is-zoomed {
+    width: 96vw;
+    max-width: 96vw;
+  }
   .template-preview__viewport.is-zoomed .template-preview__img {
-    width: 1080px;
-    max-width: none;
+    width: 100%;
+    max-width: 100%;
     cursor: zoom-out;
   }
   .template-preview__footer {
@@ -849,7 +860,8 @@ const itemListJsonLd = {
     .template-preview__title { font-size: .92rem; }
     .template-preview__zoom { min-height: 36px; padding: 0 9px; font-size: .73rem; }
     .template-preview__viewport { padding: 10px; }
-    .template-preview__viewport.is-zoomed .template-preview__img { width: 720px; }
+    .template-preview-modal.is-zoomed { width: calc(100vw - 8px); max-width: none; }
+    .template-preview__viewport.is-zoomed .template-preview__img { width: 100%; }
     .template-preview__footer { flex-direction: column; align-items: stretch; gap: 10px; padding: 11px 12px max(11px, env(safe-area-inset-bottom)); }
     .template-preview__caption { font-size: .78rem; }
     .template-preview__actions { width: 100%; }

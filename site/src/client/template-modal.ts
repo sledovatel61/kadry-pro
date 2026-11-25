@@ -27,6 +27,8 @@ export interface PreviewTemplateInfo {
   free: boolean;
   fileHref: string | null;
   hasDocx: boolean;
+  /** Прямая ссылка на редактируемый DOCX (только бесплатный № 01). */
+  docxUrl: string | null;
 }
 
 /**
@@ -56,8 +58,8 @@ export const STANDARD_PREVIEW_CAPTION =
  * что это PDF, и предлагаем запросить обновлённый DOCX — иначе кнопка «Скачать
  * PDF» рядом с обещанием «DOCX для № 01–10» читается как несоответствие.
  */
-export const FREE_LEGACY_PDF_CAPTION =
-  'Первая страница шаблона. Скачивается PDF прежнего образца — обновлённый редактируемый DOCX для этой позиции вышлем вручную по заявке.';
+export const FREE_DOCX_CAPTION =
+  'Первая страница шаблона. Редактируемый DOCX можно скачать сразу — кнопка ниже, файл на Google Drive.';
 export const FREE_PDF_CAPTION =
   'Первая страница шаблона. Скачивается бесплатный PDF.';
 
@@ -89,6 +91,10 @@ export function readPreviewTrigger(trigger: HTMLElement): PreviewTemplateInfo | 
   const free = trigger.dataset.previewFree === '1';
   const hrefRaw = (trigger.getAttribute('data-href') ?? '').trim();
   const hasDocx = trigger.dataset.previewDocx === '1';
+  /* Ссылка на DOCX приходит только у бесплатной позиции, для которой файл
+     реально открыт. У платных № 02–10 её нет и быть не должно: документ
+     выдаётся вручную после оплаты. */
+  const docxUrl = (trigger.dataset.previewDocxUrl ?? '').trim() || null;
   return {
     id,
     title,
@@ -99,6 +105,7 @@ export function readPreviewTrigger(trigger: HTMLElement): PreviewTemplateInfo | 
     free,
     fileHref: free && hrefRaw ? hrefRaw : null,
     hasDocx,
+    docxUrl: free ? docxUrl : null,
   };
 }
 
@@ -164,6 +171,10 @@ export function wireTemplateModal(doc: Document = document): void {
     if (previewViewportEl) {
       previewViewportEl.classList.toggle('is-zoomed', zoomed);
     }
+    /* В режиме чтения расширяется само окно (96vw), чтобы лист был крупным и
+       без обрезки правого края. Класс живёт на диалоге, а не на viewport:
+       ширину задаёт модалка. */
+    previewModal?.classList.toggle('is-zoomed', zoomed);
     if (previewZoomBtn) {
       previewZoomBtn.setAttribute('aria-pressed', String(zoomed));
       previewZoomBtn.textContent = zoomed ? 'По ширине окна −' : 'Крупнее для чтения +';
@@ -253,18 +264,26 @@ export function wireTemplateModal(doc: Document = document): void {
       /* Подпись — про тот формат, который человек реально получит по этой
          кнопке: у бесплатной позиции это PDF, даже если DOCX уже готов. */
       previewCaptionEl.textContent = info.free
-        ? (info.hasDocx ? FREE_LEGACY_PDF_CAPTION : FREE_PDF_CAPTION)
+        ? (info.docxUrl ? FREE_DOCX_CAPTION : FREE_PDF_CAPTION)
         : (info.hasDocx ? DOCX_PREVIEW_CAPTION : STANDARD_PREVIEW_CAPTION);
     }
     if (previewDownloadLink) {
-      if (info.free && info.fileHref) {
+      const label = previewDownloadLink.querySelector<HTMLElement>('[data-preview-download-label]');
+      if (info.free && info.docxUrl) {
+        /* Бесплатный № 01: одна прямая кнопка на редактируемый DOCX. */
+        previewDownloadLink.hidden = false;
+        previewDownloadLink.setAttribute('href', info.docxUrl);
+        previewDownloadLink.setAttribute('target', '_blank');
+        previewDownloadLink.setAttribute('rel', 'noopener noreferrer');
+        previewDownloadLink.title = 'Скачать редактируемый DOCX (Google Drive)';
+        if (label) label.textContent = 'Скачать DOCX';
+      } else if (info.free && info.fileHref) {
         previewDownloadLink.hidden = false;
         previewDownloadLink.setAttribute('href', info.fileHref);
-        previewDownloadLink.title = 'PDF прежнего образца (до переработки в редактируемый DOCX)';
-        /* Текст кнопки — тоже про формат: обещание DOCX рядом с ней выполняется
-           только по заявке, а не этим скачиванием. */
-        const label = previewDownloadLink.querySelector<HTMLElement>('[data-preview-download-label]');
-        if (label) label.textContent = info.hasDocx ? 'Скачать PDF (без DOCX)' : 'Скачать PDF бесплатно';
+        previewDownloadLink.removeAttribute('target');
+        previewDownloadLink.removeAttribute('rel');
+        previewDownloadLink.title = 'PDF';
+        if (label) label.textContent = 'Скачать PDF бесплатно';
       } else {
         previewDownloadLink.hidden = true;
         previewDownloadLink.removeAttribute('href');
@@ -273,7 +292,9 @@ export function wireTemplateModal(doc: Document = document): void {
     if (previewOrderBtn) {
       /* У бесплатной позиции без готового DOCX просить нечего: кнопка вела бы
          в заявку на то, чего у нас нет. */
-      previewOrderBtn.hidden = info.free && !info.hasDocx;
+      /* У бесплатной позиции с готовым DOCX просить нечего: человек уже может
+         скачать файл. Кнопка остаётся только там, где DOCX нет. */
+      previewOrderBtn.hidden = info.free;
       previewOrderBtn.classList.toggle('is-secondary', info.free);
       previewOrderBtn.textContent = info.free
         ? 'Запросить обновлённый DOCX'

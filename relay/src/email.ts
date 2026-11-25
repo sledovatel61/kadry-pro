@@ -129,6 +129,11 @@ export function composeEmail(lead: LeadPayload, ticket: string, opts: EmailOpts)
 
   const textFileLines: string[] = [];
   if (templateNotice) {
+    if (templateNotice.docxUrl) {
+      /* Главное для Марии: DOCX из Google Drive — его она отправляет покупателю. */
+      textFileLines.push('');
+      textFileLines.push(`DOCX для покупателя (Google Drive): ${templateNotice.docxUrl}`);
+    }
     if (templateNotice.githubUrl && templateNotice.filename) {
       textFileLines.push('');
       textFileLines.push(`Файл для Марии (${templateNotice.filename}): ${templateNotice.githubUrl}`);
@@ -149,6 +154,20 @@ export function composeEmail(lead: LeadPayload, ticket: string, opts: EmailOpts)
     '',
     'Ответить клиенту: ' + fmtPhone(lead.phone),
   ].join('\n');
+
+  const htmlDocxBlock = templateNotice?.docxUrl
+    ? `<tr><td style="padding:10px 24px 0">
+      <div style="padding:14px 16px;border-radius:10px;background:#0f2318;border:1px solid #1f6b45">
+        <div style="font-size:13px;font-weight:700;color:#9ff7c0;margin-bottom:6px">DOCX для покупателя</div>
+        <div style="margin-bottom:8px">
+          <a href="${escHtml(templateNotice.docxUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#15803d;color:#f0fff4;text-decoration:none;font-weight:700;font-size:14px">
+            Скачать DOCX с Google Drive
+          </a>
+        </div>
+        <div style="font-size:12px;color:#9aa59d;word-break:break-all">${escHtml(templateNotice.docxUrl)}</div>
+      </div>
+    </td></tr>`
+    : '';
 
   const htmlFileBlock = templateNotice
     ? (templateNotice.githubUrl && templateNotice.filename
@@ -191,6 +210,7 @@ export function composeEmail(lead: LeadPayload, ticket: string, opts: EmailOpts)
         </tr>`).join('')}
       </table>
     </td></tr>
+    ${htmlDocxBlock}
     ${htmlFileBlock}
     <tr><td style="padding:14px 24px 22px">
       <a href="tel:${escHtml(lead.phone)}" style="display:inline-block;padding:11px 18px;border-radius:10px;background:#4ade80;color:#0a0a0a;text-decoration:none;font-weight:700">

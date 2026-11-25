@@ -132,6 +132,15 @@ test('на собранной /shablony.html у всех 44 платных ка�
     for (const item of freeItems) {
       const card = doc.getElementById(`s${item.id}`);
       assert.ok(card, `нет бесплатной карточки #s${item.id}`);
+      if (item.id === '01') {
+        /* № 01 отдаётся редактируемым DOCX из Google Drive — одна прямая кнопка. */
+        const docxLink = card.querySelector<HTMLAnchorElement>('a.template-download[href*="drive.google.com"]');
+        assert.ok(docxLink, 'у № 01 должна остаться прямая ссылка скачивания (DOCX)');
+        assert.match(docxLink.getAttribute('href') ?? '', /drive\.google\.com\/uc\?export=download&id=1kJOeCWe/);
+        assert.match(docxLink.textContent ?? '', /Скачать DOCX/);
+        assert.equal(card.querySelector('a.template-download[download]'), null, 'старой кнопки PDF у № 01 быть не должно');
+        continue;
+      }
       const link = card.querySelector<HTMLAnchorElement>('a.template-download[download]');
       assert.ok(link, `потеряна ссылка скачивания бесплатного шаблона ${item.id}`);
       assert.equal(link.getAttribute('href'), item.file);
@@ -413,8 +422,13 @@ test('предпросмотр первой страницы № 01–10: мин
     previewBtn01.click();
     assert.equal(previewModal.hasAttribute('open'), true);
     assert.equal(viewport.classList.contains('is-zoomed'), false, 'масштаб сбрасывается при новом открытии');
-    assert.equal(downloadBtn.hidden, false, 'у бесплатного шаблона #s01 доступно скачивание PDF');
-    assert.equal(downloadBtn.getAttribute('href'), '/shablony/free/01_Трудовой_договор_бессрочный.pdf');
+    assert.equal(downloadBtn.hidden, false, 'у бесплатного шаблона #s01 доступно скачивание DOCX');
+    assert.match(
+      downloadBtn.getAttribute('href') ?? '',
+      /^https:\/\/drive\.google\.com\/uc\?export=download&id=1kJOeCWe6MjMgFuq1dGzuOXVzKy0t7hPR$/,
+      'в лайтбоксе № 01 одна прямая ссылка на DOCX',
+    );
+    assert.match(downloadBtn.textContent ?? '', /Скачать DOCX/);
 
     previewModal.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
     assert.equal(previewModal.hasAttribute('open'), false, 'клик по фону диалога закрывает предпросмотр');
@@ -579,41 +593,146 @@ test('лайтбокс предпросмотра отцентрирован и 
   assert.match(img, /width:100%/, 'картинка должна сразу занимать ширину окна');
 });
 
-test('карточка № 01: рядом со «Скачать PDF» назван формат и предложен обновлённый DOCX', () => {
-  /* Несоответствие из отчёта: № 01 помечена как «Бесплатно» и обещает DOCX
-     (входит в комплект 01–10), но скачивается PDF прежнего образца. Человек
-     должен видеть формат прямо на карточке, а не узнавать о нём после. */
+test('карточка № 01: одна прямая кнопка «Скачать DOCX» с Google Drive, без PDF и без запроса', () => {
+  /* Требование владельца: у бесплатного № 01 остаётся ОДНА прямая кнопка на
+     редактируемый DOCX в Google Drive. Старой «Скачать PDF» и кнопки
+     «Запросить обновлённый DOCX» быть не должно. */
   const { doc, cleanup } = mountShablonyDom();
   try {
     const card = doc.getElementById('s01');
     assert.ok(card, 'карточка № 01 должна быть на странице');
 
-    const download = card.querySelector<HTMLAnchorElement>('a.template-download[download]');
-    assert.ok(download, 'бесплатное скачивание № 01 должно сохраниться');
-    assert.equal(download.getAttribute('href'), '/shablony/free/01_Трудовой_договор_бессрочный.pdf');
-    assert.match(download.title, /PDF/i, 'у ссылки должно быть пояснение про формат');
+    const links = [...card.querySelectorAll<HTMLAnchorElement>('a.template-download')];
+    assert.equal(links.length, 1, 'у № 01 должна быть ровно одна кнопка скачивания');
+    const download = links[0];
+    assert.equal(
+      download.getAttribute('href'),
+      'https://drive.google.com/uc?export=download&id=1kJOeCWe6MjMgFuq1dGzuOXVzKy0t7hPR',
+      'ссылка должна вести на DOCX в Google Drive',
+    );
+    assert.match(download.textContent ?? '', /Скачать DOCX/);
+    assert.equal(download.hasAttribute('download'), false, 'это внешний файл, атрибут download не нужен');
+    assert.equal(download.getAttribute('target'), '_blank');
+    assert.match(download.getAttribute('rel') ?? '', /noopener/);
 
-    const note = card.querySelector<HTMLElement>('.template-format-note');
-    assert.ok(note, 'рядом со скачиванием нужна подпись про формат');
-    assert.match(note.textContent ?? '', /PDF прежнего образца/i);
-    assert.match(note.textContent ?? '', /DOCX/i);
-    assert.match(note.textContent ?? '', /по заявке/i, 'обновлённый DOCX выдаётся по заявке, а не скачиванием');
-    assert.doesNotMatch(note.textContent ?? '', /актуальный/i, 'без приёмки слово «актуальный» не обещаем');
+    /* Старых элементов быть не должно. */
+    assert.equal(card.querySelector('a.template-download[href$=".pdf"]'), null, 'старой кнопки PDF у № 01 нет');
+    assert.equal(card.querySelector('.template-format-note'), null, 'лишней подписи про формат у № 01 нет');
+    assert.equal(card.querySelector('button[data-open-template]'), null, 'кнопки «Запросить обновлённый DOCX» у № 01 нет');
+    assert.equal(doc.querySelectorAll('button[data-open-template][data-template-package="free"]').length, 0);
 
-    /* Запрос обновлённого DOCX — это заявка на бесплатную позицию. */
-    const request = card.querySelector<HTMLButtonElement>('button[data-open-template]');
-    assert.ok(request, 'у № 01 должна быть кнопка запроса обновлённого DOCX');
-    assert.equal(request.dataset.templatePackage, 'free');
-    assert.equal(request.dataset.templateId, '01');
-    assert.equal(request.dataset.templatePrice, '0');
-    assert.match(request.textContent ?? '', /Запросить обновлённый DOCX/);
-
-    /* Остальные 19 бесплатных карточек не должны получить эту кнопку: у них
-       обновлённого DOCX нет, просить нечего. */
-    const otherFreeRequests = [...doc.querySelectorAll<HTMLButtonElement>('button[data-open-template][data-template-package="free"]')];
-    assert.equal(otherFreeRequests.length, 1, 'запрос DOCX только у подтверждённой позиции № 01');
+    /* Остальные бесплатные карточки по-прежнему отдают свои PDF. */
+    const otherPdf = doc.querySelectorAll<HTMLAnchorElement>('#s11 a.template-download[download]');
+    assert.equal(otherPdf.length, 1, 'бесплатные PDF остальных позиций не тронуты');
   } finally {
     cleanup();
+  }
+});
+
+test('зум предпросмотра расширяет само окно до 96vw, а шапка «КАДРЫ-ПРО» в миниатюре не обрезана', () => {
+  const { dom, doc, cleanup } = mountShablonyDom();
+  try {
+    const previewModal = doc.getElementById('template-preview-modal') as HTMLDialogElement;
+    const zoomBtn = previewModal.querySelector<HTMLButtonElement>('[data-preview-zoom]')!;
+
+    doc.querySelector<HTMLButtonElement>('#s08 .template-tile__thumb-btn[data-open-preview]')!.click();
+    assert.equal(previewModal.classList.contains('is-zoomed'), false, 'обычный режим — 92vw/920px');
+
+    zoomBtn.click();
+    assert.equal(previewModal.classList.contains('is-zoomed'), true, 'класс чтения должен висеть на самом окне');
+    assert.equal(
+      previewModal.querySelector('[data-preview-viewport]')!.classList.contains('is-zoomed'),
+      true,
+      'класс остаётся и на области просмотра (совместимость)',
+    );
+
+    zoomBtn.click();
+    assert.equal(previewModal.classList.contains('is-zoomed'), false, 'повторное нажатие возвращает обычный размер');
+    assert.equal(zoomBtn.getAttribute('aria-pressed'), 'false');
+    previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
+
+    /* По собранному CSS: окно в режиме чтения — 96vw, картинка при этом
+       остаётся по ширине окна (без горизонтального скролла). */
+    const css = readFileSync(builtShablonyPath, 'utf8')
+      .match(/<link[^>]+href="([^"]+\.css)"/g)!
+      .map((tag) => tag.match(/href="([^"]+)"/)![1])
+      .map((href) => resolve(REPO_ROOT, href.replace(/^\//, '')))
+      .filter((file) => existsSync(file))
+      .map((file) => readFileSync(file, 'utf8'))
+      .join('\n');
+    /* Первое правило, в тексте которого встречается маркер селектора. Astro
+       ставит атрибут области действия в разных местах селектора, поэтому ищем
+       по фрагменту и берём первое совпадение с ожидаемым свойством. */
+    const block = (selector: string, mustMatch?: RegExp): string => {
+      let from = 0;
+      while (true) {
+        const at = css.indexOf(selector, from);
+        if (at < 0) return '';
+        const open = css.indexOf('{', at);
+        const close = css.indexOf('}', open);
+        if (open < 0 || close < 0) return '';
+        const body = css.slice(open + 1, close);
+        if (!mustMatch || mustMatch.test(body)) return body;
+        from = at + selector.length;
+      }
+    };
+    const zoomedModal = block('is-zoomed', /width:96vw/);
+    assert.match(zoomedModal, /width:96vw/);
+    assert.match(zoomedModal, /max-width:96vw/);
+    const zoomedImg = block('is-zoomed .template-preview__img', /width:100%/);
+    assert.match(zoomedImg, /width:100%/, 'картинка не должна становиться шире окна');
+
+    /* Миниатюры 01–10: шапка логотипа видна целиком. */
+    const hdImg = block('thumb-btn--hd', /object-position:top center/);
+    assert.match(hdImg, /object-position:top center/, 'логотип «КАДРЫ-ПРО» срезался при кадрировании по центру');
+    assert.match(block('template-tile__visual', /object-position:top center/), /object-position:top center/);
+
+    /* Никаких «двух ползунков»: горизонтальной прокрутки в области просмотра нет. */
+    const viewport = block('.template-preview__viewport', /overflow-x:hidden/);
+    assert.match(viewport, /overflow-x:hidden/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('hero обещает «20 бесплатных шаблонов», а ссылки Google Drive на платные № 02–10 не попадают на сайт', () => {
+  const { doc, cleanup } = mountShablonyDom();
+  try {
+    const proof = doc.querySelector('.templates-proof');
+    assert.ok(proof, 'блок цифр в hero должен быть на странице');
+    assert.match(proof.textContent ?? '', /20\s*бесплатных шаблонов/);
+    assert.doesNotMatch(proof.textContent ?? '', /бесплатных PDF/);
+  } finally {
+    cleanup();
+  }
+
+  /* Платные DOCX № 02–10 живут только в relay: на сайте их быть не должно. */
+  const paidDriveIds = [
+    '1dOCzlh7d70wOR7iFU-ZfnBbP5tbZ8nYN',
+    '1RPMEB4PnXmtr3qby_jlEoCdRQ9vQc2_K',
+    '1CDmvPgQcsEDfr3rs2ht5dYz1uMnQQccc',
+    '1xxZg0ZaTR4MWAxdK_JfG8ElpylaJW9AV',
+    '1PWufUYizv0BXytVIDulEw1mTSRJ1U355',
+    '174nNeqgl99fczfLTtbNuo5cF4YgwEQ2E',
+    '1TgXDpTeIlGUEQc1OknJizlztRFo2ZL89',
+    '1zuGlmyTkFAW1rUW_PHfcTCKH3bl6utmF',
+    '1EcDZ4rgi2d7CoQxhO6ysxeac4TMmzUx3',
+  ];
+  for (const file of ['shablony.html', 'preview/shablony.html']) {
+    const full = resolve(REPO_ROOT, file);
+    if (!existsSync(full)) continue;
+    const html = readFileSync(full, 'utf8');
+    const scripts = [...html.matchAll(/<script[^>]*src="([^"]+)"/g)]
+      .map((m) => resolve(REPO_ROOT, m[1].replace(/^\//, '')))
+      .filter((f) => existsSync(f))
+      .map((f) => readFileSync(f, 'utf8'))
+      .join('\n');
+    for (const id of paidDriveIds) {
+      assert.ok(!html.includes(id), `${file}: ссылка на платный DOCX (${id}) попала в разметку`);
+      assert.ok(!scripts.includes(id), `${file}: ссылка на платный DOCX (${id}) попала в скрипт`);
+    }
+    /* Ссылка бесплатного № 01 на сайте быть должна. */
+    assert.ok(html.includes('1kJOeCWe6MjMgFuq1dGzuOXVzKy0t7hPR'), `${file}: у № 01 нет прямой ссылки на DOCX`);
   }
 });
 
@@ -635,8 +754,10 @@ test('обещание DOCX ограничено подтверждёнными 
       trigger.click();
       const free = trigger.dataset.previewFree === '1';
       if (free) {
-        assert.match(caption.textContent ?? '', /PDF прежнего образца/i, `#s${id}: у бесплатной позиции нужно назвать формат`);
-        assert.match(caption.textContent ?? '', /редактируемый DOCX[^.]*по заявке/i, `#s${id}: DOCX выдаётся только по заявке`);
+        /* Бесплатный № 01: DOCX скачивается сразу, поэтому подпись называет
+           именно его, а не PDF и не «по заявке». */
+        assert.match(caption.textContent ?? '', /Редактируемый DOCX можно скачать сразу/i, `#s${id}: у бесплатной позиции скачивается DOCX`);
+        assert.doesNotMatch(caption.textContent ?? '', /PDF прежнего образца/i, `#s${id}: старый PDF больше не предлагается`);
       } else {
         assert.match(caption.textContent ?? '', /пришлёт редактируемый DOCX вручную/i, `#s${id}: ожидалась подпись про DOCX`);
       }

@@ -108,6 +108,11 @@ export function composeTelegram(lead: LeadPayload, ticket: string, opts: Compose
         : '\nЦена по каталогу: <b>не подтверждена (неизвестный ID)</b>',
       lead.email ? `\nПочта: ${esc(lead.email)}` : '',
       lead.message ? `\nКомментарий: ${esc(lead.message)}` : '',
+      /* DOCX из Google Drive — то, что Мария отправляет покупателю. Показываем
+         и кликабельной ссылкой, и текстом: на телефоне удобнее скопировать. */
+      resolved.docxUrl
+        ? `\n📄 DOCX для покупателя: <a href="${escAttr(resolved.docxUrl)}">скачать с Google Drive</a>\nПрямая ссылка: ${esc(resolved.docxUrl)}`
+        : '',
       resolved.githubUrl && resolved.filename
         ? `\nФайл для Марии: <a href="${escAttr(resolved.githubUrl)}">${esc(resolved.filename)}</a>\nПрямая ссылка: ${esc(resolved.githubUrl)}`
         : '',
