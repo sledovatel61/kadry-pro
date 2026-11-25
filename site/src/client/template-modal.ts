@@ -27,14 +27,14 @@ export interface PreviewTemplateInfo {
   free: boolean;
   fileHref: string | null;
   hasDocx: boolean;
-  /** Прямая ссылка на редактируемый DOCX (только бесплатный № 01). */
+  /** Прямая ссылка на редактируемый DOCX (только бесплатные позиции с DOCX). */
   docxUrl: string | null;
 }
 
 /**
  * Подпись под предпросмотром — только про тот формат, который реально есть.
  *
- *   1) `DOCX_PREVIEW_CAPTION` — позиции № 01–10: для них комплект редактируемых
+ *   1) `DOCX_PREVIEW_CAPTION` — позиции № 01–20: для них комплект редактируемых
  *      DOCX существует (файлы и их SHA-256 закреплены в
  *      `relay/src/paid-templates.ts`). Обещаем ровно это: файл пришлют вручную
  *      после заявки — и без слова «актуальный»: юридическую приёмку документа
@@ -51,12 +51,12 @@ export const STANDARD_PREVIEW_CAPTION =
   'Водяное превью первой страницы. В открытой сборке полного файла нет: после заявки Мария свяжется с вами и пришлёт документ (PDF) вручную. Редактируемый DOCX для этой позиции пока не подготовлен.';
 /**
  * Бесплатная позиция, у которой в открытом доступе лежит только PDF старого
- * образца, а редактируемый DOCX уже сделан (№ 01–10).
+ * образца, а редактируемый DOCX уже сделан (№ 01–20).
  *
  * Подпись к такому превью не должна звучать как у платных: файл человек уже
  * может скачать, но он получит PDF прежнего образца. Поэтому прямо говорим,
  * что это PDF, и предлагаем запросить обновлённый DOCX — иначе кнопка «Скачать
- * PDF» рядом с обещанием «DOCX для № 01–10» читается как несоответствие.
+ * PDF» рядом с обещанием «DOCX для № 01–20» читается как несоответствие.
  */
 export const FREE_DOCX_CAPTION =
   'Первая страница шаблона. Редактируемый DOCX можно скачать сразу — кнопка ниже, файл на Google Drive.';
@@ -270,7 +270,7 @@ export function wireTemplateModal(doc: Document = document): void {
     if (previewDownloadLink) {
       const label = previewDownloadLink.querySelector<HTMLElement>('[data-preview-download-label]');
       if (info.free && info.docxUrl) {
-        /* Бесплатный № 01: одна прямая кнопка на редактируемый DOCX. */
+        /* Бесплатная позиция с готовым DOCX: одна прямая кнопка на DOCX. */
         previewDownloadLink.hidden = false;
         previewDownloadLink.setAttribute('href', info.docxUrl);
         previewDownloadLink.setAttribute('target', '_blank');

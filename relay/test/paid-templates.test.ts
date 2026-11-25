@@ -212,7 +212,8 @@ test('манифест DOCX № 01–10: закреплённые SHA-256 сов
   for (const entry of PAID_TEMPLATES) {
     assert.equal(hasConfirmedDocx(entry.id), DOCX_READY_IDS.has(entry.id), `DOCX для ${entry.id}`);
   }
-  assert.equal(hasConfirmedDocx('14'), false);
+  assert.equal(hasConfirmedDocx('14'), true, '№ 14 входит в комплект 11–20');
+  assert.equal(hasConfirmedDocx('53'), false);
   assert.equal(hasConfirmedDocx('t07'), true);
   assert.equal(hasConfirmedDocx('01'), true, 'бесплатный № 01 входит в комплект');
   assert.equal(hasConfirmedDocx(null), false);
@@ -431,14 +432,16 @@ test('неизвестный ID и бесплатный ID: ссылка НЕ ф
   }
 });
 
-test('обещание DOCX ограничено подтверждёнными № 01–10, для старых карточек — только PDF', () => {
-  /* Комплект редактируемых DOCX в репозитории подтверждён ровно для № 01–10.
+test('обещание DOCX ограничено подтверждёнными № 01–20, для старых карточек — только PDF', () => {
+  /* Комплект редактируемых DOCX в репозитории подтверждён ровно для № 01–20.
      Для остальных 34 платных позиций есть лишь PDF образца 27.03.2026,
      поэтому и лайтбокс, и уведомление Марии не должны обещать DOCX. */
   const cases = [
     { id: '02', title: 'Срочный трудовой договор', package: 'single' as const, docx: true },
     { id: '01', title: 'Трудовой договор бессрочный', package: 'free' as const, docx: true },
-    { id: '14', title: 'Приказ об увольнении за прогул', package: 'single' as const, docx: false },
+    { id: '14', title: 'Приказ об увольнении за прогул', package: 'single' as const, docx: true },
+    { id: '20', title: 'Приказ о временном переводе', package: 'single' as const, docx: true },
+    { id: '17', title: 'Приказ о предоставлении отпуска', package: 'free' as const, docx: true },
     { id: '53', title: 'Табель учёта рабочего времени Т-12', package: 'single' as const, docx: false },
   ];
 
@@ -600,15 +603,22 @@ test('экранирование: опасные теги и кавычки в �
   assert.match(mail.html, /&quot;ООО&quot;/);
 });
 
-test('ссылки Google Drive на платные DOCX № 02–10 не утекают клиенту: ни в ответ /leads, ни на сайт', async () => {
+test('ссылки Google Drive на платные DOCX № 02–10 и 14–20 не утекают клиенту: ни в ответ /leads, ни на сайт', async () => {
   /* Требование: сайт показывает по платным позициям только превью и заявку,
      а прямые ссылки на DOCX приходят исключительно Марии в уведомлении.
      Проверяем с двух сторон: разметка собранной страницы и тело ответа на
      заявку (включая повтор и ветку дубля). */
+  /* Открыто на сайте отдаются только БЕСПЛАТНЫЕ позиции с DOCX (№ 01, 11, 12, 13, 17, 19). */
+  const FREE_DOCX_OPEN_IDS = new Set(['01', '11', '12', '13', '17', '19']);
   const paidLinks = Object.entries(DOCX_DRIVE_LINKS)
-    .filter(([id]) => id !== '01')
+    .filter(([id]) => !FREE_DOCX_OPEN_IDS.has(id))
     .map(([, url]) => url);
-  assert.equal(paidLinks.length, 9, 'ожидались ссылки для № 02–10');
+  assert.equal(paidLinks.length, 14, 'ожидались ссылки для платных № 02–10, 14–16, 18, 20');
+
+  /* Бесплатные позиции, наоборот, обязаны присутствовать в открытой сборке — иначе кнопки нет. */
+  for (const id of FREE_DOCX_OPEN_IDS) {
+    assert.ok(DOCX_DRIVE_LINKS[id], `у бесплатной позиции ${id} должна быть ссылка Drive`);
+  }
 
   /* 1. Разметка сайта: ни одной ссылки на платные DOCX (в т.ч. в preview/). */
   for (const page of ['shablony.html', 'preview/shablony.html']) {
