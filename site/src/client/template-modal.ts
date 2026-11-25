@@ -47,6 +47,19 @@ export const DOCX_PREVIEW_CAPTION =
   'Первая страница шаблона. В открытой сборке DOCX нет: после заявки Мария свяжется с вами и пришлёт редактируемый DOCX вручную.';
 export const STANDARD_PREVIEW_CAPTION =
   'Водяное превью первой страницы. В открытой сборке полного файла нет: после заявки Мария свяжется с вами и пришлёт документ (PDF) вручную. Редактируемый DOCX для этой позиции пока не подготовлен.';
+/**
+ * Бесплатная позиция, у которой в открытом доступе лежит только PDF старого
+ * образца, а редактируемый DOCX уже сделан (№ 01–10).
+ *
+ * Подпись к такому превью не должна звучать как у платных: файл человек уже
+ * может скачать, но он получит PDF прежнего образца. Поэтому прямо говорим,
+ * что это PDF, и предлагаем запросить обновлённый DOCX — иначе кнопка «Скачать
+ * PDF» рядом с обещанием «DOCX для № 01–10» читается как несоответствие.
+ */
+export const FREE_LEGACY_PDF_CAPTION =
+  'Первая страница шаблона. Скачивается PDF прежнего образца — обновлённый редактируемый DOCX для этой позиции вышлем вручную по заявке.';
+export const FREE_PDF_CAPTION =
+  'Первая страница шаблона. Скачивается бесплатный PDF.';
 
 export function readTriggerTemplate(trigger: HTMLElement): SelectedTemplateInfo | null {
   const pkgRaw = (trigger.dataset.templatePackage ?? 'single').trim();
@@ -237,22 +250,33 @@ export function wireTemplateModal(doc: Document = document): void {
       previewImgEl.height = info.height;
     }
     if (previewCaptionEl) {
-      previewCaptionEl.textContent = info.hasDocx ? DOCX_PREVIEW_CAPTION : STANDARD_PREVIEW_CAPTION;
+      /* Подпись — про тот формат, который человек реально получит по этой
+         кнопке: у бесплатной позиции это PDF, даже если DOCX уже готов. */
+      previewCaptionEl.textContent = info.free
+        ? (info.hasDocx ? FREE_LEGACY_PDF_CAPTION : FREE_PDF_CAPTION)
+        : (info.hasDocx ? DOCX_PREVIEW_CAPTION : STANDARD_PREVIEW_CAPTION);
     }
     if (previewDownloadLink) {
       if (info.free && info.fileHref) {
         previewDownloadLink.hidden = false;
         previewDownloadLink.setAttribute('href', info.fileHref);
+        previewDownloadLink.title = 'PDF прежнего образца (до переработки в редактируемый DOCX)';
+        /* Текст кнопки — тоже про формат: обещание DOCX рядом с ней выполняется
+           только по заявке, а не этим скачиванием. */
+        const label = previewDownloadLink.querySelector<HTMLElement>('[data-preview-download-label]');
+        if (label) label.textContent = info.hasDocx ? 'Скачать PDF (без DOCX)' : 'Скачать PDF бесплатно';
       } else {
         previewDownloadLink.hidden = true;
         previewDownloadLink.removeAttribute('href');
       }
     }
     if (previewOrderBtn) {
-      previewOrderBtn.hidden = false;
+      /* У бесплатной позиции без готового DOCX просить нечего: кнопка вела бы
+         в заявку на то, чего у нас нет. */
+      previewOrderBtn.hidden = info.free && !info.hasDocx;
       previewOrderBtn.classList.toggle('is-secondary', info.free);
       previewOrderBtn.textContent = info.free
-        ? 'Запросить DOCX'
+        ? 'Запросить обновлённый DOCX'
         : `Оставить заявку · ${info.price.toLocaleString('ru-RU')} ₽`;
     }
 
