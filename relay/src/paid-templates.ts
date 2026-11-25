@@ -12,14 +12,15 @@
  * Правила безопасности:
  *   1. Название, цена и имя файла берутся ТОЛЬКО из этого серверного списка
  *      (цене и произвольным ссылкам из браузера не доверяем).
- *   2. Прямая ссылка ведёт на фиксированный коммит в публичном GitHub,
- *      в котором проверено наличие всех 44 PDF. После удаления shablony/*.pdf
- *      из ветки main при выпуске сайта ссылки для Марии продолжат работать.
+ *   2. Для № 01–10 в уведомление Марии идёт прямая ссылка Google Drive на
+ *      редактируемый DOCX (DOCX_DRIVE_LINKS). Для остальных позиций — ссылка
+ *      на PDF в фиксированном коммите публичного GitHub, где проверено наличие
+ *      всех 44 PDF: после удаления shablony/*.pdf из main она продолжит работать.
  *   3. Для неизвестного ID (включая бесплатные ID) и для полного пакета
  *      ссылка НЕ формируется: проверенного архива из 64 документов в git нет
  *      (есть только free-bundle-20.zip на 20 бесплатных и email-bundle.zip на 25).
- *   4. Ссылка предназначена только для удобства Марии и никогда не возвращается
- *      покупателю в ответе /leads.
+ *   4. Обе ссылки (и Google Drive, и GitHub) предназначены только для Марии и
+ *      НИКОГДА не возвращаются покупателю в ответе /leads.
  */
 import type { TemplatePackage, TemplateRequest } from './validate.ts';
 
@@ -59,6 +60,33 @@ export const DOCX_PACKAGE: readonly DocxPackageEntry[] = [
   { id: '09', filename: '09_Трудовой_договор_по_совместительству.docx', sha256: '50280b5351df3878884774e7094b1a7205dcf7b46744533bb90e6b7904b8c556' },
   { id: '10', filename: '10_Сезонный_трудовой_договор.docx', sha256: 'bcdca5ebfa83263b3092ec9bee2c83e24267e94f762cbf02dc208e69816ee266' },
 ];
+
+/**
+ * Прямые ссылки Google Drive на редактируемые DOCX для № 01–10.
+ *
+ * ВАЖНО: это внутренние ссылки для Марии. Они попадают ТОЛЬКО в уведомление
+ * (Telegram + письмо) и никогда — в ответ /leads или в разметку сайта: иначе
+ * платный документ скачивался бы без оплаты. Проверяется тестом.
+ */
+export const DOCX_DRIVE_LINKS: Readonly<Record<string, string>> = {
+  '01': 'https://drive.google.com/uc?export=download&id=1kJOeCWe6MjMgFuq1dGzuOXVzKy0t7hPR',
+  '02': 'https://drive.google.com/uc?export=download&id=1dOCzlh7d70wOR7iFU-ZfnBbP5tbZ8nYN',
+  '03': 'https://drive.google.com/uc?export=download&id=1RPMEB4PnXmtr3qby_jlEoCdRQ9vQc2_K',
+  '04': 'https://drive.google.com/uc?export=download&id=1CDmvPgQcsEDfr3rs2ht5dYz1uMnQQccc',
+  '05': 'https://drive.google.com/uc?export=download&id=1xxZg0ZaTR4MWAxdK_JfG8ElpylaJW9AV',
+  '06': 'https://drive.google.com/uc?export=download&id=1PWufUYizv0BXytVIDulEw1mTSRJ1U355',
+  '07': 'https://drive.google.com/uc?export=download&id=174nNeqgl99fczfLTtbNuo5cF4YgwEQ2E',
+  '08': 'https://drive.google.com/uc?export=download&id=1TgXDpTeIlGUEQc1OknJizlztRFo2ZL89',
+  '09': 'https://drive.google.com/uc?export=download&id=1zuGlmyTkFAW1rUW_PHfcTCKH3bl6utmF',
+  '10': 'https://drive.google.com/uc?export=download&id=1EcDZ4rgi2d7CoQxhO6ysxeac4TMmzUx3',
+};
+
+/** Ссылка Google Drive на DOCX по номеру позиции (01…10) или null. */
+export function docxDriveUrl(id: string | null | undefined): string | null {
+  if (!id) return null;
+  const key = String(id).replace(/^t/i, '').padStart(2, '0');
+  return DOCX_DRIVE_LINKS[key] ?? null;
+}
 
 /** Позиции, для которых комплект DOCX существует (№ 01–10). */
 export const DOCX_READY_IDS: ReadonlySet<string> = new Set(DOCX_PACKAGE.map((entry) => entry.id));
@@ -151,10 +179,10 @@ export const MARIA_GITHUB_LINK_NOTE =
  * а DOCX обещать нельзя.
  */
 export const MARIA_DOCX_HANDOFF_NOTE =
-  'Вышлите покупателю редактируемый DOCX из комплекта 01–10 вручную после согласования оплаты — в открытой сборке DOCX нет. Перед отправкой проверьте документ: юридическая приёмка комплекта за вами.';
+  'Вышлите покупателю редактируемый DOCX по ссылке Google Drive выше — вручную, после согласования оплаты. Перед отправкой проверьте документ: юридическая приёмка комплекта за вами.';
 
 export const MARIA_FREE_DOCX_HANDOFF_NOTE =
-  'Клиент просит DOCX бесплатного шаблона (PDF он скачивает сам): отправьте ему редактируемый DOCX из комплекта 01–10 вручную на почту — в открытой сборке DOCX нет. Перед отправкой проверьте документ.';
+  'Клиент просит DOCX бесплатного шаблона: отправьте ему редактируемый DOCX по ссылке Google Drive выше (или подскажите её). Перед отправкой проверьте документ.';
 
 export const MARIA_LEGACY_PDF_HANDOFF_NOTE =
   'DOCX для этой позиции не подтверждён: в репозитории есть только PDF образца 27.03.2026. Отправьте покупателю проверенный PDF (ссылка выше) и не обещайте редактируемый DOCX, пока комплект не выложен.';
@@ -193,6 +221,8 @@ export interface ResolvedTemplateNotice {
   filename: string | null;
   /** Прямая ссылка на файл в фиксированном коммите GitHub (только для Марии). */
   githubUrl: string | null;
+  /** Прямая ссылка Google Drive на редактируемый DOCX (№ 01–10, только для Марии). */
+  docxUrl: string | null;
   /** Пояснение к ссылке (или причине её отсутствия) для уведомления Марии. */
   linkNote: string | null;
   /** Существует ли редактируемый DOCX для позиции (комплект № 01–10). */
@@ -209,6 +239,7 @@ export function resolveTemplateNotice(req: TemplateRequest): ResolvedTemplateNot
       price: FULL_BUNDLE_OFFER.price,
       filename: null,
       githubUrl: null,
+      docxUrl: null,
       linkNote: FULL_BUNDLE_NO_ARCHIVE_NOTE,
       docxReady: false,
     };
@@ -222,6 +253,7 @@ export function resolveTemplateNotice(req: TemplateRequest): ResolvedTemplateNot
       price: 0,
       filename: null,
       githubUrl: null,
+      docxUrl: docxDriveUrl(req.id),
       linkNote: null,
       docxReady: hasConfirmedDocx(req.id),
     };
@@ -237,6 +269,7 @@ export function resolveTemplateNotice(req: TemplateRequest): ResolvedTemplateNot
       price: null,
       filename: null,
       githubUrl: null,
+      docxUrl: null,
       linkNote: UNKNOWN_TEMPLATE_NOTE,
       docxReady: false,
     };
@@ -249,6 +282,7 @@ export function resolveTemplateNotice(req: TemplateRequest): ResolvedTemplateNot
     price: entry.price,
     filename: entry.filename,
     githubUrl: buildPaidTemplateGithubUrl(entry),
+    docxUrl: docxDriveUrl(entry.id),
     linkNote: MARIA_GITHUB_LINK_NOTE,
     docxReady: hasConfirmedDocx(entry.id),
   };

@@ -16,7 +16,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -37,6 +37,8 @@ import {
   DOCX_PACKAGE,
   DOCX_PACKAGE_COMMIT,
   hasConfirmedDocx,
+  docxDriveUrl,
+  DOCX_DRIVE_LINKS,
   templateHandoffNote,
 } from '../src/paid-templates.ts';
 
@@ -465,10 +467,19 @@ test('обещание DOCX ограничено подтверждёнными 
     const tg = composeTelegram(v.value, 'K-1124-0001', { siteName: 'Кадры-Про' });
     const mail = composeEmail(v.value, 'K-1124-0001', { siteName: 'Кадры-Про' });
 
+    /* № 01–10: Мария получает прямую ссылку Google Drive на DOCX. */
+    const driveUrl = docxDriveUrl(item.id);
+    assert.equal(notice.docxUrl, driveUrl, `ID ${item.id}: ссылка Google Drive в уведомлении`);
     for (const out of [tg, mail.text, mail.html]) {
       if (item.docx) {
-        assert.match(out, /редактируемый DOCX из комплекта 01–10/i, `ID ${item.id}: ожидалось наличие DOCX`);
-        assert.match(out, /в открытой сборке DOCX нет/i);
+        assert.ok(driveUrl, `ID ${item.id}: для подтверждённой позиции должна быть ссылка Drive`);
+        /* В HTML и Telegram-разметке «&» экранируется в «&amp;» — сверяем оба вида. */
+        assert.ok(
+          out.includes(driveUrl!) || out.includes(driveUrl!.replace(/&/g, '&amp;')),
+          `ID ${item.id}: в уведомлении нет прямой ссылки на DOCX`,
+        );
+        assert.match(out, /DOCX для покупателя/i);
+        assert.match(out, /Google Drive/i);
         /* Приёмка — за Марией: слово «актуальный» не обещаем. */
         assert.doesNotMatch(out, /актуальный/i, `ID ${item.id}: нельзя называть DOCX «актуальным» без приёмки`);
       } else {
@@ -587,4 +598,91 @@ test('экранирование: опасные теги и кавычки в �
   assert.ok(!mail.html.includes('<img'));
   assert.match(mail.html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
   assert.match(mail.html, /&quot;ООО&quot;/);
+});
+
+test('ссылки Google Drive на платные DOCX № 02–10 не утекают клиенту: ни в ответ /leads, ни на сайт', async () => {
+  /* Требование: сайт показывает по платным позициям только превью и заявку,
+     а прямые ссылки на DOCX приходят исключительно Марии в уведомлении.
+     Проверяем с двух сторон: разметка собранной страницы и тело ответа на
+     заявку (включая повтор и ветку дубля). */
+  const paidLinks = Object.entries(DOCX_DRIVE_LINKS)
+    .filter(([id]) => id !== '01')
+    .map(([, url]) => url);
+  assert.equal(paidLinks.length, 9, 'ожидались ссылки для № 02–10');
+
+  /* 1. Разметка сайта: ни одной ссылки на платные DOCX (в т.ч. в preview/). */
+  for (const page of ['shablony.html', 'preview/shablony.html']) {
+    const file = resolve(REPO_ROOT, page);
+    if (!existsSync(file)) continue;
+    const html = readFileSync(file, 'utf8');
+    for (const url of paidLinks) {
+      /* В HTML «&» экранирован в «&amp;», поэтому ищем по id файла Drive. */
+      const id = url.split('id=')[1];
+      assert.ok(!html.includes(id), `${page}: ссылка на платный DOCX (id=${id}) попала в открытую сборку`);
+    }
+  }
+
+  /* 2. Ответ клиенту на реальную заявку: ссылки в теле нет. */
+  const v = validateLead({
+    kind: 'template',
+    name: 'Пётр Иванов',
+    phone: '89613022112',
+    contact_method: 'call',
+    email: 'petr@example.ru',
+    consent: true,
+    consent_version: '2026-11-21',
+    page: 'shablony',
+    idempotency_key: crypto.randomUUID(),
+    honeypot: '',
+    form_started_at: 1,
+    template: { id: '02', title: 'Срочный трудовой договор', package: 'single', price: 500 },
+  });
+  assert.equal(v.ok, true);
+  if (!v.ok || v.value.kind !== 'template') return;
+
+  /* Уведомление Марии ссылку содержит... */
+  const tg = composeTelegram(v.value, 'K-1124-0100', { siteName: 'Кадры-Про' });
+  assert.ok(tg.includes(docxDriveUrl('02')!.replace(/&/g, '&amp;')), 'Мария должна получить ссылку');
+  const resolved = resolveTemplateNotice(v.value.template);
+  assert.equal(resolved.docxUrl, docxDriveUrl('02'));
+
+  /* ...а ответ покупателю — нет: ни в первой отправке, ни в повторе. */
+  const env = {
+    BOT_TOKEN: 'test',
+    TELEGRAM_CHAT_ID: '-100',
+    TELEGRAM_API_BASE: 'https://api.telegram.test',
+    ALLOWED_ORIGINS: ORIGIN,
+  } as unknown as Env;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response('{"ok":true}', { status: 200 })) as unknown as typeof fetch;
+  try {
+    const payload = {
+      kind: 'template',
+      name: v.value.name,
+      phone: v.value.phone,
+      contact_method: 'call',
+      email: 'petr@example.ru',
+      consent: true,
+      consent_version: '2026-11-21',
+      page: 'shablony',
+      idempotency_key: v.value.idempotency_key,
+      honeypot: '',
+      form_started_at: 1,
+      template: { id: '02', title: 'Срочный трудовой договор', package: 'single', price: 500 },
+    };
+    const request = (): Promise<Response> => worker.fetch(new Request(`${ORIGIN.replace('://', '://api.')}/leads`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: ORIGIN },
+      body: JSON.stringify(payload),
+    }), env);
+    for (const res of [await request(), await request()]) {
+      const body = await res.text();
+      for (const url of paidLinks) {
+        assert.ok(!body.includes(url.split('id=')[1]), 'ссылка на платный DOCX не должна возвращаться клиенту');
+      }
+      assert.doesNotMatch(body, /drive\.google\.com/i, 'в ответе клиенту нет Google Drive');
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
