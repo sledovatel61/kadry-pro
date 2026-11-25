@@ -9,3 +9,7 @@ LLM/
 
 # Экспорты чатов
 kimi-export-*.md
+
+# Python
+__pycache__/
+*.pyc
