@@ -48,6 +48,14 @@ export interface DocxPackageEntry {
 
 export const DOCX_PACKAGE_COMMIT = 'c70ac32e5f54404483357e33f0bc2de0f9ee315d';
 
+/**
+ * Партия приказов № 11–20: ссылки Drive переданы владельцем 24.11.2026.
+ * Хешей нет — содержимое DOCX машиной не подтверждено (см. DOCX_DRIVE_VERIFIED_IDS).
+ */
+export const DOCX_APPOINTMENT_BATCH_IDS: readonly string[] = [
+  '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
+];
+
 export const DOCX_PACKAGE: readonly DocxPackageEntry[] = [
   { id: '01', filename: '01_Бессрочный_трудовой_договор.docx', sha256: '72538e6581f8e1c4e538775413bc87523abeeb96c4bed9a5c9862bdc5d6ed74f' },
   { id: '02', filename: '02_Срочный_трудовой_договор.docx', sha256: '16cb14a04885b3b784c30d9903005205beb28b7b0268d5cf089cea40458414ea' },
@@ -70,6 +78,16 @@ export const DOCX_PACKAGE: readonly DocxPackageEntry[] = [
  */
 export const DOCX_DRIVE_LINKS: Readonly<Record<string, string>> = {
   '01': 'https://drive.google.com/uc?export=download&id=1kJOeCWe6MjMgFuq1dGzuOXVzKy0t7hPR',
+  '11': 'https://drive.google.com/uc?export=download&id=1k9kRBQ1ibAcFMmnFju529zarLzFihWR8',
+  '12': 'https://drive.google.com/uc?export=download&id=1CqRcpsVFTRDZPmyRyAa07tom5NQytV0W',
+  '13': 'https://drive.google.com/uc?export=download&id=1rdvwu4-3Hr3hoLdFv1xf7o81P9woFsw9',
+  '14': 'https://drive.google.com/uc?export=download&id=1dIUkEGGOf1oNCP_PimSuxV8K55WFM1Ty',
+  '15': 'https://drive.google.com/uc?export=download&id=18XhFJzpIa4amb4T24T5jRb47valKt_r4',
+  '16': 'https://drive.google.com/uc?export=download&id=1eC4wJZb-qLbjA3_1pMxvUQpdxLWVhcZR',
+  '17': 'https://drive.google.com/uc?export=download&id=1KnZUKeeGtbvTuoQS2bdS9FO3vPH35dDf',
+  '18': 'https://drive.google.com/uc?export=download&id=1r6mtc_DewUGHwzvcQxoLtocTeP3W7w0k',
+  '19': 'https://drive.google.com/uc?export=download&id=1KkGVCsEdbD5tNHjTw6G8rARsSk0dTvl6',
+  '20': 'https://drive.google.com/uc?export=download&id=1P7T9Lp8QXuxa9FLX-Qs2cXJwVYOF0Omr',
   '02': 'https://drive.google.com/uc?export=download&id=1dOCzlh7d70wOR7iFU-ZfnBbP5tbZ8nYN',
   '03': 'https://drive.google.com/uc?export=download&id=1RPMEB4PnXmtr3qby_jlEoCdRQ9vQc2_K',
   '04': 'https://drive.google.com/uc?export=download&id=1CDmvPgQcsEDfr3rs2ht5dYz1uMnQQccc',
@@ -81,15 +99,34 @@ export const DOCX_DRIVE_LINKS: Readonly<Record<string, string>> = {
   '10': 'https://drive.google.com/uc?export=download&id=1EcDZ4rgi2d7CoQxhO6ysxeac4TMmzUx3',
 };
 
-/** Ссылка Google Drive на DOCX по номеру позиции (01…10) или null. */
+/**
+ * Позиции с подтверждённой ссылкой Drive на редактируемый DOCX.
+ *
+ * Два разных источника подтверждения:
+ *   1. № 01–10 — комплект с закреплёнными SHA-256 (`DOCX_PACKAGE`, коммит
+ *      c70ac32): файлы проверяемы по содержимому.
+ *   2. № 11–20 — новая партия приказов: ссылки Drive переданы владельцем
+ *      24.11.2026. Хешей в репозитории нет, содержимое DOCX машиной не
+ *      подтверждено, поэтому приёмка документа остаётся за Марией (тот же
+ *      текст задания, что для 01–10).
+ *
+ * Список общий для relay и для публичной страницы /shablony (бесплатные
+ * позиции показывают кнопку «Скачать DOCX», платные — никогда).
+ */
+export const DOCX_DRIVE_VERIFIED_IDS: ReadonlySet<string> = new Set([
+  ...DOCX_PACKAGE.map((entry) => entry.id),
+  ...Object.keys(DOCX_DRIVE_LINKS),
+]);
+
+/** Ссылка Google Drive на DOCX по номеру позиции (01…20) или null. */
 export function docxDriveUrl(id: string | null | undefined): string | null {
   if (!id) return null;
   const key = String(id).replace(/^t/i, '').padStart(2, '0');
   return DOCX_DRIVE_LINKS[key] ?? null;
 }
 
-/** Позиции, для которых комплект DOCX существует (№ 01–10). */
-export const DOCX_READY_IDS: ReadonlySet<string> = new Set(DOCX_PACKAGE.map((entry) => entry.id));
+/** Позиции, для которых редактируемый DOCX подтверждён (№ 01–10 по хешам, 11–20 по ссылке Drive). */
+export const DOCX_READY_IDS: ReadonlySet<string> = DOCX_DRIVE_VERIFIED_IDS;
 
 /** Есть ли DOCX для позиции каталога (01…64). */
 export function hasConfirmedDocx(id: string | null | undefined): boolean {

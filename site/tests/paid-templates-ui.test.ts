@@ -129,16 +129,19 @@ test('на собранной /shablony.html у всех 44 платных ка�
       assert.equal(card.querySelector('a[download]'), null, 'у платной карточки не должно быть ссылки download');
     }
 
+    /* Бесплатные позиции с готовым DOCX: № 01 и партия приказов 11–20. */
+    const FREE_DOCX_IDS = new Set(['01', '11', '12', '13', '17', '19']);
+
     for (const item of freeItems) {
       const card = doc.getElementById(`s${item.id}`);
       assert.ok(card, `нет бесплатной карточки #s${item.id}`);
-      if (item.id === '01') {
-        /* № 01 отдаётся редактируемым DOCX из Google Drive — одна прямая кнопка. */
+      if (FREE_DOCX_IDS.has(item.id)) {
+        /* Бесплатная позиция с DOCX отдаётся одной прямой кнопкой на Google Drive. */
         const docxLink = card.querySelector<HTMLAnchorElement>('a.template-download[href*="drive.google.com"]');
-        assert.ok(docxLink, 'у № 01 должна остаться прямая ссылка скачивания (DOCX)');
-        assert.match(docxLink.getAttribute('href') ?? '', /drive\.google\.com\/uc\?export=download&id=1kJOeCWe/);
+        assert.ok(docxLink, `у № ${item.id} должна остаться прямая ссылка скачивания (DOCX)`);
+        assert.match(docxLink.getAttribute('href') ?? '', /^https:\/\/drive\.google\.com\/uc\?export=download&id=[\w-]+$/);
         assert.match(docxLink.textContent ?? '', /Скачать DOCX/);
-        assert.equal(card.querySelector('a.template-download[download]'), null, 'старой кнопки PDF у № 01 быть не должно');
+        assert.equal(card.querySelector('a.template-download[download]'), null, `старой кнопки PDF у № ${item.id} быть не должно`);
         continue;
       }
       const link = card.querySelector<HTMLAnchorElement>('a.template-download[download]');
@@ -621,8 +624,8 @@ test('карточка № 01: одна прямая кнопка «Скачат
     assert.equal(card.querySelector('button[data-open-template]'), null, 'кнопки «Запросить обновлённый DOCX» у № 01 нет');
     assert.equal(doc.querySelectorAll('button[data-open-template][data-template-package="free"]').length, 0);
 
-    /* Остальные бесплатные карточки по-прежнему отдают свои PDF. */
-    const otherPdf = doc.querySelectorAll<HTMLAnchorElement>('#s11 a.template-download[download]');
+    /* Остальные бесплатные карточки без DOCX по-прежнему отдают свои PDF. */
+    const otherPdf = doc.querySelectorAll<HTMLAnchorElement>('#s27 a.template-download[download]');
     assert.equal(otherPdf.length, 1, 'бесплатные PDF остальных позиций не тронуты');
   } finally {
     cleanup();
@@ -736,17 +739,17 @@ test('hero обещает «20 бесплатных шаблонов», а сс�
   }
 });
 
-test('обещание DOCX ограничено подтверждёнными № 01–10: старые карточки обещают только PDF', () => {
+test('обещание DOCX ограничено подтверждёнными № 01–20: старые карточки обещают только PDF', () => {
   const { doc, cleanup } = mountShablonyDom();
   try {
     const previewModal = doc.getElementById('template-preview-modal') as HTMLDialogElement;
     const caption = previewModal.querySelector<HTMLElement>('[data-preview-modal-caption]')!;
 
-    /* Подтверждённые позиции 01–10: подпись про редактируемый DOCX.
+    /* Подтверждённые позиции 01–20: подпись про редактируемый DOCX.
        № 01 — бесплатная позиция, у которой скачивается PDF прежнего образца:
        подпись обязана называть формат, иначе кнопка «Скачать PDF» рядом с
        обещанием DOCX читается как несоответствие. */
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 20; i++) {
       const id = String(i).padStart(2, '0');
       const trigger = doc.querySelector<HTMLElement>(`#s${id} [data-open-preview]`);
       assert.ok(trigger, `нет триггера предпросмотра у #s${id}`);
@@ -765,9 +768,9 @@ test('обещание DOCX ограничено подтверждёнными 
       previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
     }
 
-    /* Все остальные карточки с превью (№ 14–62): DOCX не подтверждён. */
+    /* Все остальные карточки с превью (№ 21–62): DOCX не подтверждён. */
     const others = [...doc.querySelectorAll<HTMLElement>('[data-open-preview]')]
-      .filter((el) => !/^0[1-9]$|^10$/.test(el.dataset.previewId ?? ''));
+      .filter((el) => Number(el.dataset.previewId ?? 0) > 20);
     assert.ok(others.length >= 30, `ожидались старые карточки с превью, найдено ${others.length}`);
 
     for (const trigger of others) {
@@ -784,7 +787,7 @@ test('обещание DOCX ограничено подтверждёнными 
     /* В собранном HTML обещание DOCX встречается только в подтверждённом блоке. */
     const rawHtml = readFileSync(builtShablonyPath, 'utf8');
     const docxPromises = (rawHtml.match(/data-preview-docx="1"/g) ?? []).length;
-    assert.equal(docxPromises, 20, 'по 2 триггера (миниатюра + кнопка) на 10 подтверждённых карточек');
+    assert.equal(docxPromises, 40, 'по 2 триггера (миниатюра + кнопка) на 20 подтверждённых карточек');
   } finally {
     cleanup();
   }
