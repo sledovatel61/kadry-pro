@@ -6,7 +6,16 @@
  *   GET  /health             → { ok, service:'kadry-leads', time, telegram, email, emailTo,
  *                               consentVersion, kv, reviews, reviewsKv, reviewsModeration, files }
  *   POST /leads              → 201 { ticket, status:'accepted', duplicate, delivered{telegram,email} }
+ *                              Поле `download` не возвращается никогда: заявка — не оплата.
  *                              400 { error:{ code:'validation'|'bad_json'|'consent_version', message, fields? } }
+ *                              422 { error:{ code:'idempotency_legacy', message }, ambiguous:true, ticket }
+ *                                  — заявка под ключом уже была, что именно отправляли — неизвестно;
+ *                                    ничего не доставлено. Именно не-2xx и не-409, чтобы старый
+ *                                    клиент показал текст, не скрыл форму и не повторил отправку.
+ *                                  Повтор ТЕМ ЖЕ ключом после предупреждения — это подтверждение:
+ *                                  заявка доставляется как новая, 201 { ticket, duplicate:false }.
+ *                                  Без этого инструкция «нажмите ещё раз» была бы невыполнимой
+ *                                  для старого клиента, который ключ не перевыпускает.
  *                              403 { error:{ code:'origin', … } }
  *                              429 { error:{ code:'too_many', … } } + Retry-After
  *   GET  /files/:token       → PDF из приватного бакета по подписанной ссылке
@@ -146,6 +155,9 @@ async function releaseLeadSlot(env: Env, ipHash: string): Promise<void> {
 
 /* ---------- заявка ---------- */
 
+/** Сколько живёт запись идемпотентности и связанное с ней предупреждение. */
+const IDEM_TTL = 86400;
+
 /** Тело заявки: больше 64 КБ — это не заявка, а попытка что-то залить. */
 const LEAD_MAX_BYTES = 64 * 1024;
 
@@ -153,6 +165,122 @@ async function readLead(req: Request): Promise<unknown | null> {
   const len = Number(req.headers.get('content-length') ?? '');
   if (Number.isFinite(len) && len > LEAD_MAX_BYTES) return null;
   try { return await req.json(); } catch { return null; }
+}
+
+/**
+ * Отпечаток содержимого заявки: по нему отличаем «человек нажал Отправить
+ * ещё раз с теми же данными» от «данные исправили, нужна новая заявка».
+ * Телефон берём нормализованный, шаблон — из проверенных полей.
+ */
+export async function leadFingerprint(lead: LeadPayload): Promise<string> {
+  const parts: string[] = [lead.kind, lead.name, lead.phone, lead.contact_method];
+  if (lead.kind === 'template') {
+    parts.push(lead.template.package, lead.template.id ?? '-', lead.email ?? '', lead.message ?? '');
+  } else if (lead.kind === 'calculator') {
+    parts.push(String(lead.calc.staff), String(lead.calc.salary_net), lead.calc.tariff, lead.message ?? '');
+  } else {
+    parts.push(lead.email ?? '', lead.message ?? '', lead.company ?? '', lead.service ?? '');
+  }
+  const data = new TextEncoder().encode(parts.join('\u0001'));
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(buf)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+interface SeenRecordArgs {
+  env: Env;
+  lead: LeadPayload;
+  seen: string;
+  idemKey: string;
+  tplSig: string;
+}
+
+/**
+ * Что делать, если ключ идемпотентности уже встречался.
+ *
+ * Возвращает готовый `Response` или `null` — «доставить заявку как новую»
+ * (человек подтвердил отправку после предупреждения либо данные изменились).
+ *
+ * Формат записи: `талон|хеш телефона|(резерв)|отпечаток шаблона|версия`.
+ * Записи прежнего формата короче — в них нет отпечатка шаблона, и что именно
+ * отправляли, неизвестно. Для такого случая важно поведение СТАРОГО клиента из
+ * `main`, который ещё может работать в браузере:
+ *
+ *   • 2xx — покажет «Заявка принята» и скроет форму, хотя данные не доставлены;
+ *   • 409 — автоматически повторит отправку новым ключом (молчаливый дубль);
+ *   • 422 — покажет текст, оставит форму и НЕ повторит сам.
+ *
+ * Поэтому первая попытка получает 422 с понятной инструкцией. Но старый клиент
+ * НЕ перевыпускает ключ (это делает только новый, в ветке 422), поэтому на
+ * повторном нажатии он придёт с тем же ключом: если просто отдать 422 ещё раз,
+ * инструкция «нажмите ещё раз» окажется невыполнимой и человек застрянет.
+ * Поэтому отпечаток данных, о которых предупредили, запоминается в `idemwarn:`:
+ * повтор по инструкции = сознательное подтверждение, заявка доставляется.
+ * Изменённые данные дают другой отпечаток и доставляются сразу.
+ */
+async function resolveSeenRecord({ env, lead, seen, idemKey, tplSig }: SeenRecordArgs): Promise<Response | null> {
+  const parts = seen.split('|');
+  const ticket = parts[0] ?? '';
+  const storedHash = parts[1] ?? '';
+  const storedTpl: string | null = parts.length >= 4 ? (parts[3] ?? '') : null;
+
+  const payloadSig = await leadFingerprint(lead);
+  /* Отпечаток данных, о которых человеку уже показали предупреждение. */
+  const warnKey = `idemwarn:${lead.idempotency_key}`;
+
+  if (storedHash !== (await hashIp(lead.phone))) {
+    return err(409, 'conflict', 'Ключ идемпотентности уже использован');
+  }
+
+  if (storedTpl === null) {
+    /* Неоднозначный исход: заявка под этим ключом уже БЫЛА (возможно, её даже
+       доставили — ответ мог потеряться), но что именно отправляли — неизвестно:
+       в старой записи нет отпечатка шаблона.
+
+       Код ответа выбирается по поведению СТАРОГО клиента из `main`, который всё
+       ещё может работать в браузере:
+         • 2xx — покажет «Заявка принята» и скроет форму: исправленные данные не
+           доставлены, а человек уверен, что всё ушло;
+         • 409 — автоматически повторит отправку новым ключом (молчаливый дубль);
+         • 422 — покажет текст под формой, форму оставит и сам ничего не повторит.
+       Первая попытка получает 422.
+
+       Дальше человек нажимает «Отправить» ещё раз — старый клиент сохраняет
+       прежний ключ, поэтому без специальной обработки он получал бы тот же 422
+       вечно: инструкция была бы невыполнимой. Поэтому отпечаток данных, о
+       которых мы предупредили, запоминается в `idemwarn:`. Повтор с ТЕМИ ЖЕ
+       данными — это сознательное подтверждение: доставляем заявку как новую.
+       Изменённые данные — тоже новая заявка, доставляем сразу. */
+    const warned = await kvGet(env, warnKey);
+    if (warned === null) {
+      await kvPut(env, warnKey, payloadSig, IDEM_TTL);
+      const hint = lead.kind === 'template'
+        ? 'Если вы выбрали другой шаблон или изменили данные — нажмите «Отправить» ещё раз: заявка уйдёт как новая, с другим номером. Если сомневаетесь — позвоните: +7 (961) 302-21-12.'
+        : 'Если вы изменили данные — нажмите «Отправить» ещё раз: заявка уйдёт как новая, с другим номером. Если сомневаетесь — позвоните: +7 (961) 302-21-12.';
+      return json({
+        ticket,
+        status: 'ambiguous',
+        duplicate: true,
+        ambiguous: true,
+        delivered: { telegram: false, email: false },
+        error: {
+          code: 'idempotency_legacy',
+          message:
+            `Заявка с этим ключом уже отправлялась раньше (номер ${ticket}), и что именно в ней было — неизвестно. `
+            + 'Прежняя заявка могла быть уже доставлена. '
+            + `Повторно ничего не отправлено, чтобы не создать дубль. ${hint}`,
+        },
+      }, 422);
+    }
+    /* Уже предупреждали: это подтверждение отправки — доставляем как новую. */
+    return null;
+  }
+
+  if (storedTpl !== tplSig) {
+    return err(409, 'conflict', 'Ключ идемпотентности уже использован');
+  }
+  /* Честный повтор: доставку не повторяем, но и не врём про неё.
+     `delivered` неизвестен — значит его нет, а не true. */
+  return json({ ticket, status: 'accepted', duplicate: true }, 201);
 }
 
 async function handleLead(req: Request, env: Env): Promise<Response> {
@@ -214,19 +342,21 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
     return err(400, 'consent_version', 'Версия согласия устарела. Обновите страницу и отправьте заявку снова.');
   }
 
-  // Идемпотентность: повторная отправка того же ключа возвращает тот же талон.
+  /* Идемпотентность: повторная отправка того же ключа возвращает тот же талон.
+     В записи лежит отпечаток заявки: телефон и выбранный шаблон. Если по тому
+     же ключу пришли другие данные (человек исправил номер или выбрал другой
+     шаблон), это НЕ повтор — отвечаем 409, а клиент перевыпускает ключ.
+     Иначе заявка на другой документ молча получила бы чужой талон. */
   const idemKey = `idem:${lead.idempotency_key}`;
+  const tplSig = lead.kind === 'template'
+    ? `${lead.template.package}:${lead.template.id ?? '-'}`
+    : '';
   const seen = await kvGet(env, idemKey);
   if (seen) {
-    const [ticket, hash] = seen.split('|');
-    if (hash !== (await hashIp(lead.phone))) {
-      return err(409, 'conflict', 'Ключ идемпотентности уже использован');
-    }
-    /* Повторная отправка: доставку не повторяем (заявка уже ушла), но и не
-       врём про неё. `delivered` неизвестен — значит его нет, а не true. */
-    return json({
-      ticket, status: 'accepted', duplicate: true,
-    }, 201);
+    const resolved = await resolveSeenRecord({ env, lead, seen, idemKey, tplSig });
+    if (resolved) return resolved;
+    /* resolveSeenRecord вернул null — запись уже переведена в новый формат,
+       а данные изменились: это НОВАЯ заявка, доставляем её обычным путём. */
   }
 
   const ip = req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for') ?? 'unknown';
@@ -301,8 +431,16 @@ async function handleLead(req: Request, env: Env): Promise<Response> {
     return err(502, 'delivery', 'Не удалось доставить заявку. Позвоните нам, пожалуйста.');
   }
 
-  /* Заявка — не оплата: ссылки покупателю не выдаём даже при наличии R2. */
-  await kvPut(env, idemKey, `${ticket}|${await hashIp(lead.phone)}`, 86400);
+  /* «Заявка — не оплата». Раньше здесь сразу после заявки подписывалась ссылка
+     на полный пакет в R2 и уходила в браузер: человек оставлял заявку и получал
+     файл, ничего не заплатив. Оплаты и её проверки у прослойки нет, поэтому
+     выдача закрыта: клиенту НИКОГДА не возвращается `download`, а Мария
+     отправляет документ вручную после согласования оплаты. Токен подписи и
+     бакет остаются только для служебного контура: /files/:token по-прежнему
+     работает, но ссылку формирует человек, а не заявка. */
+  /* Версия 2: у записи есть отпечаток шаблона, поэтому следующие повторы с тем
+     же ключом однозначны — их разбирает первая ветка `resolveSeenRecord`. */
+  await kvPut(env, idemKey, `${ticket}|${await hashIp(lead.phone)}||${tplSig}|2`, IDEM_TTL);
   return json({
     ticket, status: 'accepted', duplicate: false, delivered,
     /* Какие каналы вообще были подключены на момент отправки. Клиент по этому

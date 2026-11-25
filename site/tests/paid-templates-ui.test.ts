@@ -37,9 +37,35 @@ const catalog = JSON.parse(
   items: { id: string; name: string; price: number; free: boolean; file: string | null }[];
 };
 
-const builtShablonyPath = existsSync(resolve(SITE_DIR, 'pages-dist/shablony.html'))
-  ? resolve(SITE_DIR, 'pages-dist/shablony.html')
+/**
+ * Откуда берём собранную страницу.
+ *
+ * Приоритет — свежая сборка `site/pages-dist`, но `npm test` обязан проходить и
+ * на чистом дереве (после `git clone` без `npm run build:root`), поэтому есть
+ * второй источник: закоммиченный в корень репозитория `shablony.html`.
+ */
+const pagesDistShablonyPath = resolve(SITE_DIR, 'pages-dist/shablony.html');
+const builtShablonyPath = existsSync(pagesDistShablonyPath)
+  ? pagesDistShablonyPath
   : resolve(REPO_ROOT, 'shablony.html');
+
+/**
+ * Файл сборки (CSS/JS), на который ссылается страница: ищем рядом со сборкой,
+ * затем в корне репозитория. Без этого на чистом дереве ссылки вида
+ * `/assets/shablony.<hash>.css` не находились и проверка стилей модалки
+ * молча пропускалась.
+ */
+function readBuiltAsset(href: string): string {
+  const rel = href.replace(/^\//, '');
+  const candidates = [
+    resolve(SITE_DIR, 'pages-dist', rel),
+    resolve(REPO_ROOT, rel),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return readFileSync(candidate, 'utf8');
+  }
+  assert.fail(`не найден файл сборки «${href}»: ни в site/pages-dist, ни в корне репозитория`);
+}
 
 function mountShablonyDom() {
   const html = readFileSync(builtShablonyPath, 'utf8');
@@ -213,38 +239,6 @@ test('отправка заявки по платной карточке и пе
   }
 });
 
-test('после ошибки повтор карточки сохраняет ключ, выбор другой карточки создаёт новый', async () => {
-  const { dom, doc, cleanup } = mountShablonyDom();
-  const prevFetch = globalThis.fetch;
-  const sent: Record<string, unknown>[] = [];
-  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-    sent.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
-    return new Response(JSON.stringify({ error: { code: 'delivery', message: 'Ошибка доставки' } }), { status: 502, headers: { 'content-type': 'application/json' } });
-  }) as typeof fetch;
-  try {
-    const form = doc.getElementById('template-lead-form') as HTMLFormElement;
-    doc.querySelector<HTMLButtonElement>('#s02 [data-open-template]')!.click();
-    (form.querySelector('[name="name"]') as HTMLInputElement).value = 'Тестовый клиент';
-    (form.querySelector('[name="phone"]') as HTMLInputElement).value = '89613022112';
-    (form.querySelector('[name="consent"]') as HTMLInputElement).checked = true;
-    const submit = async () => {
-      form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
-      await new Promise((r) => setTimeout(r, 30));
-    };
-    await submit();
-    await submit();
-    doc.querySelector<HTMLButtonElement>('#s53 [data-open-template]')!.click();
-    await submit();
-    assert.equal(sent.length, 3);
-    assert.equal(sent[0].idempotency_key, sent[1].idempotency_key);
-    assert.notEqual(sent[1].idempotency_key, sent[2].idempotency_key);
-    assert.equal((sent[2].template as { id: string }).id, '53');
-  } finally {
-    globalThis.fetch = prevFetch;
-    cleanup();
-  }
-});
-
 test('кнопка полного набора открывает модальное окно с package=full и ценой 3 500 ₽', () => {
   const { doc, cleanup } = mountShablonyDom();
   try {
@@ -289,10 +283,7 @@ test('мобильная форма и автозаполнение: без iOS-
     const linkedStyles = [...doc.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')]
       .map((l) => l.getAttribute('href') ?? '')
       .filter(Boolean)
-      .map((href) => {
-        const p = resolve(SITE_DIR, 'pages-dist', href.replace(/^\//, ''));
-        return existsSync(p) ? readFileSync(p, 'utf8') : '';
-      });
+      .map((href) => readBuiltAsset(href));
     const cssText = [
       ...[...doc.querySelectorAll('style')].map((s) => s.textContent ?? ''),
       ...linkedStyles,
@@ -333,6 +324,335 @@ test('мобильная форма и автозаполнение: без iOS-
       'офскрин-ловушка в модалке шаблона НЕ должна помечаться hidden=true при автозаполнении',
     );
   } finally {
+    cleanup();
+  }
+});
+
+test('предпросмотр первой страницы № 01–10: миниатюра, кнопка до заявки, масштаб, закрытие по ✕ / фону / Esc и переход к заказу', () => {
+  const { dom, doc, cleanup } = mountShablonyDom();
+  try {
+    const previewModal = doc.getElementById('template-preview-modal') as HTMLDialogElement;
+    const leadModal = doc.getElementById('template-lead-modal') as HTMLDialogElement;
+    assert.ok(previewModal, 'на странице должен быть лайтбокс #template-preview-modal');
+
+    /* 1. Проверяем привязку 01.jpg–10.jpg к карточкам #s01–#s10, осмысленный alt, якорь #s09 и порядок кнопок. */
+    const card09 = doc.getElementById('s09');
+    assert.ok(card09, 'якорь #s09 должен присутствовать на /shablony.html');
+
+    for (let i = 1; i <= 10; i++) {
+      const id = String(i).padStart(2, '0');
+      const expectedItem = catalog.items.find((entry) => entry.id === id)!;
+      const card = doc.getElementById(`s${id}`)!;
+      assert.ok(card, `отсутствует карточка #s${id}`);
+
+      const thumbBtn = card.querySelector<HTMLButtonElement>('.template-tile__thumb-btn[data-open-preview]');
+      const previewBtn = card.querySelector<HTMLButtonElement>('.template-preview-btn[data-open-preview]');
+      const thumbImg = card.querySelector<HTMLImageElement>('.template-tile__visual img');
+      assert.ok(thumbBtn, `у #s${id} должна быть кликабельная миниатюра предпросмотра`);
+      assert.ok(previewBtn, `у #s${id} должна быть кнопка предпросмотра первой страницы`);
+      assert.ok(thumbImg, `у #s${id} должно выводиться изображение превью`);
+
+      assert.equal(thumbImg.getAttribute('src'), `/shablony/previews/${id}.jpg`);
+      assert.equal(thumbImg.getAttribute('width'), '1080');
+      assert.equal(thumbImg.getAttribute('height'), '1528');
+      assert.ok(
+        (thumbImg.getAttribute('alt') ?? '').includes(expectedItem.name),
+        `alt изображения #s${id} должен содержать название шаблона`,
+      );
+
+      /* Действие «Посмотреть первую страницу» расположено ДО кнопки скачивания или заявки */
+      const mainAction = card.querySelector<HTMLElement>('a.template-download, button[data-open-template]')!;
+      assert.ok(mainAction, `у #s${id} должна быть основная кнопка скачивания или заявки`);
+      const posMask = previewBtn.compareDocumentPosition(mainAction);
+      assert.ok(
+        Boolean(posMask & dom.window.document.DOCUMENT_POSITION_FOLLOWING),
+        `у #s${id} кнопка предпросмотра должна идти до кнопки скачивания/заявки`,
+      );
+    }
+
+    /* 2. Открытие по клику на миниатюру платной карточки #s08, проверка подписи, масштаба и закрытия по крестику. */
+    const thumb08 = doc.querySelector<HTMLButtonElement>('#s08 .template-tile__thumb-btn[data-open-preview]')!;
+    thumb08.click();
+    assert.equal(previewModal.hasAttribute('open'), true);
+
+    const modalImg = previewModal.querySelector<HTMLImageElement>('[data-preview-modal-img]')!;
+    const modalCaption = previewModal.querySelector<HTMLElement>('[data-preview-modal-caption]')!;
+    const zoomBtn = previewModal.querySelector<HTMLButtonElement>('[data-preview-zoom]')!;
+    const viewport = previewModal.querySelector<HTMLElement>('[data-preview-viewport]')!;
+    const downloadBtn = previewModal.querySelector<HTMLAnchorElement>('[data-preview-download]')!;
+    const orderBtn = previewModal.querySelector<HTMLButtonElement>('[data-preview-order]')!;
+
+    assert.match(modalImg.getAttribute('src') ?? '', /\/shablony\/previews\/08\.jpg$/);
+    assert.match(modalImg.getAttribute('alt') ?? '', /Договор с директором \(генеральным директором\)/);
+    /* № 08 входит в подтверждённый комплект 01–10: обещаем DOCX вручную. */
+    assert.equal(
+      modalCaption.textContent?.trim(),
+      'Первая страница шаблона. В открытой сборке DOCX нет: после заявки Мария свяжется с вами и пришлёт редактируемый DOCX вручную.',
+    );
+    assert.doesNotMatch(
+      modalCaption.textContent ?? '',
+      /Полная версия — редактируемый DOCX/,
+      'нельзя обещать мгновенную выдачу DOCX',
+    );
+    assert.equal(downloadBtn.hidden, true, 'у платного шаблона в лайтбоксе нет прямой ссылки на скачивание');
+    assert.equal(orderBtn.hidden, false);
+    assert.match(orderBtn.textContent ?? '', /500\s*₽/);
+
+    /* Масштабирование для чтения */
+    assert.equal(viewport.classList.contains('is-zoomed'), false);
+    zoomBtn.click();
+    assert.equal(viewport.classList.contains('is-zoomed'), true);
+    assert.equal(zoomBtn.getAttribute('aria-pressed'), 'true');
+
+    /* Закрытие по крестику */
+    previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
+    assert.equal(previewModal.hasAttribute('open'), false);
+
+    /* 3. Открытие по кнопке «Посмотреть первую страницу» на бесплатной карточке #s01 и закрытие кликом вне окна. */
+    const previewBtn01 = doc.querySelector<HTMLButtonElement>('#s01 .template-preview-btn[data-open-preview]')!;
+    previewBtn01.click();
+    assert.equal(previewModal.hasAttribute('open'), true);
+    assert.equal(viewport.classList.contains('is-zoomed'), false, 'масштаб сбрасывается при новом открытии');
+    assert.equal(downloadBtn.hidden, false, 'у бесплатного шаблона #s01 доступно скачивание PDF');
+    assert.equal(downloadBtn.getAttribute('href'), '/shablony/free/01_Трудовой_договор_бессрочный.pdf');
+
+    previewModal.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    assert.equal(previewModal.hasAttribute('open'), false, 'клик по фону диалога закрывает предпросмотр');
+
+    /* 4. Открытие #s09 и закрытие по клавише Escape. */
+    doc.querySelector<HTMLButtonElement>('#s09 .template-preview-btn[data-open-preview]')!.click();
+    assert.equal(previewModal.hasAttribute('open'), true);
+    const escEvent = new dom.window.Event('keydown', { bubbles: true, cancelable: true }) as Event & { key: string };
+    Object.defineProperty(escEvent, 'key', { value: 'Escape' });
+    doc.dispatchEvent(escEvent);
+    assert.equal(previewModal.hasAttribute('open'), false, 'клавиша Esc закрывает предпросмотр');
+
+    /* 5. Переход из лайтбокса предпросмотра #s07 сразу к заявке на этот шаблон. */
+    doc.querySelector<HTMLButtonElement>('#s07 .template-preview-btn[data-open-preview]')!.click();
+    assert.equal(previewModal.hasAttribute('open'), true);
+    orderBtn.click();
+    assert.equal(previewModal.hasAttribute('open'), false, 'при переходе к заказу лайтбокс закрывается');
+    assert.equal(leadModal.hasAttribute('open'), true, 'открывается окно заявки на выбранный шаблон');
+    assert.equal(
+      doc.querySelector('[data-template-modal-doc]')?.textContent,
+      'Договор с ненормированным рабочим днём',
+    );
+    assert.match(doc.querySelector('[data-template-modal-badge]')?.textContent ?? '', /№ 07/);
+
+    /* 6. Проверяем, что в собранном HTML нет ни одной ссылки на .docx. */
+    const rawHtml = readFileSync(builtShablonyPath, 'utf8');
+    assert.doesNotMatch(rawHtml, /\.docx\b/i, 'в публичном HTML не должно быть ссылок на файлы .docx');
+  } finally {
+    cleanup();
+  }
+});
+
+test('смена шаблона после сорванной отправки: новый ключ идемпотентности, без старого талона как дубля', async () => {
+  const { dom, doc, cleanup } = mountShablonyDom();
+  const prevFetch = globalThis.fetch;
+  const sentBodies: Record<string, unknown>[] = [];
+  let call = 0;
+
+  /* Сценарий жизни: человек выбрал № 02, отправка упала по таймауту (запрос
+     мог дойти), он выбрал № 53 и отправил снова. Сервер без ротации ключа
+     нашёл бы запись от № 02 и вернул её талон с duplicate:true — заявка на
+     № 53 потерялась бы. */
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    call++;
+    sentBodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+    if (call === 1) {
+      throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+    }
+    return new Response(
+      JSON.stringify({
+        ticket: 'K-1124-0053',
+        status: 'accepted',
+        duplicate: false,
+        delivered: { telegram: true, email: false },
+      }),
+      { status: 201, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+
+  try {
+    const form = doc.getElementById('template-lead-form') as HTMLFormElement;
+    const successBox = doc.querySelector<HTMLElement>('[data-lead-success="template-lead-form"]')!;
+    const nameInput = form.querySelector<HTMLInputElement>('[name="name"]')!;
+    const phoneInput = form.querySelector<HTMLInputElement>('[name="phone"]')!;
+    const consent = form.querySelector<HTMLInputElement>('[name="consent"]')!;
+
+    /* 1. Шаблон № 02 — отправка срывается таймаутом. */
+    doc.querySelector<HTMLButtonElement>('#s02 [data-open-template]')!.click();
+    nameInput.value = 'Марина Соколова';
+    phoneInput.value = '+7 (961) 302-21-12';
+    consent.checked = true;
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    assert.equal(sentBodies.length, 1);
+    assert.deepEqual(
+      (sentBodies[0] as { template: { id: string } }).template.id,
+      '02',
+    );
+    /* Никакой гарантии «дубликатов не будет»: постоянного KV нет. */
+    const errorText = doc.querySelector<HTMLElement>('[data-lead-error]')?.textContent ?? '';
+    assert.match(errorText, /таймаут/i);
+    assert.doesNotMatch(errorText, /дубликат/i, 'нельзя обещать отсутствие дублей без постоянного KV');
+
+    /* 2. Человек выбирает другой шаблон — № 53. */
+    doc.querySelector<HTMLButtonElement>('#s53 [data-open-template]')!.click();
+    assert.equal(
+      doc.querySelector('[data-template-modal-doc]')?.textContent,
+      'Табель учёта рабочего времени Т-12',
+    );
+
+    nameInput.value = 'Марина Соколова';
+    phoneInput.value = '+7 (961) 302-21-12';
+    consent.checked = true;
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    assert.equal(sentBodies.length, 2);
+    assert.deepEqual((sentBodies[1] as { template: { id: string } }).template.id, '53');
+    assert.notEqual(
+      sentBodies[0].idempotency_key,
+      sentBodies[1].idempotency_key,
+      'при смене шаблона ключ идемпотентности должен перевыпускаться, иначе вернётся старый талон',
+    );
+
+    /* 3. Заявка на № 53 реально ушла и показан её талон, а не талон № 02. */
+    assert.equal(form.hidden, true);
+    assert.equal(successBox.hidden, false);
+    assert.match(successBox.textContent ?? '', /K-1124-0053/);
+    assert.doesNotMatch(successBox.textContent ?? '', /дубликат/i);
+  } finally {
+    globalThis.fetch = prevFetch;
+    cleanup();
+  }
+});
+
+test('обещание DOCX ограничено подтверждёнными № 01–10: старые карточки обещают только PDF', () => {
+  const { doc, cleanup } = mountShablonyDom();
+  try {
+    const previewModal = doc.getElementById('template-preview-modal') as HTMLDialogElement;
+    const caption = previewModal.querySelector<HTMLElement>('[data-preview-modal-caption]')!;
+
+    /* Подтверждённые позиции 01–10: подпись про редактируемый DOCX. */
+    for (let i = 1; i <= 10; i++) {
+      const id = String(i).padStart(2, '0');
+      const trigger = doc.querySelector<HTMLElement>(`#s${id} [data-open-preview]`);
+      assert.ok(trigger, `нет триггера предпросмотра у #s${id}`);
+      assert.equal(trigger.dataset.previewDocx, '1', `#s${id} должен быть помечен как подтверждённый DOCX`);
+      trigger.click();
+      assert.match(caption.textContent ?? '', /пришлёт редактируемый DOCX вручную/i, `#s${id}: ожидалась подпись про DOCX`);
+      assert.doesNotMatch(caption.textContent ?? '', /актуальный/i, `#s${id}: без приёмки слово «актуальный» не обещаем`);
+      previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
+    }
+
+    /* Все остальные карточки с превью (№ 14–62): DOCX не подтверждён. */
+    const others = [...doc.querySelectorAll<HTMLElement>('[data-open-preview]')]
+      .filter((el) => !/^0[1-9]$|^10$/.test(el.dataset.previewId ?? ''));
+    assert.ok(others.length >= 30, `ожидались старые карточки с превью, найдено ${others.length}`);
+
+    for (const trigger of others) {
+      const id = trigger.dataset.previewId ?? '';
+      assert.equal(trigger.dataset.previewDocx, '0', `#s${id} не должен обещать DOCX`);
+      trigger.click();
+      const text = caption.textContent ?? '';
+      assert.doesNotMatch(text, /пришлёт редактируемый DOCX/i, `#s${id}: DOCX для этой позиции не подготовлен`);
+      assert.match(text, /пришлёт документ \(PDF\) вручную/i);
+      assert.match(text, /DOCX для этой позиции пока не подготовлен/i);
+      previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
+    }
+
+    /* В собранном HTML обещание DOCX встречается только в подтверждённом блоке. */
+    const rawHtml = readFileSync(builtShablonyPath, 'utf8');
+    const docxPromises = (rawHtml.match(/data-preview-docx="1"/g) ?? []).length;
+    assert.equal(docxPromises, 20, 'по 2 триггера (миниатюра + кнопка) на 10 подтверждённых карточек');
+  } finally {
+    cleanup();
+  }
+});
+
+test('неоднозначная старая запись: предупреждение вместо автоповтора, дубль не создаётся', async () => {
+  const { dom, doc, cleanup } = mountShablonyDom();
+  const prevFetch = globalThis.fetch;
+  const sent: Record<string, unknown>[] = [];
+  let call = 0;
+
+  /* Сервер нашёл запись прежнего формата: заявка под этим ключом уже была, но
+     что именно отправляли — неизвестно. Он ответил 422 + `idempotency_legacy`
+     (не 2xx и не 409, чтобы и старый клиент не счёл это успехом и не повторил)
+     и НИЧЕГО не доставил. Новый клиент показывает предупреждение и не
+     повторяет отправку: иначе при потерянном ответе появлялся молчаливый дубль. */
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    call++;
+    sent.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+    return new Response(
+      JSON.stringify({
+        ticket: 'K-1121-4242',
+        status: 'ambiguous',
+        duplicate: true,
+        ambiguous: true,
+        delivered: { telegram: false, email: false },
+        error: {
+          code: 'idempotency_legacy',
+          message:
+            'Заявка с этим ключом уже отправлялась раньше (номер K-1121-4242), и что именно в ней было — неизвестно. '
+            + 'Прежняя заявка могла быть уже доставлена. '
+            + 'Повторно ничего не отправлено, чтобы не создать дубль. Если вы выбрали другой шаблон или изменили данные — нажмите «Отправить» ещё раз: заявка уйдёт как новая, с другим номером. Если сомневаетесь — позвоните: +7 (961) 302-21-12.',
+        },
+      }),
+      { status: 422, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+
+  try {
+    const form = doc.getElementById('template-lead-form') as HTMLFormElement;
+    const successBox = doc.querySelector<HTMLElement>('[data-lead-success="template-lead-form"]')!;
+    const errorBox = doc.querySelector<HTMLElement>('[data-lead-error="template-lead-form"]')!;
+
+    doc.querySelector<HTMLButtonElement>('#s02 [data-open-template]')!.click();
+    (form.querySelector('[name="name"]') as HTMLInputElement).value = 'Марина Соколова';
+    (form.querySelector('[name="phone"]') as HTMLInputElement).value = '+7 (961) 302-21-12';
+    (form.querySelector('[name="consent"]') as HTMLInputElement).checked = true;
+
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    assert.equal(sent.length, 1, 'никакого автоматического повтора быть не должно');
+    assert.equal(call, 1);
+
+    assert.equal(errorBox.hidden, false, 'предупреждение должно быть видно');
+    assert.equal(errorBox.getAttribute('data-level'), 'warning');
+    assert.match(errorBox.textContent ?? '', /уже отправлялась раньше/i);
+    assert.match(errorBox.textContent ?? '', /K-1121-4242/);
+    assert.match(errorBox.textContent ?? '', /ничего не отправлено, чтобы не создать дубль/i);
+    assert.match(errorBox.textContent ?? '', /могла быть уже доставлена/i);
+    assert.match(errorBox.textContent ?? '', /другой шаблон/i);
+
+    assert.equal(successBox.hidden, true, 'успех не показываем: доставка не подтверждена');
+    assert.equal(form.hidden, false, 'форма остаётся заполненной — человек решает сам');
+
+    /* Осознанная повторная отправка человеком: ключ перевыпущен заранее, жмём
+       «Отправить» ещё раз — теперь сервер примет заявку как новую. */
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sent.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+      return new Response(
+        JSON.stringify({ ticket: 'K-1124-0777', status: 'accepted', duplicate: false, delivered: { telegram: true, email: false } }),
+        { status: 201, headers: { 'content-type': 'application/json' } },
+      );
+    }) as typeof fetch;
+
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    assert.equal(sent.length, 2);
+    assert.notEqual(sent[0].idempotency_key, sent[1].idempotency_key, 'повтор человека идёт с новым ключом');
+    assert.equal(successBox.hidden, false);
+    assert.match(successBox.textContent ?? '', /K-1124-0777/);
+  } finally {
+    globalThis.fetch = prevFetch;
     cleanup();
   }
 });

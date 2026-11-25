@@ -15,8 +15,18 @@ export function checkTemplateCatalog(catalog, publicRoot = resolve(root, 'public
   if (catalog?.bundle?.file !== '/shablony/free-bundle-20.zip') errors.push('неверный адрес бесплатного архива');
   for (const item of catalog?.items ?? []) {
     if (item.free) {
-      if (item.price !== 0 || !item.file?.startsWith('/shablony/free/') || item.preview !== null) errors.push(`${item.id}: у бесплатной карточки должны быть только бесплатный PDF и без превью`);
-      else if (!existsSync(join(publicRoot, item.file.replace(/^\//, '')))) errors.push(`${item.id}: бесплатный файл не найден`);
+      if (item.price !== 0 || !item.file?.startsWith('/shablony/free/')) {
+        errors.push(`${item.id}: у бесплатной карточки должен быть бесплатный PDF в /shablony/free/`);
+      } else if (!existsSync(join(publicRoot, item.file.replace(/^\//, '')))) {
+        errors.push(`${item.id}: бесплатный файл не найден`);
+      }
+      if (item.preview !== null) {
+        if (!item.preview?.startsWith('/shablony/previews/') || !/\.jpe?g$/i.test(item.preview)) {
+          errors.push(`${item.id}: неверный путь превью бесплатной карточки`);
+        } else if (!existsSync(join(publicRoot, item.preview.replace(/^\//, '')))) {
+          errors.push(`${item.id}: водяное превью не найдено`);
+        }
+      }
     } else {
       if (item.price !== 500 || item.file !== null || !item.preview?.startsWith('/shablony/previews/')) errors.push(`${item.id}: платная позиция не должна иметь ссылку на полный файл`);
       else if (!existsSync(join(publicRoot, item.preview.replace(/^\//, '')))) errors.push(`${item.id}: водяное превью не найдено`);
@@ -24,10 +34,17 @@ export function checkTemplateCatalog(catalog, publicRoot = resolve(root, 'public
   }
   const assetRoot = join(publicRoot, 'shablony');
   const pdfs = [];
+  const docFiles = [];
   if (existsSync(assetRoot)) {
-    const walk = (dir) => readdirSync(dir, { withFileTypes: true }).forEach((entry) => entry.isDirectory() ? walk(join(dir, entry.name)) : entry.name.toLowerCase().endsWith('.pdf') && pdfs.push(join(dir, entry.name)));
+    const walk = (dir) => readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) walk(fullPath);
+      else if (entry.name.toLowerCase().endsWith('.pdf')) pdfs.push(fullPath);
+      else if (/\.docx?$/i.test(entry.name)) docFiles.push(fullPath);
+    });
     walk(assetRoot);
   }
+  if (docFiles.length > 0) errors.push(`в публичной сборке запрещены исходные файлы Word (.doc/.docx), найдено: ${docFiles.length}`);
   if (pdfs.length !== 20) errors.push(`в публичной папке должно быть ровно 20 PDF, найдено ${pdfs.length}`);
   if (pdfs.some((file) => !file.startsWith(join(assetRoot, 'free') + '/'))) errors.push('PDF должен лежать только в каталоге free');
   const zip = join(assetRoot, 'free-bundle-20.zip');
@@ -40,7 +57,8 @@ export function checkTemplateCatalog(catalog, publicRoot = resolve(root, 'public
   }
   const previewDir = join(assetRoot, 'previews');
   const previews = existsSync(previewDir) ? readdirSync(previewDir).filter((name) => /\.jpe?g$/i.test(name)) : [];
-  if (previews.length !== 44) errors.push(`ожидается 44 водяных превью, найдено ${previews.length}`);
+  const expectedPreviews = (catalog?.items ?? []).filter((item) => item.preview !== null).length;
+  if (previews.length !== expectedPreviews) errors.push(`ожидается ${expectedPreviews} водяных превью, найдено ${previews.length}`);
   const page = resolve(root, 'src/pages/shablony.astro');
   if (existsSync(page)) {
     const source = readFileSync(page, 'utf8');
@@ -56,6 +74,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if (schema.$schema !== 'https://json-schema.org/draft/2020-12/schema') throw new Error('JSON Schema draft 2020-12 is not declared');
     const result = checkTemplateCatalog(catalog);
     if (!result.ok) { console.error('Каталог шаблонов не прошёл проверку:\n- ' + result.errors.join('\n- ')); process.exitCode = 1; }
-    else console.log(`Шаблоны проверены: ${result.free} бесплатных PDF, ${result.paid} платных превью, в ZIP — бесплатные документы.`);
+    else console.log(`Шаблоны проверены: ${result.free} бесплатных PDF, ${result.paid} платных позиций (${result.previews} JPG-превью), в ZIP — бесплатные документы.`);
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

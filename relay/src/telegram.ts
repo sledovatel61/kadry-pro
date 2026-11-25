@@ -7,7 +7,7 @@
  */
 import type { LeadPayload, TemplatePackage } from './validate.ts';
 import type { ReviewPayload } from './reviews-validate.ts';
-import { resolveTemplateNotice } from './paid-templates.ts';
+import { resolveTemplateNotice, templateHandoffNote } from './paid-templates.ts';
 
 const esc = (s: string): string =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -112,6 +112,7 @@ export function composeTelegram(lead: LeadPayload, ticket: string, opts: Compose
         ? `\nФайл для Марии: <a href="${escAttr(resolved.githubUrl)}">${esc(resolved.filename)}</a>\nПрямая ссылка: ${esc(resolved.githubUrl)}`
         : '',
       resolved.linkNote ? `\nℹ️ <i>${esc(resolved.linkNote)}</i>` : '',
+      `\n✍️ <i>${esc(templateHandoffNote(t))}</i>`,
       page,
       consent,
       footer,

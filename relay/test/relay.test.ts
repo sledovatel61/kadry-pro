@@ -492,6 +492,188 @@ test('конфликт: тот же ключ идемпотентности с �
   assert.equal(payload.error.code, 'conflict');
 });
 
+test('старая запись идемпотентности: 422 + idempotency_legacy, затем повтор по инструкции доставляет заявку', async () => {
+  /* Запись прежнего формата — `талон|хеш телефона`, без отпечатка шаблона.
+     В ней НЕИЗВЕСТНО, что именно отправляли.
+       • 409 — клиент из main повторяет автоматически новым ключом: молчаливый
+         дубль уже доставленной заявки;
+       • 2xx — тот же клиент показывает «Заявка принята» и скрывает форму,
+         хотя исправленные данные не доставлены.
+     Поэтому ответ — 422 с `error.message`: старый клиент показывает текст, не
+     скрывает форму и ничего не повторяет. */
+  const { hashIp } = await import('../src/http.ts');
+  const phone = '+7 (961) 302-21-12';
+  const phoneHash = await hashIp(normalizePhone(phone) as string);
+
+  const scenarios = [
+    {
+      name: 'та же заявка на шаблон',
+      body: { kind: 'template', template: { id: '02', title: 'Срочный трудовой договор', package: 'single', price: 500 } },
+    },
+    {
+      name: 'смена шаблона',
+      body: { kind: 'template', template: { id: '03', title: 'Договор с материальной ответственностью', package: 'single', price: 500 } },
+    },
+    {
+      name: 'консультация',
+      body: { kind: 'consult', message: 'Нужен аудит кадрового учёта' },
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const fake = mockFetch();
+    const key = crypto.randomUUID();
+    const legacyValue = `K-1121-4242|${phoneHash}`;
+    const stored = new Map<string, string>([[`idem:${key}`, legacyValue]]);
+    const env = baseEnv({
+      KADRY_KV: {
+        get: async (k: string) => stored.get(k) ?? null,
+        put: async (k: string, v: string) => { stored.set(k, v); },
+      },
+    });
+
+    const res = await post('/leads', freshBody({ ...scenario.body, phone, idempotency_key: key }), env);
+
+    assert.equal(res.status, 422, `${scenario.name}: не 2xx (старый клиент счёл бы это успехом) и не 409 (автоповтор)`);
+    const body = await res.json() as {
+      ticket: string;
+      duplicate?: boolean;
+      ambiguous?: boolean;
+      status?: string;
+      error?: { code: string; message: string };
+      delivered?: { telegram: boolean; email: boolean };
+    };
+    assert.equal(body.ticket, 'K-1121-4242', `${scenario.name}: показываем прежний талон`);
+    assert.equal(body.error?.code, 'idempotency_legacy', `${scenario.name}: нужен стабильный код для нового клиента`);
+    assert.equal(body.ambiguous, true, `${scenario.name}: исход должен быть помечен как неоднозначный`);
+    assert.equal(body.status, 'ambiguous');
+    assert.equal(body.duplicate, true);
+    assert.deepEqual(body.delivered, { telegram: false, email: false }, `${scenario.name}: доставку не подтверждаем`);
+    assert.match(body.error?.message ?? '', /уже отправлялась раньше/i, `${scenario.name}: нужен понятный текст`);
+    assert.match(body.error?.message ?? '', /ничего не отправлено, чтобы не создать дубль/i);
+    assert.match(body.error?.message ?? '', /могла быть уже доставлена/i, `${scenario.name}: честно предупреждаем о возможной доставке`);
+    assert.match(body.error?.message ?? '', new RegExp(body.ticket), `${scenario.name}: показываем прежний номер`);
+    if (scenario.body.kind === 'template') {
+      assert.match(body.error?.message ?? '', /другой шаблон/i, `${scenario.name}: подсказка про смену шаблона`);
+    }
+
+    /* Первая попытка: ничего не доставлено и старая запись не переписана. */
+    assert.equal(fake.calls.length, 0, `${scenario.name}: повторное уведомление Марии не должно уходить`);
+    assert.equal(stored.get(`idem:${key}`), legacyValue, `${scenario.name}: старая запись не переписывается`);
+
+    /* Человек выполняет инструкцию из предупреждения: жмёт «Отправить» ещё раз.
+       Старый клиент из main сохраняет прежний ключ — значит запрос уходит с тем
+       же ключом и теми же данными. Это и есть проверка выполнимости текста:
+       второго 422 быть не должно, заявка обязана уйти. */
+    const pressed = await post('/leads', freshBody({ ...scenario.body, phone, idempotency_key: key }), env);
+    assert.equal(pressed.status, 201, `${scenario.name}: повтор по инструкции не должен упираться в тот же 422`);
+    const pressedBody = await pressed.json() as { ticket: string; duplicate?: boolean; delivered?: { telegram: boolean; email: boolean } };
+    assert.equal(pressedBody.duplicate, false, `${scenario.name}: это новая заявка, а не «повтор»`);
+    assert.notEqual(pressedBody.ticket, 'K-1121-4242', `${scenario.name}: у новой заявки свой номер`);
+    assert.deepEqual(pressedBody.delivered, { telegram: true, email: false }, `${scenario.name}: заявка реально доставлена`);
+    assert.ok(fake.calls.length > 0, `${scenario.name}: Мария должна получить уведомление`);
+
+    /* Запись стала однозначной: следующий повтор того же ключа — честный
+       duplicate без второй доставки (а не ещё одно предупреждение). */
+    const callsAfterDelivery = fake.calls.length;
+    const again = await post('/leads', freshBody({ ...scenario.body, phone, idempotency_key: key }), env);
+    assert.equal(again.status, 201, `${scenario.name}: повтор после доставки — обычный повтор`);
+    assert.equal((await again.json() as { duplicate?: boolean }).duplicate, true);
+    assert.equal(fake.calls.length, callsAfterDelivery, `${scenario.name}: повторно не уведомляем`);
+
+    /* Совсем другая сессия (новый ключ) доходит нормально. */
+    const retry = await post('/leads', freshBody({ ...scenario.body, phone, idempotency_key: crypto.randomUUID() }), env);
+    assert.equal(retry.status, 201, `${scenario.name}: новая отправка должна проходить`);
+    assert.equal((await retry.json() as { duplicate?: boolean }).duplicate, false);
+  }
+});
+
+test('после предупреждения повтор с ИЗМЕНЁННЫМ комментарием доставляет новую заявку, а чужой телефон по-прежнему 409', async () => {
+  /* Старый клиент после предупреждения может и исправить данные, и просто
+     нажать ещё раз. Оба пути должны вести к доставке — иначе человек либо
+     упирается в вечный отказ, либо его исправление теряется. */
+  const { hashIp } = await import('../src/http.ts');
+  const phone = '+7 (961) 302-21-12';
+  const phoneHash = await hashIp(normalizePhone(phone) as string);
+  const key = crypto.randomUUID();
+  const body = {
+    kind: 'template' as const,
+    template: { id: '02', title: 'Срочный трудовой договор', package: 'single' as const, price: 500 },
+    message: 'Первая версия комментария',
+  };
+
+  const fake = mockFetch();
+  const stored = new Map<string, string>([[`idem:${key}`, `K-1121-4242|${phoneHash}`]]);
+  const env = baseEnv({
+    KADRY_KV: {
+      get: async (k: string) => stored.get(k) ?? null,
+      put: async (k: string, v: string) => { stored.set(k, v); },
+    },
+  });
+
+  const first = await post('/leads', freshBody({ ...body, phone, idempotency_key: key }), env);
+  assert.equal(first.status, 422, 'сначала предупреждение');
+
+  /* Тот же ключ, исправленный комментарий: это другая заявка — доставляем. */
+  const fixed = await post('/leads', freshBody({
+    ...body, phone, idempotency_key: key, message: 'Исправленный комментарий: ООО «Север»',
+  }), env);
+  assert.equal(fixed.status, 201, 'исправленные данные должны дойти, а не застрять в 422');
+  const fixedBody = await fixed.json() as { ticket: string; duplicate?: boolean };
+  assert.equal(fixedBody.duplicate, false);
+  assert.notEqual(fixedBody.ticket, 'K-1121-4242');
+  assert.ok(fake.calls.length > 0, 'Мария должна получить уведомление');
+  assert.match(stored.get(`idem:${key}`) ?? '', /\|single:02\|2$/, 'запись переходит в новый формат');
+
+  /* Чужой телефон с тем же ключом остаётся конфликтом: это не наша заявка. */
+  const alien = await post('/leads', freshBody({ ...body, phone: '+7 (999) 111-22-33', idempotency_key: key }), env);
+  assert.equal(alien.status, 409, 'ключ, использованный другим телефоном, не переиспользуем');
+});
+
+test('тот же ключ идемпотентности с ДРУГИМ шаблоном — 409, а не чужой талон', async () => {
+  mockFetch();
+  const key = crypto.randomUUID();
+  const base = freshBody({
+    kind: 'template',
+    page: 'shablony',
+    idempotency_key: key,
+    template: { id: '02', title: 'Срочный трудовой договор', package: 'single', price: 500 },
+  });
+
+  const first = await post('/leads', base, baseEnv());
+  assert.equal(first.status, 201);
+  const firstBody = await first.json() as { ticket: string; duplicate?: boolean };
+  assert.ok(firstBody.ticket);
+  assert.equal(firstBody.duplicate, false);
+
+  /* Тот же ключ, тот же шаблон — это честный повтор. */
+  const repeat = await post('/leads', base, baseEnv());
+  assert.equal(repeat.status, 201);
+  const repeatBody = await repeat.json() as { ticket: string; duplicate?: boolean };
+  assert.equal(repeatBody.ticket, firstBody.ticket);
+  assert.equal(repeatBody.duplicate, true);
+
+  /* Тот же ключ, НО другой шаблон: раньше сервер вернул бы талон от № 02, и
+     заявка на № 53 потерялась бы. Теперь — 409, клиент перевыпускает ключ. */
+  const other = await post('/leads', {
+    ...base,
+    template: { id: '53', title: 'Табель учёта рабочего времени Т-12', package: 'single', price: 500 },
+  }, baseEnv());
+  assert.equal(other.status, 409);
+  const otherBody = await other.json() as { error: { code: string } };
+  assert.equal(otherBody.error.code, 'conflict');
+
+  /* С новым ключом заявка на № 53 проходит и получает свой талон. */
+  const fresh = await post('/leads', {
+    ...base,
+    idempotency_key: crypto.randomUUID(),
+    template: { id: '53', title: 'Табель учёта рабочего времени Т-12', package: 'single', price: 500 },
+  }, baseEnv());
+  assert.equal(fresh.status, 201);
+  const freshPayload = await fresh.json() as { ticket: string; duplicate?: boolean };
+  assert.equal(freshPayload.duplicate, false);
+});
+
 test('заявка с калькулятора несёт штат, зарплату и экономию', async () => {
   const fake = mockFetch();
   const res = await post('/leads', freshBody({
@@ -518,28 +700,51 @@ test('заявка на email-шаблон без адреса почты отв
   assert.ok(v.fields.email);
 });
 
-test('заявка на полный пакет не выдаёт ссылку даже при подключённом бакете', async () => {
+test('заявка НЕ является оплатой: даже с подключённым бакетом R2 ссылка на полный пакет не выдаётся', async () => {
   const fake = mockFetch();
-  const body = freshBody({
-    kind: 'template',
-    page: 'shablony',
-    template: { id: null, title: 'Полный пакет 64 документа', package: 'full', price: 3500 },
-  });
-  const without = await post('/leads', body, baseEnv());
-  assert.equal(without.status, 201);
-  const a = await without.json() as { download?: string };
-  assert.equal(a.download, undefined);
+  let bucketAsked = 0;
+  const bucket = {
+    get: async () => {
+      bucketAsked++;
+      return null;
+    },
+  } as unknown as Env['TEMPLATES'];
 
-  const withBucket = await post('/leads', { ...body, idempotency_key: crypto.randomUUID() }, baseEnv({
-    FILE_TOKEN_SECRET: 'secret',
-    TEMPLATES: { get: async () => null } as unknown as Env['TEMPLATES'],
-  }));
-  assert.equal(withBucket.status, 201);
-  const b = await withBucket.json() as { download?: string };
-  assert.equal(b.download, undefined);
-  const duplicate = await post('/leads', { ...body, idempotency_key: body.idempotency_key }, baseEnv());
-  assert.equal(((await duplicate.json()) as { download?: string }).download, undefined);
-  assert.ok(fake.calls.length >= 2);
+  /* Проверяем оба «дорогих» пакета — full и email: раньше любой из них мог
+     принести подписанную ссылку на приватный объект сразу после заявки, то
+     есть без оплаты. */
+  for (const pkg of ['full', 'email'] as const) {
+    const res = await post('/leads', freshBody({
+      kind: 'template',
+      email: 'buyer@example.ru',
+      page: 'shablony',
+      template: {
+        id: pkg === 'email' ? '21' : null,
+        title: pkg === 'email' ? 'Приказ о командировке' : 'Полный пакет 64 документа',
+        package: pkg,
+        price: pkg === 'email' ? 0 : 3500,
+      },
+    }), baseEnv({
+      FILE_TOKEN_SECRET: 'secret',
+      TEMPLATES: bucket,
+    }));
+
+    assert.equal(res.status, 201, `заявка (${pkg}) должна приниматься`);
+    const raw = await res.text();
+    const body = JSON.parse(raw) as { download?: string; ticket?: string };
+    assert.ok(body.ticket);
+    assert.equal(body.download, undefined, `для package=${pkg} ссылки на файл быть не должно`);
+    assert.doesNotMatch(raw, /\/files\/|full-bundle-64|email-bundle-25/i);
+  }
+
+  /* Бакет при этом настроен (/health это показывает), но заявка его не трогает. */
+  const health = await worker.fetch(
+    new Request('https://relay.test/health'),
+    baseEnv({ FILE_TOKEN_SECRET: 'secret', TEMPLATES: bucket }),
+  );
+  assert.equal((await health.json() as { files: boolean }).files, true);
+  assert.equal(bucketAsked, 0, 'заявка не должна обращаться к бакету в обход оплаты');
+  assert.ok(fake.calls.length >= 2, 'уведомления Марии при этом уходят');
 });
 
 test('CORS: разрешённому источнику возвращается его Origin, чужому — null', async () => {

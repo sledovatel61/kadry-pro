@@ -82,6 +82,8 @@ export interface LeadFormTexts {
   phoneHint: string;
   rateLimit: string;
   retry: string;
+  /** Предупреждение, когда под ключом уже была отправка, но что именно — неизвестно. */
+  ambiguous: string;
 }
 
 export const DEFAULT_TEXTS: LeadFormTexts = {
@@ -94,6 +96,10 @@ export const DEFAULT_TEXTS: LeadFormTexts = {
   phoneHint: 'Позвоните: +7 (961) 302-21-12 — или напишите в Telegram @Mariya061.',
   rateLimit: 'Слишком много заявок с вашего адреса. Повторите позже или позвоните.',
   retry: 'Повторить через',
+  ambiguous:
+    'Похоже, эта заявка уже отправлялась раньше — возможно, Мария её получила, '
+    + 'но ответ до вас не дошёл. Повторно мы ничего не отправили, чтобы не создать дубль. '
+    + 'Если данных в форме ещё нет — напишите или позвоните: +7 (961) 302-21-12.',
 };
 
 const PHONE_RE = /^\d{11}$/;
@@ -286,8 +292,35 @@ function clearStrayStatus(form: HTMLElement): void {
   }
 }
 
+/**
+ * Предупреждение (не ошибка) под формой: заявка могла уйти раньше, повтор мы
+ * не отправляли. Формулируем так, чтобы человек сам решил, отправлять ли ещё
+ * раз — молча создавать дубль нельзя.
+ */
+function showWarning(form: HTMLElement, message: string): void {
+  clearStrayStatus(form);
+  const box = form.parentElement?.querySelector<HTMLElement>('[data-lead-error]')
+    ?? document.querySelector<HTMLElement>(`[data-lead-error="${form.id}"]`);
+  if (box) {
+    box.hidden = false;
+    box.setAttribute('data-level', 'warning');
+    box.textContent = message;
+    return;
+  }
+  let holder = form.querySelector<HTMLElement>('.lead-warning');
+  if (!holder) {
+    holder = document.createElement('p');
+    holder.className = 'lead-warning';
+    holder.setAttribute('role', 'status');
+    form.append(holder);
+  }
+  holder.textContent = message;
+}
+
 function showError(form: HTMLElement, texts: LeadFormTexts, message?: string, waitSec?: number): void {
   clearStrayStatus(form);
+  /* Сбрасываем вид «предупреждение»: дальше это настоящая ошибка. */
+  document.querySelectorAll<HTMLElement>('[data-level="warning"]').forEach((el) => el.removeAttribute('data-level'));
   const box = form.parentElement?.querySelector<HTMLElement>('[data-lead-error]')
     ?? document.querySelector<HTMLElement>(`[data-lead-error="${form.id}"]`);
   const text = message ?? texts.error;
@@ -525,7 +558,24 @@ export function wireLeadForms(options: WireOptions = {}): void {
     let idem = makeIdempotencyKey();
     let busy = false;
     let retryUntil = 0;
-    let lastTemplateSelection: string | undefined;
+
+    /* Ключ идемпотентности привязан к тому, ЧТО отправляют.
+     *
+     * Пока шаблон не менялся, повтор — это та же заявка, и старый ключ
+     * защищает от дубля. Но окно заявки на /shablony.html одно на все 64
+     * позиции: человек выбрал № 02, отправка сорвалась (таймаут — заявка при
+     * этом могла дойти), он выбрал № 53 и отправил снова. Со старым ключом
+     * сервер нашёл бы запись от № 02 и вернул её талон как «повтор» — заявка
+     * на № 53 потерялась бы совсем. Поэтому при смене выбранного шаблона
+     * ключ перевыпускается. */
+    let templateSig = form.dataset.template ?? '';
+    const rotateIdemForTemplate = (): void => {
+      const next = form.dataset.template ?? '';
+      if (next === templateSig) return;
+      templateSig = next;
+      idem = makeIdempotencyKey();
+    };
+    form.addEventListener('lead-template-change', rotateIdemForTemplate);
 
     const phone = form.querySelector<HTMLInputElement>('[name="phone"]');
     if (options.mask && phone && !phone.dataset.maskAttached) {
@@ -546,6 +596,9 @@ export function wireLeadForms(options: WireOptions = {}): void {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       if (busy) return;
+      /* Страховка на случай, если шаблон поменяли без события (другая сборка
+         модального окна): перед отправкой сверяем подпись ещё раз. */
+      rotateIdemForTemplate();
       if (Date.now() < retryUntil) {
         showError(form, texts, texts.rateLimit, Math.ceil((retryUntil - Date.now()) / 1000));
         return;
@@ -555,17 +608,6 @@ export function wireLeadForms(options: WireOptions = {}): void {
         const first = form.querySelector<HTMLElement>('.error, [aria-invalid="true"]');
         first?.focus();
         return;
-      }
-
-      /* Повтор той же карточки сохраняет ключ после таймаута. Другая
-         карточка — новая заявка, даже если номер телефона не изменился. */
-      if (form.dataset.leadKind === 'template') {
-        const selected = dataTemplate(form);
-        const selection = JSON.stringify([selected?.pkg ?? '', selected?.id ?? '']);
-        if (lastTemplateSelection !== undefined && lastTemplateSelection !== selection) {
-          idem = makeIdempotencyKey();
-        }
-        lastTemplateSelection = selection;
       }
 
       busy = true;
@@ -578,12 +620,17 @@ export function wireLeadForms(options: WireOptions = {}): void {
 
       void (async () => {
         try {
-          /* 409 «ключ идемпотентности уже использован с другими данными»:
-             человек поправил телефон после прошлой попытки, а ключ остался
-             прежним — без этой ветки каждый повтор упирался бы в 409 с общим
-             «не получилось» (тупик до перезагрузки страницы). Крутим ключ и
-             повторяем ОДИН раз: это та же заявка, которую просили отправить,
-             а уже доставленная под старым ключом не задваивается. */
+          /* 409 — «ключ уже использован с другими данными»: человек поправил
+             телефон или выбрал другой шаблон, а ключ остался прежним. Без этой
+             ветки каждый повтор упирался бы в 409 с общим «не получилось» —
+             тупик до перезагрузки страницы. Крутим ключ и повторяем ОДИН раз:
+             это та же заявка, а доставленная под старым ключом не задваивается.
+
+             ВАЖНО: неоднозначный случай (старая запись без отпечатка шаблона)
+             сюда больше НЕ попадает — сервер отвечает на него 422 с
+             `error.code = idempotency_legacy`, и мы показываем предупреждение,
+             перевыпустив ключ заранее. Иначе при потерянном ответе появлялся
+             молчаливый дубль уже доставленной заявки. */
           let res = await leadsFetch(leadsUrl('leads'), {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -601,12 +648,32 @@ export function wireLeadForms(options: WireOptions = {}): void {
             | {
                 ticket?: string;
                 duplicate?: boolean;
+                /** Заявка под ключом была, но что отправляли — неизвестно. */
+                ambiguous?: boolean;
+                message?: string;
+                error?: { code?: string; message?: string };
                 download?: string;
                 /** Подтверждение каналов от воркера. Может отсутствовать
                  *  у старых сборок — тогда текст остаётся нейтральным. */
                 delivered?: { telegram?: boolean; email?: boolean };
               }
             | null;
+
+          /* Неоднозначная старая запись: под этим ключом заявка уже была, но
+             что именно отправляли — неизвестно, и сервер повторно НИЧЕГО не
+             доставил. Ответ 422 с `error.code = idempotency_legacy` (и флагом
+             `ambiguous`) — единственный вариант, который и старый клиент из
+             `main` показывает как текст, не скрывая форму и не повторяя сам.
+
+             Здесь мы делаем то же, но человечнее: показываем предупреждение
+             (не красную ошибку), ключ перевыпускаем заранее — если человек
+             нажмёт «Отправить» ещё раз, уйдёт НОВАЯ заявка. */
+          if (data?.ambiguous === true || data?.error?.code === 'idempotency_legacy') {
+            idem = makeIdempotencyKey();
+            const message = data?.error?.message?.trim() || data?.message?.trim() || texts.ambiguous;
+            showWarning(form, message);
+            return;
+          }
 
           if ((res.status === 201 || res.status === 200) && data?.ticket) {
             /* Повторная отправка (`duplicate`) доставку не повторяет: заявка
@@ -657,8 +724,11 @@ export function wireLeadForms(options: WireOptions = {}): void {
              незачем: «network» и «timeout» различимы и не содержат его данных. */
           const name = (err as Error)?.name;
           /* Таймаут не значит, что заявка потерялась: запрос мог дойти, а ответ —
-             нет. Тот же ключ снижает риск дубля, но без постоянного KV не гарантирует
-             его отсутствие между изолятами. Сеть — запрос мог не дойти. */
+             нет. Обещать отсутствие дублей нельзя: ключ идемпотентности
+             живёт в памяти изолята, если KV не подключён, а при смене шаблона
+             он вообще перевыпускается. Поэтому говорим только то, что мы точно
+             знаем: ответа нет, заявка могла уйти; при повторе возможен дубль —
+             и даём телефон. */
           showError(form, texts, name === 'AbortError'
             ? `Ответ не пришёл за ${Math.round(LEADS_TIMEOUT_MS / 1000)} с (таймаут): возможно, заявка уже ушла. При повторе возможен дубль. Если срочно: +7 (961) 302-21-12.`
             : `${texts.error} (сеть)`);
