@@ -304,3 +304,116 @@ test('мобильная форма и автозаполнение: без iOS-
     cleanup();
   }
 });
+
+test('предпросмотр первой страницы № 01–10: миниатюра, кнопка до заявки, масштаб, закрытие по ✕ / фону / Esc и переход к заказу', () => {
+  const { dom, doc, cleanup } = mountShablonyDom();
+  try {
+    const previewModal = doc.getElementById('template-preview-modal') as HTMLDialogElement;
+    const leadModal = doc.getElementById('template-lead-modal') as HTMLDialogElement;
+    assert.ok(previewModal, 'на странице должен быть лайтбокс #template-preview-modal');
+
+    /* 1. Проверяем привязку 01.jpg–10.jpg к карточкам #s01–#s10, осмысленный alt, якорь #s09 и порядок кнопок. */
+    const card09 = doc.getElementById('s09');
+    assert.ok(card09, 'якорь #s09 должен присутствовать на /shablony.html');
+
+    for (let i = 1; i <= 10; i++) {
+      const id = String(i).padStart(2, '0');
+      const expectedItem = catalog.items.find((entry) => entry.id === id)!;
+      const card = doc.getElementById(`s${id}`)!;
+      assert.ok(card, `отсутствует карточка #s${id}`);
+
+      const thumbBtn = card.querySelector<HTMLButtonElement>('.template-tile__thumb-btn[data-open-preview]');
+      const previewBtn = card.querySelector<HTMLButtonElement>('.template-preview-btn[data-open-preview]');
+      const thumbImg = card.querySelector<HTMLImageElement>('.template-tile__visual img');
+      assert.ok(thumbBtn, `у #s${id} должна быть кликабельная миниатюра предпросмотра`);
+      assert.ok(previewBtn, `у #s${id} должна быть кнопка предпросмотра первой страницы`);
+      assert.ok(thumbImg, `у #s${id} должно выводиться изображение превью`);
+
+      assert.equal(thumbImg.getAttribute('src'), `/shablony/previews/${id}.jpg`);
+      assert.equal(thumbImg.getAttribute('width'), '1080');
+      assert.equal(thumbImg.getAttribute('height'), '1528');
+      assert.ok(
+        (thumbImg.getAttribute('alt') ?? '').includes(expectedItem.name),
+        `alt изображения #s${id} должен содержать название шаблона`,
+      );
+
+      /* Действие «Посмотреть первую страницу» расположено ДО кнопки скачивания или заявки */
+      const mainAction = card.querySelector<HTMLElement>('a.template-download, button[data-open-template]')!;
+      assert.ok(mainAction, `у #s${id} должна быть основная кнопка скачивания или заявки`);
+      const posMask = previewBtn.compareDocumentPosition(mainAction);
+      assert.ok(
+        Boolean(posMask & dom.window.document.DOCUMENT_POSITION_FOLLOWING),
+        `у #s${id} кнопка предпросмотра должна идти до кнопки скачивания/заявки`,
+      );
+    }
+
+    /* 2. Открытие по клику на миниатюру платной карточки #s08, проверка подписи, масштаба и закрытия по крестику. */
+    const thumb08 = doc.querySelector<HTMLButtonElement>('#s08 .template-tile__thumb-btn[data-open-preview]')!;
+    thumb08.click();
+    assert.equal(previewModal.hasAttribute('open'), true);
+
+    const modalImg = previewModal.querySelector<HTMLImageElement>('[data-preview-modal-img]')!;
+    const modalCaption = previewModal.querySelector<HTMLElement>('[data-preview-modal-caption]')!;
+    const zoomBtn = previewModal.querySelector<HTMLButtonElement>('[data-preview-zoom]')!;
+    const viewport = previewModal.querySelector<HTMLElement>('[data-preview-viewport]')!;
+    const downloadBtn = previewModal.querySelector<HTMLAnchorElement>('[data-preview-download]')!;
+    const orderBtn = previewModal.querySelector<HTMLButtonElement>('[data-preview-order]')!;
+
+    assert.match(modalImg.getAttribute('src') ?? '', /\/shablony\/previews\/08\.jpg$/);
+    assert.match(modalImg.getAttribute('alt') ?? '', /Договор с директором \(генеральным директором\)/);
+    assert.equal(
+      modalCaption.textContent?.trim(),
+      'Первая страница шаблона. Полная версия — редактируемый DOCX без водяного знака.',
+    );
+    assert.equal(downloadBtn.hidden, true, 'у платного шаблона в лайтбоксе нет прямой ссылки на скачивание');
+    assert.equal(orderBtn.hidden, false);
+    assert.match(orderBtn.textContent ?? '', /500\s*₽/);
+
+    /* Масштабирование для чтения */
+    assert.equal(viewport.classList.contains('is-zoomed'), false);
+    zoomBtn.click();
+    assert.equal(viewport.classList.contains('is-zoomed'), true);
+    assert.equal(zoomBtn.getAttribute('aria-pressed'), 'true');
+
+    /* Закрытие по крестику */
+    previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
+    assert.equal(previewModal.hasAttribute('open'), false);
+
+    /* 3. Открытие по кнопке «Посмотреть первую страницу» на бесплатной карточке #s01 и закрытие кликом вне окна. */
+    const previewBtn01 = doc.querySelector<HTMLButtonElement>('#s01 .template-preview-btn[data-open-preview]')!;
+    previewBtn01.click();
+    assert.equal(previewModal.hasAttribute('open'), true);
+    assert.equal(viewport.classList.contains('is-zoomed'), false, 'масштаб сбрасывается при новом открытии');
+    assert.equal(downloadBtn.hidden, false, 'у бесплатного шаблона #s01 доступно скачивание PDF');
+    assert.equal(downloadBtn.getAttribute('href'), '/shablony/free/01_Трудовой_договор_бессрочный.pdf');
+
+    previewModal.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    assert.equal(previewModal.hasAttribute('open'), false, 'клик по фону диалога закрывает предпросмотр');
+
+    /* 4. Открытие #s09 и закрытие по клавише Escape. */
+    doc.querySelector<HTMLButtonElement>('#s09 .template-preview-btn[data-open-preview]')!.click();
+    assert.equal(previewModal.hasAttribute('open'), true);
+    const escEvent = new dom.window.Event('keydown', { bubbles: true, cancelable: true }) as Event & { key: string };
+    Object.defineProperty(escEvent, 'key', { value: 'Escape' });
+    doc.dispatchEvent(escEvent);
+    assert.equal(previewModal.hasAttribute('open'), false, 'клавиша Esc закрывает предпросмотр');
+
+    /* 5. Переход из лайтбокса предпросмотра #s07 сразу к заявке на этот шаблон. */
+    doc.querySelector<HTMLButtonElement>('#s07 .template-preview-btn[data-open-preview]')!.click();
+    assert.equal(previewModal.hasAttribute('open'), true);
+    orderBtn.click();
+    assert.equal(previewModal.hasAttribute('open'), false, 'при переходе к заказу лайтбокс закрывается');
+    assert.equal(leadModal.hasAttribute('open'), true, 'открывается окно заявки на выбранный шаблон');
+    assert.equal(
+      doc.querySelector('[data-template-modal-doc]')?.textContent,
+      'Договор с ненормированным рабочим днём',
+    );
+    assert.match(doc.querySelector('[data-template-modal-badge]')?.textContent ?? '', /№ 07/);
+
+    /* 6. Проверяем, что в собранном HTML нет ни одной ссылки на .docx. */
+    const rawHtml = readFileSync(builtShablonyPath, 'utf8');
+    assert.doesNotMatch(rawHtml, /\.docx\b/i, 'в публичном HTML не должно быть ссылок на файлы .docx');
+  } finally {
+    cleanup();
+  }
+});

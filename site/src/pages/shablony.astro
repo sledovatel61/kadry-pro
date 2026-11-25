@@ -8,6 +8,18 @@ import { CONSENT_VERSION } from '../shared/leads-endpoint.ts';
 const categories = [...new Set(catalog.items.map((item) => item.category))];
 const freeCount = catalog.items.filter((item) => item.free).length;
 const paidCount = catalog.items.length - freeCount;
+const previewCount = catalog.items.filter((item) => Boolean(item.preview)).length;
+const enrichedItems = catalog.items.map((item, index) => {
+  const itemNum = Number(item.id);
+  const isReworkedDocx = itemNum >= 1 && itemNum <= 10;
+  return {
+    ...item,
+    isReworkedDocx,
+    previewW: isReworkedDocx ? 1080 : 595,
+    previewH: isReworkedDocx ? 1528 : 842,
+    loadingMode: (index < 4 ? 'eager' : 'lazy') as 'eager' | 'lazy',
+  };
+});
 const templatesGroup = prices.groups.find((g) => g.id === 'templates');
 const bundle64Item = templatesGroup?.items.find((it) => it.id === 'bundle-64');
 const bundle64Price = bundle64Item?.price ?? 3500;
@@ -34,7 +46,7 @@ const itemListJsonLd = {
       <h1>Кадровые документы<br /><span>для реальной работы</span></h1>
       <p class="templates-hero__lead">Каталог из {catalog.items.length} документов: {freeCount} бесплатно, ещё {paidCount} можно предварительно посмотреть по водяной копии первой страницы.</p>
       <div class="templates-hero__actions"><a class="templates-primary" href="/shablony/free-bundle-20.zip" download>Скачать бесплатный набор из 20</a><a class="templates-secondary" href="#catalog"><span>Выбрать документ</span> <span aria-hidden="true">↓</span></a></div>
-      <div class="templates-proof"><span><b>20</b> бесплатных PDF</span><span><b>{paidCount}</b> водяных превью</span><span><b>0</b> платных PDF в открытой папке</span></div>
+      <div class="templates-proof"><span><b>20</b> бесплатных PDF</span><span><b>{previewCount}</b> водяных превью</span><span><b>0</b> платных PDF в открытой папке</span></div>
     </div>
     <!-- Вместо одинокого кружка «КП» — композиция «Кобальт × Аврора»:
          веер из трёх стеклянных документов. Слой декоративный, поэтому
@@ -83,14 +95,132 @@ const itemListJsonLd = {
     <div class="template-filters" role="group" aria-label="Фильтр по категории"><button type="button" class="is-active" data-filter="all" aria-pressed="true">Все <span>{catalog.items.length}</span></button>{categories.map((category) => <button type="button" data-filter={category} aria-pressed="false">{category}</button>)}</div>
     <p class="template-results" id="template-results" aria-live="polite">Показано {catalog.items.length} из {catalog.items.length} документов</p>
     <div class="template-grid" id="template-grid">
-      {catalog.items.map((item) => <article id={`s${item.id}`} class="template-tile" data-template-card data-category={item.category} data-title={`${item.name} ${item.description}`.toLocaleLowerCase('ru')}>
-        <div class="template-tile__visual">{item.free ? <div class="template-tile__free-cover" aria-hidden="true"><span>{item.icon}</span><small>КАДРЫ-ПРО · PDF</small></div> : <img src={item.preview} alt={`Водяное превью первой страницы документа «${item.name}»`} loading="lazy" width="280" height="396" />}<span class:list={['template-badge', item.free ? 'template-badge--free' : 'template-badge--paid']}>{item.free ? 'Бесплатно' : `${item.price.toLocaleString('ru-RU')} ₽`}</span><span class="template-tile__number">№ {item.id}</span></div>
-        <div class="template-tile__content"><span class="template-tile__category">{item.category}</span><h3>{item.name}</h3><p>{item.description}</p><div class="template-tile__footer">{item.free ? <a class="template-download" href={item.file} download>Скачать PDF <span aria-hidden="true">↗</span></a> : <><span class="template-price">{item.price.toLocaleString('ru-RU')} ₽</span><button type="button" class="template-request" data-open-template data-template-id={item.id} data-template-title={item.name} data-template-price={String(item.price)} data-template-package="single" aria-haspopup="dialog">Оставить заявку</button></>}</div></div>
-      </article>)}
+      {enrichedItems.map((item) => (
+        <article id={`s${item.id}`} class="template-tile" data-template-card data-category={item.category} data-title={`${item.name} ${item.description}`.toLocaleLowerCase('ru')}>
+          <div class="template-tile__visual">
+            {item.preview ? (
+              <button
+                type="button"
+                class:list={['template-tile__thumb-btn', item.isReworkedDocx && 'template-tile__thumb-btn--hd']}
+                data-open-preview
+                data-preview-id={item.id}
+                data-preview-title={item.name}
+                data-src={item.preview}
+                data-preview-width={String(item.previewW)}
+                data-preview-height={String(item.previewH)}
+                data-preview-price={String(item.price)}
+                data-preview-free={item.free ? '1' : '0'}
+                data-href={item.free && item.file ? item.file : undefined}
+                data-preview-docx={item.isReworkedDocx ? '1' : '0'}
+                aria-haspopup="dialog"
+                aria-label={`Посмотреть первую страницу шаблона № ${item.id} «${item.name}»`}
+              >
+                <img
+                  src={item.preview}
+                  alt={`Предпросмотр первой страницы шаблона № ${item.id} «${item.name}»`}
+                  loading={item.loadingMode}
+                  decoding="async"
+                  width={item.previewW}
+                  height={item.previewH}
+                />
+                <span class="template-tile__zoom-pill" aria-hidden="true">Предпросмотр</span>
+              </button>
+            ) : (
+              <div class="template-tile__free-cover" aria-hidden="true"><span>{item.icon}</span><small>КАДРЫ-ПРО · PDF</small></div>
+            )}
+            <span class:list={['template-badge', item.free ? 'template-badge--free' : 'template-badge--paid']}>{item.free ? 'Бесплатно' : `${item.price.toLocaleString('ru-RU')} ₽`}</span>
+            <span class="template-tile__number">№ {item.id}</span>
+          </div>
+          <div class="template-tile__content">
+            <span class="template-tile__category">{item.category}</span>
+            <h3>{item.name}</h3>
+            <p>{item.description}</p>
+            <div class="template-tile__actions">
+              {item.preview && (
+                <button
+                  type="button"
+                  class="template-preview-btn"
+                  data-open-preview
+                  data-preview-id={item.id}
+                  data-preview-title={item.name}
+                  data-src={item.preview}
+                  data-preview-width={String(item.previewW)}
+                  data-preview-height={String(item.previewH)}
+                  data-preview-price={String(item.price)}
+                  data-preview-free={item.free ? '1' : '0'}
+                  data-href={item.free && item.file ? item.file : undefined}
+                  data-preview-docx={item.isReworkedDocx ? '1' : '0'}
+                  aria-haspopup="dialog"
+                >
+                  Посмотреть первую страницу
+                </button>
+              )}
+              <div class="template-tile__footer">
+                {item.free ? (
+                  <a class="template-download" href={item.file} download>Скачать PDF <span aria-hidden="true">↗</span></a>
+                ) : (
+                  <>
+                    <span class="template-price">{item.price.toLocaleString('ru-RU')} ₽</span>
+                    <button type="button" class="template-request" data-open-template data-template-id={item.id} data-template-title={item.name} data-template-price={String(item.price)} data-template-package="single" aria-haspopup="dialog">Оставить заявку</button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </article>
+      ))}
     </div>
     <p class="template-empty" id="template-empty" hidden>По этому запросу документы не найдены. Попробуйте изменить слова поиска.</p>
   </section>
   <section class="templates-assurance"><span class="templates-assurance__mark">✓</span><div><h2>Без скрытой раздачи платных файлов</h2><p>Платные документы отправляются Марией лично после согласования реквизитов и подтверждения оплаты. Выберите нужную карточку и нажмите «Оставить заявку» или закажите весь набор целиком — никаких ненастроенных платёжных кнопок на сайте.</p></div><div class="templates-assurance__actions"><button type="button" class="template-bundle-btn" data-open-template data-template-title={bundle64Name} data-template-price={String(bundle64Price)} data-template-package="full" aria-haspopup="dialog">Весь набор · {bundle64Price.toLocaleString('ru-RU')} ₽</button><a href="/contact.html?service=templates">Задать вопрос</a></div></section>
+
+  <dialog id="template-preview-modal" class="template-preview-modal" aria-labelledby="template-preview-title">
+    <div class="template-preview__panel">
+      <div class="template-preview__header">
+        <div class="template-preview__heading">
+          <span class="template-preview__badge" data-preview-modal-badge>№ 01 · Бесплатно</span>
+          <h2 id="template-preview-title" class="template-preview__title" data-preview-modal-title>Трудовой договор бессрочный</h2>
+        </div>
+        <div class="template-preview__controls">
+          <button type="button" class="template-preview__zoom" data-preview-zoom aria-pressed="false">Крупнее для чтения +</button>
+          <button type="button" class="template-preview__close" data-close-preview aria-label="Закрыть предпросмотр">✕</button>
+        </div>
+      </div>
+
+      <div class="template-preview__viewport" data-preview-viewport>
+        <img
+          class="template-preview__img"
+          data-preview-modal-img
+          src="/shablony/previews/01.jpg"
+          alt="Первая страница шаблона № 01 «Трудовой договор бессрочный»"
+          width="1080"
+          height="1528"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+
+      <div class="template-preview__footer">
+        <p class="template-preview__caption" data-preview-modal-caption>
+          Первая страница шаблона. Полная версия — редактируемый DOCX без водяного знака.
+        </p>
+        <div class="template-preview__actions">
+          <a
+            class="template-preview__download"
+            data-preview-download
+            href="/shablony/free/01_Трудовой_договор_бессрочный.pdf"
+            download
+            hidden
+          >
+            Скачать PDF бесплатно <span aria-hidden="true">↗</span>
+          </a>
+          <button type="button" class="template-request template-preview__order" data-preview-order>
+            Оставить заявку · 500 ₽
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="template-lead-modal" class="template-modal" aria-labelledby="template-modal-title">
     <div class="template-modal__body">
@@ -157,7 +287,7 @@ const itemListJsonLd = {
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="template-lead-email">Почта для файла <span class="template-modal__opt">(по желанию)</span></label>
+            <label class="form-label" for="template-lead-email">Почта для файла <span class="template-modal__opt" data-template-email-opt>(по желанию)</span></label>
             <input
               id="template-lead-email"
               class="form-input"
@@ -345,10 +475,16 @@ const itemListJsonLd = {
   .template-results { color: var(--text-muted,#94a2b2); font-size: .85rem; }
   .template-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 17px; margin-top: 18px; }
   .template-tile {
+    scroll-margin-top: 96px;
+    display: flex; flex-direction: column;
     overflow: hidden; border: 1px solid var(--border-color,rgba(255,255,255,.15)); border-radius: 17px;
     background: var(--grad-card,linear-gradient(165deg,rgba(26,39,64,.9),rgba(14,21,36,.97)));
     box-shadow: var(--card-highlight,inset 0 1px 0 rgba(186,220,255,.10)), 0 12px 30px -10px rgba(4,8,20,.6);
     transition: transform .22s ease,border-color .22s ease,box-shadow .22s ease;
+  }
+  .template-tile:target {
+    border-color: var(--accent,#58a6ff);
+    box-shadow: var(--card-highlight,inset 0 1px 0 rgba(186,220,255,.16)), 0 0 0 2px rgba(88,166,255,.32), 0 18px 38px -10px rgba(4,8,20,.78);
   }
   .template-tile:hover { transform: translateY(-5px); border-color: var(--accent-border,rgba(88,166,255,.48)); box-shadow: var(--card-highlight,inset 0 1px 0 rgba(186,220,255,.10)),0 18px 38px -10px rgba(4,8,20,.72),0 0 24px var(--accent-glow,rgba(88,166,255,.14)); }
   /* Spotlight Авроры: блик в точке курсора (координаты пишет site.ts) */
@@ -359,7 +495,29 @@ const itemListJsonLd = {
   }
   .template-tile[hidden] { display: none; }
   .template-tile__visual { position: relative; aspect-ratio: 1.12; overflow: hidden; background: #121b2a; }
-  .template-tile__visual img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+  .template-tile__visual img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: transform .28s ease; }
+  .template-tile__thumb-btn {
+    position: relative; display: block; width: 100%; height: 100%; padding: 0; border: 0;
+    background: transparent; color: inherit; cursor: zoom-in; text-align: left;
+  }
+  .template-tile__thumb-btn--hd img { object-position: center 11%; }
+  .template-tile__thumb-btn:hover img,
+  .template-tile__thumb-btn:focus-visible img { transform: scale(1.03); }
+  .template-tile__zoom-pill {
+    position: absolute; left: 10px; bottom: 10px; z-index: 2;
+    padding: 5px 9px; border-radius: 8px;
+    border: 1px solid rgba(186, 220, 255, .28);
+    background: rgba(8, 15, 27, .86);
+    color: var(--accent-text, #b6daff);
+    font: 700 .69rem/1 'Inter', system-ui, sans-serif;
+    letter-spacing: .01em;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    opacity: .92; transition: opacity .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .template-tile__thumb-btn:hover .template-tile__zoom-pill,
+  .template-tile__thumb-btn:focus-visible .template-tile__zoom-pill {
+    opacity: 1; border-color: var(--accent, #58a6ff); background: rgba(14, 26, 46, .95);
+  }
   .template-tile__free-cover {
     position: relative; isolation: isolate; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
     color: var(--accent-text,#b6daff);
@@ -369,15 +527,28 @@ const itemListJsonLd = {
   .template-tile__free-cover::before { content: ''; position: absolute; z-index: -1; inset: 12% 17%; border: 1px solid rgba(186,220,255,.16); border-radius: 9px; box-shadow: 0 0 35px var(--accent-glow,rgba(88,166,255,.12)); }
   .template-tile__free-cover span { font-size: 3rem; filter: drop-shadow(0 5px 12px rgba(3,9,20,.4)); }
   .template-tile__free-cover small { font: 700 .62rem 'JetBrains Mono',monospace; letter-spacing: .1em; }
-  .template-badge { position: absolute; top: 11px; left: 11px; padding: 6px 10px; border-radius: 999px; font-size: .73rem; font-weight: 800; }
+  .template-badge { position: absolute; z-index: 2; pointer-events: none; top: 11px; left: 11px; padding: 6px 10px; border-radius: 999px; font-size: .73rem; font-weight: 800; }
   .template-badge--free { color: var(--on-accent,#f8fbff); background: var(--grad-btn,linear-gradient(135deg,#2563eb,#1d4ed8)); box-shadow: inset 0 1px 0 rgba(255,255,255,.24),0 5px 14px rgba(8,28,61,.4); }
   .template-badge--paid { color: var(--accent-secondary-text,#fde4b8); border: 1px solid var(--accent-secondary-border,rgba(234,185,104,.35)); background: linear-gradient(145deg,rgba(234,185,104,.09),rgba(14,21,36,.94)); backdrop-filter: blur(8px); }
-  .template-tile__number { position: absolute; right: 10px; bottom: 10px; padding: 5px 8px; border-radius: 7px; color: var(--text-primary,#f2f6fb); background: rgba(8,15,27,.82); font: 600 .7rem 'JetBrains Mono',monospace; }
-  .template-tile__content { padding: 17px; display: flex; flex-direction: column; min-height: 205px; }
+  .template-tile__number { position: absolute; z-index: 2; pointer-events: none; right: 10px; bottom: 10px; padding: 5px 8px; border-radius: 7px; color: var(--text-primary,#f2f6fb); background: rgba(8,15,27,.82); font: 600 .7rem 'JetBrains Mono',monospace; }
+  .template-tile__content { flex: 1 1 auto; padding: 17px; display: flex; flex-direction: column; min-height: 205px; }
   .template-tile__category { color: var(--accent-text,#b6daff); font-size: .72rem; font-weight: 700; }
   .template-tile h3 { margin: 8px 0; color: var(--text-primary,#f2f6fb); font-size: 1.04rem; line-height: 1.35; }
   .template-tile p { margin: 0; color: var(--text-secondary,#c1cbd8); font-size: .83rem; line-height: 1.5; }
-  .template-tile__footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 18px; }
+  .template-tile__actions { display: flex; flex-direction: column; gap: 10px; margin-top: auto; padding-top: 16px; }
+  .template-preview-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 100%; min-height: 36px; padding: 7px 12px;
+    border: 1px solid var(--border-color,rgba(255,255,255,.18)); border-radius: 9px;
+    background: rgba(18, 29, 48, .58); color: var(--accent-text,#b6daff);
+    font: 700 .79rem/1.2 inherit; cursor: pointer;
+    transition: border-color .18s ease, background .18s ease, color .18s ease;
+  }
+  .template-preview-btn:hover {
+    border-color: var(--accent-border,rgba(88,166,255,.48));
+    background: rgba(30, 49, 78, .72); color: var(--text-primary,#f2f6fb);
+  }
+  .template-tile__footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .template-download,.template-request { font-weight: 700; font-size: .82rem; text-decoration: none; }
   .template-download { color: var(--accent-text,#b6daff); }
   .template-request {
@@ -403,6 +574,119 @@ const itemListJsonLd = {
     color: var(--accent-secondary-text,#fde4b8); font: 700 .84rem inherit; cursor: pointer; white-space: nowrap;
   }
   .template-bundle-btn:hover { border-color: rgba(234,185,104,.65); }
+
+  /* Лайтбокс предпросмотра первой страницы (крупно, без обрезки, с масштабированием) */
+  .template-preview-modal {
+    border: 1px solid var(--border-color,rgba(255,255,255,.2));
+    border-radius: 18px;
+    background: var(--grad-card,linear-gradient(165deg,rgba(20,31,50,.99),rgba(10,16,28,.99)));
+    box-shadow: inset 0 1px 0 rgba(186,220,255,.14), 0 36px 84px -18px rgba(0,0,0,.92);
+    color: var(--text-primary,#f2f6fb);
+    padding: 0;
+    width: min(920px, calc(100vw - 24px));
+    max-height: min(94dvh, calc(100vh - 16px));
+    overflow: hidden;
+  }
+  .template-preview-modal::backdrop { background: rgba(3, 8, 17, .82); backdrop-filter: blur(5px); }
+  .template-preview__panel {
+    display: flex; flex-direction: column;
+    max-height: min(94dvh, calc(100vh - 16px));
+  }
+  .template-preview__header {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-color,rgba(255,255,255,.14));
+    background: rgba(12, 20, 34, .92);
+  }
+  .template-preview__heading { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+  .template-preview__badge {
+    flex: 0 0 auto; padding: 4px 10px; border-radius: 999px; font-size: .74rem; font-weight: 800;
+    color: var(--accent-secondary-text,#fde4b8);
+    border: 1px solid var(--accent-secondary-border,rgba(234,185,104,.35));
+    background: rgba(234,185,104,.1);
+  }
+  .template-preview__badge.is-free {
+    color: var(--on-accent,#f8fbff);
+    border-color: var(--accent-border,rgba(88,166,255,.42));
+    background: var(--grad-btn,linear-gradient(135deg,#2563eb,#1d4ed8));
+  }
+  .template-preview__title {
+    margin: 0; font-size: 1.06rem; line-height: 1.3; color: var(--text-primary,#f2f6fb);
+  }
+  .template-preview__controls { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+  .template-preview__zoom {
+    min-height: 38px; padding: 0 12px; border-radius: 10px;
+    border: 1px solid var(--border-color,rgba(255,255,255,.18));
+    background: rgba(22, 35, 56, .78); color: var(--accent-text,#b6daff);
+    font: 700 .78rem/1 inherit; cursor: pointer; white-space: nowrap;
+  }
+  .template-preview__zoom:hover,
+  .template-preview__zoom[aria-pressed="true"] {
+    border-color: var(--accent,#58a6ff); color: var(--text-primary,#f2f6fb);
+    background: rgba(30, 50, 82, .9);
+  }
+  .template-preview__close {
+    width: 40px; height: 40px; border-radius: 10px;
+    border: 1px solid var(--border-color,rgba(255,255,255,.18));
+    background: rgba(15,23,38,.78); color: var(--text-secondary,#c1cbd8);
+    font-size: 18px; cursor: pointer;
+  }
+  .template-preview__close:hover { border-color: var(--accent,#58a6ff); color: var(--text-primary,#f2f6fb); }
+  .template-preview__viewport {
+    flex: 1 1 auto; min-height: 0;
+    overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+    padding: 16px;
+    background: #09111d;
+  }
+  .template-preview__img {
+    display: block;
+    width: min(100%, 820px);
+    height: auto;
+    margin: 0 auto;
+    border-radius: 10px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .65);
+    cursor: zoom-in;
+  }
+  .template-preview__viewport.is-zoomed .template-preview__img {
+    width: 1080px;
+    max-width: none;
+    cursor: zoom-out;
+  }
+  .template-preview__footer {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 13px 18px max(13px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border-color,rgba(255,255,255,.14));
+    background: rgba(12, 20, 34, .95);
+  }
+  .template-preview__caption {
+    margin: 0; color: var(--text-secondary,#c1cbd8); font-size: .83rem; line-height: 1.45;
+  }
+  .template-preview__actions {
+    display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; gap: 10px;
+  }
+  .template-preview__download {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 40px; padding: 8px 14px; border-radius: 9px;
+    border: 1px solid var(--accent-border,rgba(88,166,255,.42));
+    color: var(--on-accent,#f8fbff);
+    background: var(--grad-btn,linear-gradient(135deg,#2563eb,#1d4ed8));
+    font-weight: 700; font-size: .84rem; text-decoration: none; white-space: nowrap;
+  }
+  .template-preview__download:hover { background: var(--grad-btn-hover,linear-gradient(135deg,#3b82f6,#2563eb)); }
+  .template-preview__download[hidden],
+  .template-preview__order[hidden] { display: none; }
+  .template-preview__order { min-height: 40px; padding: 8px 15px; font-size: .85rem; white-space: nowrap; }
+  .template-preview__order.is-secondary {
+    border-color: var(--border-light,rgba(255,255,255,.26));
+    background: rgba(24, 38, 60, .82);
+    color: var(--accent-text,#b6daff);
+    box-shadow: none;
+  }
+  .template-preview__order.is-secondary:hover {
+    border-color: var(--accent,#58a6ff);
+    background: rgba(32, 52, 84, .92);
+    color: var(--text-primary,#f2f6fb);
+  }
 
   /* Модальное окно заявки на платный шаблон (удобно и на десктопе, и на телефоне) */
   .template-modal {
@@ -480,7 +764,7 @@ const itemListJsonLd = {
   .templates-primary:hover,.templates-primary:focus-visible { color: var(--on-accent,#f8fbff); background: var(--grad-btn-hover,linear-gradient(135deg,#3b82f6,#2563eb)); box-shadow: inset 0 1px 0 rgba(255,255,255,.3),0 11px 25px rgba(20,74,180,.4); transform: translateY(-2px); }
   .template-badge--free:hover,.template-badge--free:focus-visible { color: var(--on-accent,#f8fbff); background: var(--grad-btn-hover,linear-gradient(135deg,#3b82f6,#2563eb)); }
   .template-filters button.is-active:hover,.template-filters button.is-active:focus-visible { color: var(--on-accent,#f8fbff); background: var(--grad-btn-hover,linear-gradient(135deg,#3b82f6,#2563eb)); }
-  .templates-primary:focus-visible,.template-filters button:focus-visible,.template-request:focus-visible,.template-bundle-btn:focus-visible,.template-badge--free:focus-visible { outline: 3px solid var(--accent-secondary-border,rgba(234,185,104,.65)); outline-offset: 3px; }
+  .templates-primary:focus-visible,.template-filters button:focus-visible,.template-request:focus-visible,.template-bundle-btn:focus-visible,.template-badge--free:focus-visible,.template-preview-btn:focus-visible,.template-tile__thumb-btn:focus-visible,.template-preview__zoom:focus-visible,.template-preview__close:focus-visible,.template-preview__download:focus-visible { outline: 3px solid var(--accent-secondary-border,rgba(234,185,104,.65)); outline-offset: 3px; }
   @media(max-width:1240px) { .templates-hero__inner { padding-right: 250px; } .templates-hero__docs { --hero-docs-scale: .82; right: 1%; } }
   @media(max-width:1050px) { .template-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } .templates-hero__inner { padding-right: 0; } .templates-hero__docs { --hero-docs-scale: .9; position: relative; right: auto; top: auto; margin: 34px auto 0; animation: none; } }
   @media(max-width:740px) {
@@ -493,6 +777,17 @@ const itemListJsonLd = {
     .templates-assurance__actions { margin-left: 60px; flex-wrap: wrap; }
     .template-modal__row { grid-template-columns: 1fr; }
     .template-modal__body { padding: 18px 16px max(18px, env(safe-area-inset-bottom)); }
+    .template-preview-modal { width: calc(100vw - 12px); max-height: min(95dvh, calc(100vh - 10px)); border-radius: 14px; }
+    .template-preview__panel { max-height: min(95dvh, calc(100vh - 10px)); }
+    .template-preview__header { align-items: flex-start; padding: 11px 12px; gap: 8px; }
+    .template-preview__title { font-size: .92rem; }
+    .template-preview__zoom { min-height: 36px; padding: 0 9px; font-size: .73rem; }
+    .template-preview__viewport { padding: 10px; }
+    .template-preview__viewport.is-zoomed .template-preview__img { width: 720px; }
+    .template-preview__footer { flex-direction: column; align-items: stretch; gap: 10px; padding: 11px 12px max(11px, env(safe-area-inset-bottom)); }
+    .template-preview__caption { font-size: .78rem; }
+    .template-preview__actions { width: 100%; }
+    .template-preview__download, .template-preview__order { flex: 1 1 auto; justify-content: center; width: 100%; }
   }
-  @media(max-width:460px) { .template-grid { grid-template-columns: 1fr; } .template-tile { display: grid; grid-template-columns: 112px minmax(0,1fr); } .template-tile__visual { aspect-ratio: 1/1.42; } .template-tile__content { min-height: unset; padding: 13px; } .template-tile h3 { font-size: .94rem; } .template-tile p { font-size: .78rem; } .template-badge { top: 7px; left: 6px; padding: 5px 7px; font-size: .63rem; } .template-tile__number { right: 5px; bottom: 5px; } .template-tile__footer { align-items: flex-start; flex-direction: column; } .template-request { width: 100%; font-size: .8rem; } .templates-assurance__actions { margin-left: 0; width: 100%; } .template-bundle-btn { width: 100%; text-align: center; } }
+  @media(max-width:460px) { .template-grid { grid-template-columns: 1fr; } .template-tile { display: grid; grid-template-columns: 112px minmax(0,1fr); } .template-tile__visual { aspect-ratio: 1/1.42; } .template-tile__zoom-pill { display: none; } .template-tile__content { min-height: unset; padding: 13px; } .template-tile h3 { font-size: .94rem; } .template-tile p { font-size: .78rem; } .template-badge { top: 7px; left: 6px; padding: 5px 7px; font-size: .63rem; } .template-tile__number { right: 5px; bottom: 5px; } .template-preview-btn { font-size: .75rem; padding: 6px 10px; } .template-tile__footer { align-items: flex-start; flex-direction: column; } .template-request { width: 100%; font-size: .8rem; } .templates-assurance__actions { margin-left: 0; width: 100%; } .template-bundle-btn { width: 100%; text-align: center; } }
 </style>

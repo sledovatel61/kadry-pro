@@ -5,11 +5,24 @@ import { checkTemplateCatalog } from '../scripts/check-templates.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../content/templates.json', import.meta.url), 'utf8'));
 
-test('каталог содержит 64 уникальных документа: 20 бесплатных, 44 платных', () => {
+test('каталог содержит 64 уникальных документа: 20 бесплатных, 44 платных и 45 JPG-превью (включая № 01–10)', () => {
   const result = checkTemplateCatalog(catalog);
   assert.equal(result.ok, true, result.errors.join('\n'));
   assert.equal(result.free, 20);
   assert.equal(result.paid, 44);
+  assert.equal(result.previews, 45);
+});
+
+test('шаблоны № 01–10 привязаны к /shablony/previews/01.jpg–10.jpg, а в публичной папке нет .docx', () => {
+  for (let i = 1; i <= 10; i++) {
+    const id = String(i).padStart(2, '0');
+    const item = catalog.items.find((entry) => entry.id === id);
+    assert.ok(item, `в каталоге отсутствует шаблон ${id}`);
+    assert.equal(item.preview, `/shablony/previews/${id}.jpg`);
+  }
+  const item01 = catalog.items.find((entry) => entry.id === '01');
+  assert.equal(item01.free, true);
+  assert.equal(item01.file, '/shablony/free/01_Трудовой_договор_бессрочный.pdf');
 });
 
 test('платным позициям доступны только водяные превью, не исходные PDF', () => {
