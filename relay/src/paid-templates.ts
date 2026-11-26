@@ -82,6 +82,17 @@ export const DOCX_AGREEMENTS_BATCH_IDS: readonly string[] = [
   '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52',
 ];
 
+/**
+ * Партия исправленного комплекта № 53–64: ссылки Drive переданы владельцем
+ * 24.11.2026 (папка 1zpuEc-60YNnFEXLoNnoxOdJZG7AvUt4v). DOCX переработаны по
+ * предпродажному ревью (коммит ca9649c, agents/agent-02/docx-53-64), хешей в
+ * репозитории нет — содержимое машиной не подтверждено, приёмка за Марией.
+ * Внутри партии 8 платных (53–56, 59–62) и 4 бесплатных (57, 58, 63, 64).
+ */
+export const DOCX_REFORMED_BATCH_IDS: readonly string[] = [
+  '53', '54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64',
+];
+
 export const DOCX_PACKAGE: readonly DocxPackageEntry[] = [
   { id: '01', filename: '01_Бессрочный_трудовой_договор.docx', sha256: '72538e6581f8e1c4e538775413bc87523abeeb96c4bed9a5c9862bdc5d6ed74f' },
   { id: '02', filename: '02_Срочный_трудовой_договор.docx', sha256: '16cb14a04885b3b784c30d9903005205beb28b7b0268d5cf089cea40458414ea' },
@@ -96,7 +107,7 @@ export const DOCX_PACKAGE: readonly DocxPackageEntry[] = [
 ];
 
 /**
- * Прямые ссылки Google Drive на редактируемые DOCX для № 01–40.
+ * Прямые ссылки Google Drive на редактируемые DOCX для № 01–64.
  *
  * ВАЖНО: это внутренние ссылки для Марии. Они попадают ТОЛЬКО в уведомление
  * (Telegram + письмо) и никогда — в ответ /leads или в разметку сайта: иначе
@@ -146,6 +157,20 @@ export const DOCX_DRIVE_LINKS: Readonly<Record<string, string>> = {
   '50': 'https://drive.google.com/uc?export=download&id=1RVypDlFejT-lJWBxzXyZv3e1hc4vfnzz',
   '51': 'https://drive.google.com/uc?export=download&id=1NTWypeVdAJFj0wWmvtKRrNaXztcEqt4d',
   '52': 'https://drive.google.com/uc?export=download&id=1oMBLG0vkMFdTeKwsynhjfQko3p8i5BmO',
+  /* Партия 53–64: исправленный комплект. ID сверены с именами файлов в
+     agents/agent-02/docx-53-64 коммита ca9649c — совпадают один в один. */
+  '53': 'https://drive.google.com/uc?export=download&id=16zVDdhihgcUt7v6fPl7xNQxWau3fvxwF',
+  '54': 'https://drive.google.com/uc?export=download&id=1N5qgYSgyAfBXejLcxd1GPD6BbznULDwB',
+  '55': 'https://drive.google.com/uc?export=download&id=1DeD0Up9kyWUQeyarJMbVlX6XZRk6SDzI',
+  '56': 'https://drive.google.com/uc?export=download&id=1P786lhKoCp5wA6dH-UtFgYEXDNOm_0cU',
+  '57': 'https://drive.google.com/uc?export=download&id=1CwBTFg8-03Je-j3AXqSTO_ivKjSGDirP',
+  '58': 'https://drive.google.com/uc?export=download&id=1IKHn9y4Fv9kTvnFCpT7BgVJEyby34rhK',
+  '59': 'https://drive.google.com/uc?export=download&id=1Hp089asbOw4ptnl8KlM8C__1Zu7OtbkP',
+  '60': 'https://drive.google.com/uc?export=download&id=1ZSKZ9EMefhYw9wNQOcbGwNYVlXTe1B2M',
+  '61': 'https://drive.google.com/uc?export=download&id=1XYmDN-BOMxSwZGuTbRjvK7-yihpDltHq',
+  '62': 'https://drive.google.com/uc?export=download&id=1WQtz-bHt6eMIH9XwBZjM8g-ZwvGWQymj',
+  '63': 'https://drive.google.com/uc?export=download&id=18PV1GqoOcspOmGWGS970FdZNzBLJuBKq',
+  '64': 'https://drive.google.com/uc?export=download&id=1GUbTTZ-6mhXGyGkZbZHQZPjtcK8RUm90',
   '02': 'https://drive.google.com/uc?export=download&id=1dOCzlh7d70wOR7iFU-ZfnBbP5tbZ8nYN',
   '03': 'https://drive.google.com/uc?export=download&id=1RPMEB4PnXmtr3qby_jlEoCdRQ9vQc2_K',
   '04': 'https://drive.google.com/uc?export=download&id=1CDmvPgQcsEDfr3rs2ht5dYz1uMnQQccc',
@@ -172,6 +197,9 @@ export const DOCX_DRIVE_LINKS: Readonly<Record<string, string>> = {
  *      Хешей в репозитории нет, содержимое DOCX машиной не подтверждено,
  *      поэтому приёмка документа остаётся за Марией (тот же текст задания,
  *      что для 01–10).
+ *   6. № 53–64 — исправленный по ревью комплект (DOCX из коммита ca9649c,
+ *      agents/agent-02/docx-53-64): 12 позиций, включая 4 бесплатных —
+ *      57, 58, 63, 64. Ссылки Drive переданы владельцем 24.11.2026.
  *
  * Список общий для relay и для публичной страницы /shablony (бесплатные
  * позиции показывают кнопку «Скачать DOCX», платные — никогда).
@@ -181,14 +209,14 @@ export const DOCX_DRIVE_VERIFIED_IDS: ReadonlySet<string> = new Set([
   ...Object.keys(DOCX_DRIVE_LINKS),
 ]);
 
-/** Ссылка Google Drive на DOCX по номеру позиции (01…40) или null. */
+/** Ссылка Google Drive на DOCX по номеру позиции (01…64) или null. */
 export function docxDriveUrl(id: string | null | undefined): string | null {
   if (!id) return null;
   const key = String(id).replace(/^t/i, '').padStart(2, '0');
   return DOCX_DRIVE_LINKS[key] ?? null;
 }
 
-/** Позиции, для которых редактируемый DOCX подтверждён (№ 01–10 по хешам, 11–30 по ссылке Drive). */
+/** Позиции, для которых редактируемый DOCX подтверждён (№ 01–10 по хешам, 11–64 по ссылке Drive). */
 export const DOCX_READY_IDS: ReadonlySet<string> = DOCX_DRIVE_VERIFIED_IDS;
 
 /** Есть ли DOCX для позиции каталога (01…64). */
@@ -248,14 +276,14 @@ export const PAID_TEMPLATES: readonly PaidTemplateEntry[] = [
   { id: '46', title: 'Соглашение об обучении и отработке', price: 500, filename: '46_Соглашение_об_обучении_и_отработке.pdf' },
   { id: '48', title: 'Соглашение о дистанционной работе', price: 500, filename: '48_Соглашение_о_дистанционной_работе.pdf' },
   { id: '52', title: 'Журнал материальной ответственности', price: 500, filename: '52_Журнал_материальной_ответственности.pdf' },
-  { id: '53', title: 'Табель учёта рабочего времени Т-12', price: 500, filename: '53_Табель_учёта_рабочего_времени_Т12.pdf' },
-  { id: '54', title: 'Личная карточка работника Т-2', price: 500, filename: '54_Личная_карточка_работника_Т2.pdf' },
-  { id: '55', title: 'Формы воинского учёта 4 и 6', price: 500, filename: '55_Формы_воинского_учёта_4_6.pdf' },
-  { id: '56', title: 'Карта СОУТ — спецоценка условий труда', price: 500, filename: '56_Карта_СОУТ_спецоценка.pdf' },
-  { id: '59', title: 'Памятка — проверка ГИТ', price: 500, filename: '59_Памятка_проверка_ГИТ.pdf' },
-  { id: '60', title: 'Памятка — воинский учёт', price: 500, filename: '60_Памятка_воинский_учёт.pdf' },
-  { id: '61', title: 'Инструкция по заполнению ПВТР', price: 500, filename: '61_Инструкция_ПВТР.pdf' },
-  { id: '62', title: 'Инструкция по заполнению трудового договора', price: 500, filename: '62_Инструкция_трудовой_договор.pdf' },
+  { id: '53', title: 'Табель учёта рабочего времени', price: 500, filename: '53_Табель_учёта_рабочего_времени_Т12.pdf' },
+  { id: '54', title: 'Внутренняя карточка работника', price: 500, filename: '54_Личная_карточка_работника_Т2.pdf' },
+  { id: '55', title: 'Воинский учёт: какую форму применять', price: 500, filename: '55_Формы_воинского_учёта_4_6.pdf' },
+  { id: '56', title: 'Контрольный лист СОУТ', price: 500, filename: '56_Карта_СОУТ_спецоценка.pdf' },
+  { id: '59', title: 'Подготовка к проверке ГИТ', price: 500, filename: '59_Памятка_проверка_ГИТ.pdf' },
+  { id: '60', title: 'Памятка ведения воинского учёта', price: 500, filename: '60_Памятка_воинский_учёт.pdf' },
+  { id: '61', title: 'Как подготовить ПВТР', price: 500, filename: '61_Инструкция_ПВТР.pdf' },
+  { id: '62', title: 'Как составить трудовой договор', price: 500, filename: '62_Инструкция_трудовой_договор.pdf' },
 ];
 
 export const PAID_TEMPLATES_BY_ID: ReadonlyMap<string, PaidTemplateEntry> = new Map(
@@ -269,6 +297,16 @@ export function buildPaidTemplateGithubUrl(entry: PaidTemplateEntry): string {
 
 export const MARIA_GITHUB_LINK_NOTE =
   'Ссылка только для удобства Марии — ведёт на публичный GitHub (коммит ac75af6, не защищённая выдача и не секрет; покупателю не показывается). Это СТАРЫЙ PDF, а не редактируемый DOCX: что отправить покупателю — в задании ниже.';
+
+/**
+ * Примечание для позиций исправленного комплекта № 53–64.
+ *
+ * PDF в зафиксированном коммите — доревизионный образец: у № 53–64 он описывал
+ * другой документ (Т-12, Т-2, формы 4/6, карта СОУТ и т. д.). Публиковать его
+ * покупателю нельзя — актуален только DOCX из Google Drive.
+ */
+export const MARIA_REFORMED_LINK_NOTE =
+  'Ссылка только для удобства Марии и ведёт на публичный GitHub (коммит ac75af6, не защищённая выдача и не секрет; покупателю не показывается). Но это СТАРЫЙ PDF-образец: он не соответствует исправленному документу, и отправлять его покупателю нельзя. Актуальная версия — DOCX по ссылке Google Drive выше.';
 
 /**
  * Что именно делать Марии — одинаково в Telegram и в письме.
@@ -383,7 +421,9 @@ export function resolveTemplateNotice(req: TemplateRequest): ResolvedTemplateNot
     filename: entry.filename,
     githubUrl: buildPaidTemplateGithubUrl(entry),
     docxUrl: docxDriveUrl(entry.id),
-    linkNote: MARIA_GITHUB_LINK_NOTE,
+    linkNote: DOCX_REFORMED_BATCH_IDS.includes(entry.id)
+      ? MARIA_REFORMED_LINK_NOTE
+      : MARIA_GITHUB_LINK_NOTE,
     docxReady: hasConfirmedDocx(entry.id),
   };
 }

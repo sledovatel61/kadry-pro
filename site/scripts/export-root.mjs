@@ -68,6 +68,20 @@ async function collectFiles(dir, prefix = '') {
   return out;
 }
 
+/**
+ * Старые имена бесплатных PDF, которые остались в поиске и в чужих ссылках,
+ * хотя документ переименован (комплект № 53–64: у № 63 и № 64 изменились и
+ * название, и содержание). По прежнему адресу отдаём АКТУАЛЬНЫЙ файл, чтобы
+ * не ломать старые ссылки и не отдавать доревизионный дефектный образец.
+ *
+ * key — старое имя файла в корне /shablony/, value — имя актуального файла
+ * из site/public/shablony/free/.
+ */
+const LEGACY_FREE_ALIASES = {
+  '63_Таблица_сроки_кадровых_действий.pdf': '63_Сроки_хранения_кадровых_документов.pdf',
+  '64_Памятка_штрафы_КАДРЫ.pdf': '64_Штрафы_ГИТ_и_смежных_органов.pdf',
+};
+
 async function freeTemplateFilenames() {
   const raw = JSON.parse(await readFile(join(SITE, 'content/templates.json'), 'utf8'));
   const names = new Set();
@@ -93,7 +107,7 @@ async function cleanPaidRootTemplates(freeNames) {
     if (!entry.isFile()) continue;
     const name = entry.name;
     if (name === 'free-bundle-20.zip') continue;
-    if (name.toLowerCase().endsWith('.pdf') && freeNames.has(name)) {
+    if (name.toLowerCase().endsWith('.pdf') && (freeNames.has(name) || name in LEGACY_FREE_ALIASES)) {
       keptFree += 1;
       continue;
     }
@@ -131,8 +145,24 @@ async function exportToRoot() {
     }
   }
 
+  /* Старые адреса переименованных бесплатных PDF — отдаём актуальный файл. */
+  /* Прежние корневые адреса /shablony/<имя>.pdf должны отдавать АКТУАЛЬНЫЙ
+     файл: cleanPaidRootTemplates их сохраняет, но содержимое не обновляет.
+     Иначе после переработки документа старый URL продолжал бы отдавать
+     доревизионный дефектный образец. */
+  for (const freeName of freeNames) {
+    const actual = join(SRC, 'shablony', 'free', freeName);
+    if (existsSync(actual)) await cp(actual, join(REPO, 'shablony', freeName));
+  }
+  for (const [legacyName, actualName] of Object.entries(LEGACY_FREE_ALIASES)) {
+    /* Плюс переименованные: их прежний адрес получает актуальный файл. */
+    const actual = join(SRC, 'shablony', 'free', actualName);
+    if (!existsSync(actual)) continue;
+    await cp(actual, join(REPO, 'shablony', legacyName));
+  }
+
   console.log(
-    `Корень обновлён из site/pages-dist (бесплатных старых PDF сохранено: ${keptFree}, закрыто платных файлов: ${removedPaid})`,
+    `Корень обновлён из site/pages-dist (бесплатных старых PDF сохранено: ${keptFree}, закрыто платных файлов: ${removedPaid}, старых имён переадресовано: ${Object.keys(LEGACY_FREE_ALIASES).length})`,
   );
 }
 
@@ -264,12 +294,36 @@ async function verifyRoot() {
   const rootPdfs = rootShablonyEntries
     .filter((e) => e.isFile() && e.name.toLowerCase().endsWith('.pdf'))
     .map((e) => e.name);
+  /* Бесплатный PDF доступен либо по прежнему корневому адресу, либо (для
+     переименованных в комплекте 53–64) по адресу /shablony/free/<имя>. */
   for (const freeName of freeNames) {
-    if (!rootPdfs.includes(freeName)) {
-      problems.push(`потерян старый URL бесплатного PDF: /shablony/${freeName}`);
+    const atRoot = rootPdfs.includes(freeName);
+    const atFree = existsSync(join(REPO, 'shablony', 'free', freeName));
+    if (!atRoot && !atFree) {
+      problems.push(`потерян адрес бесплатного PDF: /shablony/${freeName} и /shablony/free/${freeName}`);
     }
   }
-  const leakedPaid = rootPdfs.filter((name) => !freeNames.has(name));
+  for (const freeName of rootPdfs.filter((name) => freeNames.has(name))) {
+    const fresh = join(SRC, 'shablony', 'free', freeName);
+    if (!existsSync(fresh)) continue;
+    const [a, b] = await Promise.all([readFile(join(REPO, 'shablony', freeName)), readFile(fresh)]);
+    if (!a.equals(b)) problems.push(`корневой бесплатный PDF устарел: /shablony/${freeName}`);
+  }
+  for (const [legacyName, actualName] of Object.entries(LEGACY_FREE_ALIASES)) {
+    if (!rootPdfs.includes(legacyName)) {
+      problems.push(`потерян прежний адрес бесплатного PDF: /shablony/${legacyName}`);
+      continue;
+    }
+    const [legacyBuf, actualBuf] = await Promise.all([
+      readFile(join(REPO, 'shablony', legacyName)),
+      readFile(join(SRC, 'shablony', 'free', actualName)),
+    ]);
+    if (!legacyBuf.equals(actualBuf)) {
+      problems.push(`по прежнему адресу /shablony/${legacyName} лежит неактуальный файл`);
+    }
+  }
+  const legacyNames = new Set(Object.keys(LEGACY_FREE_ALIASES));
+  const leakedPaid = rootPdfs.filter((name) => !freeNames.has(name) && !legacyNames.has(name));
   if (leakedPaid.length) {
     problems.push(`в /shablony/ остались платные PDF (${leakedPaid.length}): ${leakedPaid[0]}…`);
   }
