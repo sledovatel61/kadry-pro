@@ -130,7 +130,7 @@ test('на собранной /shablony.html у всех 44 платных ка�
     }
 
     /* Бесплатные позиции с готовым DOCX: № 01, партия приказов 11–20 и ЛНА 27, 29. */
-    const FREE_DOCX_IDS = new Set(['01', '11', '12', '13', '17', '19', '27', '29']);
+    const FREE_DOCX_IDS = new Set(['01', '11', '12', '13', '17', '19', '27', '29', '32', '37', '40']);
 
     for (const item of freeItems) {
       const card = doc.getElementById(`s${item.id}`);
@@ -625,7 +625,7 @@ test('карточка № 01: одна прямая кнопка «Скачат
     assert.equal(doc.querySelectorAll('button[data-open-template][data-template-package="free"]').length, 0);
 
     /* Остальные бесплатные карточки без DOCX по-прежнему отдают свои PDF. */
-    const otherPdf = doc.querySelectorAll<HTMLAnchorElement>('#s32 a.template-download[download]');
+    const otherPdf = doc.querySelectorAll<HTMLAnchorElement>('#s43 a.template-download[download]');
     assert.equal(otherPdf.length, 1, 'бесплатные PDF остальных позиций не тронуты');
   } finally {
     cleanup();
@@ -698,7 +698,7 @@ test('зум предпросмотра расширяет само окно д�
   }
 });
 
-test('hero обещает «20 бесплатных шаблонов», а ссылки Google Drive на платные № 02–10 и 21–30 не попадают на сайт', () => {
+test('hero обещает «20 бесплатных шаблонов», а ссылки Google Drive на платные № 02–10, 21–30 и 31–40 не попадают на сайт', () => {
   const { doc, cleanup } = mountShablonyDom();
   try {
     const proof = doc.querySelector('.templates-proof');
@@ -709,7 +709,7 @@ test('hero обещает «20 бесплатных шаблонов», а сс�
     cleanup();
   }
 
-  /* Платные DOCX № 02–10 и 21–30 живут только в relay: на сайте их быть не должно. */
+  /* Платные DOCX № 02–10, 21–30 и 31–40 живут только в relay: на сайте их быть не должно. */
   const paidDriveIds = [
     '1dOCzlh7d70wOR7iFU-ZfnBbP5tbZ8nYN',
     '1RPMEB4PnXmtr3qby_jlEoCdRQ9vQc2_K',
@@ -729,6 +729,14 @@ test('hero обещает «20 бесплатных шаблонов», а сс�
     '1miG8hMVX7TQ4mKTQRw152T_5q-41IpiV',
     '1zIc0XrELJEpalwvSPLscYHhlhnBiKwrq',
     '1avuux5e5nF5PIBrIg0GkBEA2MeLDH3ql',
+    /* Платные № 31, 33–36, 38–39: ссылки только в relay, на сайте их быть не должно. */
+    '1lftfJbNMjCoNS-RrOF_5bvx0ZY7Ts_pO',
+    '1GE_Lzx5_CGjq2uWQLUxONVxCOOoJhsW_',
+    '1_GAufQJpQq_VoeVlghCnh3V0XnjIYltp',
+    '1uSXDE6h86zPIhlgVmRAKftUoa8sfTIZ1',
+    '1qG2Ge9YJR5mlacXBThYpvAfQts9uhkGY',
+    '16a8wXiP8WOL8MyIK_3UNPqgmKTx-96TY',
+    '1f0r1Go5KuNzMTKHM4GAyJNPJPq4-ty57',
   ];
   for (const file of ['shablony.html', 'preview/shablony.html']) {
     const full = resolve(REPO_ROOT, file);
@@ -743,22 +751,25 @@ test('hero обещает «20 бесплатных шаблонов», а сс�
       assert.ok(!html.includes(id), `${file}: ссылка на платный DOCX (${id}) попала в разметку`);
       assert.ok(!scripts.includes(id), `${file}: ссылка на платный DOCX (${id}) попала в скрипт`);
     }
-    /* Ссылка бесплатного № 01 на сайте быть должна. */
+    /* Ссылки бесплатных позиций на сайте быть должны. */
     assert.ok(html.includes('1kJOeCWe6MjMgFuq1dGzuOXVzKy0t7hPR'), `${file}: у № 01 нет прямой ссылки на DOCX`);
+    for (const freeId of ['1L5lTo2x98SmLFEyZ-K-5ZRAc_nNpNVT3', '10x3YQnQ1GnnR31t7X3RT9EI-LbCO9tJ-', '1AHTJ4rYtSkd-YSqm2kdFFqnGBym_eVO9']) {
+      assert.ok(html.includes(freeId), `${file}: у бесплатной позиции 31–40 нет прямой ссылки на DOCX (${freeId})`);
+    }
   }
 });
 
-test('обещание DOCX ограничено подтверждёнными № 01–30: старые карточки обещают только PDF', () => {
+test('обещание DOCX ограничено подтверждёнными № 01–40: старые карточки обещают только PDF', () => {
   const { doc, cleanup } = mountShablonyDom();
   try {
     const previewModal = doc.getElementById('template-preview-modal') as HTMLDialogElement;
     const caption = previewModal.querySelector<HTMLElement>('[data-preview-modal-caption]')!;
 
-    /* Подтверждённые позиции 01–30: подпись про редактируемый DOCX.
+    /* Подтверждённые позиции 01–40: подпись про редактируемый DOCX.
        № 01 — бесплатная позиция, у которой скачивается PDF прежнего образца:
        подпись обязана называть формат, иначе кнопка «Скачать PDF» рядом с
        обещанием DOCX читается как несоответствие. */
-    for (let i = 1; i <= 30; i++) {
+    for (let i = 1; i <= 40; i++) {
       const id = String(i).padStart(2, '0');
       const trigger = doc.querySelector<HTMLElement>(`#s${id} [data-open-preview]`);
       assert.ok(trigger, `нет триггера предпросмотра у #s${id}`);
@@ -777,9 +788,9 @@ test('обещание DOCX ограничено подтверждёнными 
       previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
     }
 
-    /* Все остальные карточки с превью (№ 31–62): DOCX не подтверждён. */
+    /* Все остальные карточки с превью (№ 41–62): DOCX не подтверждён. */
     const others = [...doc.querySelectorAll<HTMLElement>('[data-open-preview]')]
-      .filter((el) => Number(el.dataset.previewId ?? 0) > 30);
+      .filter((el) => Number(el.dataset.previewId ?? 0) > 40);
     assert.ok(others.length >= 20, `ожидались старые карточки с превью, найдено ${others.length}`);
 
     for (const trigger of others) {
@@ -796,7 +807,7 @@ test('обещание DOCX ограничено подтверждёнными 
     /* В собранном HTML обещание DOCX встречается только в подтверждённом блоке. */
     const rawHtml = readFileSync(builtShablonyPath, 'utf8');
     const docxPromises = (rawHtml.match(/data-preview-docx="1"/g) ?? []).length;
-    assert.equal(docxPromises, 60, 'по 2 триггера (миниатюра + кнопка) на 30 подтверждённых карточек');
+    assert.equal(docxPromises, 80, 'по 2 триггера (миниатюра + кнопка) на 40 подтверждённых карточек');
   } finally {
     cleanup();
   }

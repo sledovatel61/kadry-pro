@@ -9,21 +9,24 @@ const categories = [...new Set(catalog.items.map((item) => item.category))];
 const freeCount = catalog.items.filter((item) => item.free).length;
 const paidCount = catalog.items.length - freeCount;
 const previewCount = catalog.items.filter((item) => Boolean(item.preview)).length;
-/* Редактируемые DOCX подтверждены для № 01–30: № 01–10 — комплект с
+/* Редактируемые DOCX подтверждены для № 01–40: № 01–10 — комплект с
    закреплёнными SHA-256 (agents/agent-02/docx-01-10, коммит c70ac32),
-   № 11–30 — партии приказов и ЛНА, ссылки Drive переданы владельцем
-   24.11.2026 и 26.11.2026 (хешей нет, содержимое машиной не подтверждено).
+   № 11–40 — партии приказов, ЛНА и должностных инструкций, ссылки Drive
+   переданы владельцем 24.11.2026 и 26.11.2026 (хешей нет, содержимое
+   машиной не подтверждено).
    Для остальных карточек обещать DOCX нельзя — в репозитории есть лишь PDF. */
 const DOCX_READY_IDS = new Set([
   '01', '02', '03', '04', '05', '06', '07', '08', '09', '10',
   '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
   '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
+  '31', '32', '33', '34', '35', '36', '37', '38', '39', '40',
 ]);
 /* Открытая прямая ссылка на DOCX есть только у БЕСПЛАТНЫХ позиций.
-   Для платных № 02–10, 14–16, 18, 20–26, 28, 30 ссылки Google Drive живут
-   ТОЛЬКО в relay: клиенту они не отдаются (ни в разметке, ни в ответе
-   /leads) — иначе платный документ уходил бы без оплаты.
-   Бесплатные № 11, 12, 13, 17, 19, 27, 29 отдаются одной кнопкой «Скачать DOCX». */
+   Для платных № 02–10, 14–16, 18, 20–26, 28, 30–31, 33–36, 38–39 ссылки Google
+   Drive живут ТОЛЬКО в relay: клиенту они не отдаются (ни в разметке, ни в
+   ответе /leads) — иначе платный документ уходил бы без оплаты.
+   Бесплатные № 11, 12, 13, 17, 19, 27, 29, 32, 37, 40 отдаются одной кнопкой
+   «Скачать DOCX». */
 const FREE_DOCX_LINKS: Record<string, string> = {
   '01': 'https://drive.google.com/uc?export=download&id=1kJOeCWe6MjMgFuq1dGzuOXVzKy0t7hPR',
   '11': 'https://drive.google.com/uc?export=download&id=1k9kRBQ1ibAcFMmnFju529zarLzFihWR8',
@@ -33,13 +36,16 @@ const FREE_DOCX_LINKS: Record<string, string> = {
   '19': 'https://drive.google.com/uc?export=download&id=1KkGVCsEdbD5tNHjTw6G8rARsSk0dTvl6',
   '27': 'https://drive.google.com/uc?export=download&id=1oZlFkCt8rfrC9SiSyV1-0Y7ej3KUIsK8',
   '29': 'https://drive.google.com/uc?export=download&id=1TNIaTm9YrujQmvxSBAk22EPm0xY-Cevk',
+  '32': 'https://drive.google.com/uc?export=download&id=1L5lTo2x98SmLFEyZ-K-5ZRAc_nNpNVT3',
+  '37': 'https://drive.google.com/uc?export=download&id=10x3YQnQ1GnnR31t7X3RT9EI-LbCO9tJ-',
+  '40': 'https://drive.google.com/uc?export=download&id=1AHTJ4rYtSkd-YSqm2kdFFqnGBym_eVO9',
 };
 const enrichedItems = catalog.items.map((item, index) => {
   const isReworkedDocx = DOCX_READY_IDS.has(String(item.id).padStart(2, '0'));
   return {
     ...item,
     isReworkedDocx,
-    /* Прямая ссылка на редактируемый DOCX — только для бесплатных № 01, 11–13, 17, 19, 27, 29. */
+    /* Прямая ссылка на редактируемый DOCX — только для бесплатных № 01, 11–13, 17, 19, 27, 29, 32, 37, 40. */
     freeDocxUrl: item.free ? FREE_DOCX_LINKS[String(item.id).padStart(2, '0')] ?? null : null,
     previewW: isReworkedDocx ? 1080 : 595,
     previewH: isReworkedDocx ? 1528 : 842,
@@ -115,7 +121,7 @@ const itemListJsonLd = {
   </section>
 
   <section class="template-catalog bg-inner-scene bg-gallery-scene" id="catalog" aria-labelledby="catalog-title">
-    <div class="template-catalog__heading"><div><p class="eyebrow">Библиотека</p><h2 id="catalog-title">Все шаблоны</h2><p>Бесплатные документы доступны сразу. Платные файлы не размещены в открытом доступе. Редактируемый DOCX есть для № 01–30: у бесплатных позиций он скачивается сразу, у платных — отправляется вручную после заявки; у остальных позиций — PDF.</p></div>
+    <div class="template-catalog__heading"><div><p class="eyebrow">Библиотека</p><h2 id="catalog-title">Все шаблоны</h2><p>Бесплатные документы доступны сразу. Платные файлы не размещены в открытом доступе. Редактируемый DOCX есть для № 01–40: у бесплатных позиций он скачивается сразу, у платных — отправляется вручную после заявки; у остальных позиций — PDF.</p></div>
       <label class="template-search"><span class="sr-only">Поиск документов</span><span aria-hidden="true">⌕</span><input type="search" id="template-search" placeholder="Найти документ…" autocomplete="off" /></label>
     </div>
     <div class="template-filters" role="group" aria-label="Фильтр по категории"><button type="button" class="is-active" data-filter="all" aria-pressed="true">Все <span>{catalog.items.length}</span></button>{categories.map((category) => <button type="button" data-filter={category} aria-pressed="false">{category}</button>)}</div>
