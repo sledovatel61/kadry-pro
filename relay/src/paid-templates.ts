@@ -72,6 +72,16 @@ export const DOCX_JOB_DESC_BATCH_IDS: readonly string[] = [
   '31', '32', '33', '34', '35', '36', '37', '38', '39', '40',
 ];
 
+/**
+ * Партия соглашений и журналов № 41–52: ссылки Drive переданы владельцем 26.11.2026.
+ * Хешей нет — содержимое DOCX машиной не подтверждено (см. DOCX_DRIVE_VERIFIED_IDS).
+ * ID файлов Google Drive сверены с именами в комплекте `agents/agent-02/docx-41-52`
+ * коммита c3c541c: 12 позиций, имена совпадают один в один.
+ */
+export const DOCX_AGREEMENTS_BATCH_IDS: readonly string[] = [
+  '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52',
+];
+
 export const DOCX_PACKAGE: readonly DocxPackageEntry[] = [
   { id: '01', filename: '01_Бессрочный_трудовой_договор.docx', sha256: '72538e6581f8e1c4e538775413bc87523abeeb96c4bed9a5c9862bdc5d6ed74f' },
   { id: '02', filename: '02_Срочный_трудовой_договор.docx', sha256: '16cb14a04885b3b784c30d9903005205beb28b7b0268d5cf089cea40458414ea' },
@@ -124,6 +134,18 @@ export const DOCX_DRIVE_LINKS: Readonly<Record<string, string>> = {
   '38': 'https://drive.google.com/uc?export=download&id=16a8wXiP8WOL8MyIK_3UNPqgmKTx-96TY',
   '39': 'https://drive.google.com/uc?export=download&id=1f0r1Go5KuNzMTKHM4GAyJNPJPq4-ty57',
   '40': 'https://drive.google.com/uc?export=download&id=1AHTJ4rYtSkd-YSqm2kdFFqnGBym_eVO9',
+  '41': 'https://drive.google.com/uc?export=download&id=12IYOcJpOSmpG-1ovW7qmHV9Jwk42vYOE',
+  '42': 'https://drive.google.com/uc?export=download&id=1HBV4H0Wewuwy1Pn-S-Cn8ER2XoL1EuQe',
+  '43': 'https://drive.google.com/uc?export=download&id=1ZZVnL9UCAUysrLATjmrnC7s1yAQ1DmdZ',
+  '44': 'https://drive.google.com/uc?export=download&id=1zt4kphyQJxewrn-WDJAcB1lZNCvfNocW',
+  '45': 'https://drive.google.com/uc?export=download&id=1HZFGSlBvBDKPbXXqKvQN29IQKCVloTyC',
+  '46': 'https://drive.google.com/uc?export=download&id=1wjRD6h9Z_Ew0oS5Y4IZkbvTCgUh4ty2L',
+  '47': 'https://drive.google.com/uc?export=download&id=1KNSrB4JfUvNnlvrN7xt9Yo3O923ROEcl',
+  '48': 'https://drive.google.com/uc?export=download&id=1-breRVmDEajv2V7g-ZE4gd4pRzAcFOCR',
+  '49': 'https://drive.google.com/uc?export=download&id=1gG-jhlksSTT4yjJ-cWYXQpHRXH00SEyX',
+  '50': 'https://drive.google.com/uc?export=download&id=1RVypDlFejT-lJWBxzXyZv3e1hc4vfnzz',
+  '51': 'https://drive.google.com/uc?export=download&id=1NTWypeVdAJFj0wWmvtKRrNaXztcEqt4d',
+  '52': 'https://drive.google.com/uc?export=download&id=1oMBLG0vkMFdTeKwsynhjfQko3p8i5BmO',
   '02': 'https://drive.google.com/uc?export=download&id=1dOCzlh7d70wOR7iFU-ZfnBbP5tbZ8nYN',
   '03': 'https://drive.google.com/uc?export=download&id=1RPMEB4PnXmtr3qby_jlEoCdRQ9vQc2_K',
   '04': 'https://drive.google.com/uc?export=download&id=1CDmvPgQcsEDfr3rs2ht5dYz1uMnQQccc',
@@ -145,6 +167,8 @@ export const DOCX_DRIVE_LINKS: Readonly<Record<string, string>> = {
  *   3. № 21–30 — партия ЛНА, ссылки Drive переданы владельцем 26.11.2026.
  *   4. № 31–40 — партия должностных инструкций и регламента КДП, ссылки Drive
  *      переданы владельцем 26.11.2026.
+ *   5. № 41–52 — партия соглашений и журналов, ссылки Drive переданы владельцем
+ *      26.11.2026 (12 позиций, включая 5 бесплатных: 43, 47, 49, 50, 51).
  *      Хешей в репозитории нет, содержимое DOCX машиной не подтверждено,
  *      поэтому приёмка документа остаётся за Марией (тот же текст задания,
  *      что для 01–10).

@@ -220,7 +220,10 @@ test('манифест DOCX № 01–10: закреплённые SHA-256 сов
   assert.equal(hasConfirmedDocx('32'), true, 'бесплатный № 32 входит в партию ДИ');
   assert.equal(hasConfirmedDocx('37'), true, 'бесплатный № 37 входит в партию ДИ');
   assert.equal(hasConfirmedDocx('40'), true, '№ 40 входит в партию ДИ');
-  assert.equal(hasConfirmedDocx('41'), false, '№ 41 в партию не входит');
+  assert.equal(hasConfirmedDocx('41'), true, '№ 41 входит в партию соглашений 41–52');
+  assert.equal(hasConfirmedDocx('43'), true, 'бесплатный № 43 входит в партию 41–52');
+  assert.equal(hasConfirmedDocx('49'), true, 'бесплатный № 49 входит в партию 41–52');
+  assert.equal(hasConfirmedDocx('52'), true, '№ 52 входит в партию 41–52');
   assert.equal(hasConfirmedDocx('53'), false);
   assert.equal(hasConfirmedDocx('t07'), true);
   assert.equal(hasConfirmedDocx('01'), true, 'бесплатный № 01 входит в комплект');
@@ -627,12 +630,16 @@ test('ссылки Google Drive на платные DOCX № 02–10, 14–31, 3
      а прямые ссылки на DOCX приходят исключительно Марии в уведомлении.
      Проверяем с двух сторон: разметка собранной страницы и тело ответа на
      заявку (включая повтор и ветку дубля). */
-  /* Открыто на сайте отдаются только БЕСПЛАТНЫЕ позиции с DOCX (№ 01, 11–13, 17, 19, 27, 29, 32, 37, 40). */
-  const FREE_DOCX_OPEN_IDS = new Set(['01', '11', '12', '13', '17', '19', '27', '29', '32', '37', '40']);
+  /* Открыто на сайте отдаются только БЕСПЛАТНЫЕ позиции с DOCX
+     (№ 01, 11–13, 17, 19, 27, 29, 32, 37, 40, 43, 47, 49, 50, 51). */
+  const FREE_DOCX_OPEN_IDS = new Set([
+    '01', '11', '12', '13', '17', '19', '27', '29', '32', '37', '40',
+    '43', '47', '49', '50', '51',
+  ]);
   const paidLinks = Object.entries(DOCX_DRIVE_LINKS)
     .filter(([id]) => !FREE_DOCX_OPEN_IDS.has(id))
     .map(([, url]) => url);
-  assert.equal(paidLinks.length, 29, 'ожидались ссылки для платных № 02–10, 14–16, 18, 20–26, 28, 30–31, 33–36, 38–39');
+  assert.equal(paidLinks.length, 36, 'ожидались ссылки для платных № 02–10, 14–16, 18, 20–26, 28, 30–31, 33–36, 38–39, 41–42, 44–46, 48, 52');
 
   /* Бесплатные позиции, наоборот, обязаны присутствовать в открытой сборке — иначе кнопки нет. */
   for (const id of FREE_DOCX_OPEN_IDS) {

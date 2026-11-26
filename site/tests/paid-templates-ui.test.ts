@@ -129,8 +129,9 @@ test('на собранной /shablony.html у всех 44 платных ка�
       assert.equal(card.querySelector('a[download]'), null, 'у платной карточки не должно быть ссылки download');
     }
 
-    /* Бесплатные позиции с готовым DOCX: № 01, партия приказов 11–20 и ЛНА 27, 29. */
-    const FREE_DOCX_IDS = new Set(['01', '11', '12', '13', '17', '19', '27', '29', '32', '37', '40']);
+    /* Бесплатные позиции с готовым DOCX: № 01, приказы 11–20, ЛНА 27/29,
+       ДИ 32/37/40 и партия соглашений и журналов 43, 47, 49, 50, 51. */
+    const FREE_DOCX_IDS = new Set(['01', '11', '12', '13', '17', '19', '27', '29', '32', '37', '40', '43', '47', '49', '50', '51']);
 
     for (const item of freeItems) {
       const card = doc.getElementById(`s${item.id}`);
@@ -625,7 +626,7 @@ test('карточка № 01: одна прямая кнопка «Скачат
     assert.equal(doc.querySelectorAll('button[data-open-template][data-template-package="free"]').length, 0);
 
     /* Остальные бесплатные карточки без DOCX по-прежнему отдают свои PDF. */
-    const otherPdf = doc.querySelectorAll<HTMLAnchorElement>('#s43 a.template-download[download]');
+    const otherPdf = doc.querySelectorAll<HTMLAnchorElement>('#s57 a.template-download[download]');
     assert.equal(otherPdf.length, 1, 'бесплатные PDF остальных позиций не тронуты');
   } finally {
     cleanup();
@@ -759,17 +760,17 @@ test('hero обещает «20 бесплатных шаблонов», а сс�
   }
 });
 
-test('обещание DOCX ограничено подтверждёнными № 01–40: старые карточки обещают только PDF', () => {
+test('обещание DOCX ограничено подтверждёнными № 01–52: старые карточки обещают только PDF', () => {
   const { doc, cleanup } = mountShablonyDom();
   try {
     const previewModal = doc.getElementById('template-preview-modal') as HTMLDialogElement;
     const caption = previewModal.querySelector<HTMLElement>('[data-preview-modal-caption]')!;
 
-    /* Подтверждённые позиции 01–40: подпись про редактируемый DOCX.
-       № 01 — бесплатная позиция, у которой скачивается PDF прежнего образца:
-       подпись обязана называть формат, иначе кнопка «Скачать PDF» рядом с
-       обещанием DOCX читается как несоответствие. */
-    for (let i = 1; i <= 40; i++) {
+    /* Подтверждённые позиции 01–52: подпись про редактируемый DOCX.
+       Бесплатные позиции с DOCX отдают его сразу, поэтому подпись обязана
+       называть именно DOCX, иначе кнопка рядом с обещанием читается как
+       несоответствие. */
+    for (let i = 1; i <= 52; i++) {
       const id = String(i).padStart(2, '0');
       const trigger = doc.querySelector<HTMLElement>(`#s${id} [data-open-preview]`);
       assert.ok(trigger, `нет триггера предпросмотра у #s${id}`);
@@ -788,10 +789,12 @@ test('обещание DOCX ограничено подтверждёнными 
       previewModal.querySelector<HTMLButtonElement>('[data-close-preview]')!.click();
     }
 
-    /* Все остальные карточки с превью (№ 41–62): DOCX не подтверждён. */
+    /* Все остальные карточки с превью (№ 53–64 и бесплатные без DOCX):
+       DOCX не подтверждён. */
     const others = [...doc.querySelectorAll<HTMLElement>('[data-open-preview]')]
-      .filter((el) => Number(el.dataset.previewId ?? 0) > 40);
-    assert.ok(others.length >= 20, `ожидались старые карточки с превью, найдено ${others.length}`);
+      .filter((el) => Number(el.dataset.previewId ?? 0) > 52);
+    /* 8 позиций (53–56, 59–62) рендерятся в двух раскладках — отсюда 16 триггеров. */
+    assert.ok(others.length >= 8, `ожидались старые карточки с превью, найдено ${others.length}`);
 
     for (const trigger of others) {
       const id = trigger.dataset.previewId ?? '';
@@ -807,7 +810,7 @@ test('обещание DOCX ограничено подтверждёнными 
     /* В собранном HTML обещание DOCX встречается только в подтверждённом блоке. */
     const rawHtml = readFileSync(builtShablonyPath, 'utf8');
     const docxPromises = (rawHtml.match(/data-preview-docx="1"/g) ?? []).length;
-    assert.equal(docxPromises, 80, 'по 2 триггера (миниатюра + кнопка) на 40 подтверждённых карточек');
+    assert.equal(docxPromises, 104, 'по 2 триггера (миниатюра + кнопка) на 52 подтверждённые карточки');
   } finally {
     cleanup();
   }

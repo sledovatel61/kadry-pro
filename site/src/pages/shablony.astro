@@ -9,17 +9,18 @@ const categories = [...new Set(catalog.items.map((item) => item.category))];
 const freeCount = catalog.items.filter((item) => item.free).length;
 const paidCount = catalog.items.length - freeCount;
 const previewCount = catalog.items.filter((item) => Boolean(item.preview)).length;
-/* Редактируемые DOCX подтверждены для № 01–40: № 01–10 — комплект с
+/* Редактируемые DOCX подтверждены для № 01–52: № 01–10 — комплект с
    закреплёнными SHA-256 (agents/agent-02/docx-01-10, коммит c70ac32),
-   № 11–40 — партии приказов, ЛНА и должностных инструкций, ссылки Drive
-   переданы владельцем 24.11.2026 и 26.11.2026 (хешей нет, содержимое
-   машиной не подтверждено).
+   № 11–52 — партии приказов, ЛНА, должностных инструкций, соглашений и
+   журналов; ссылки Drive переданы владельцем 24.11.2026 и 26.11.2026
+   (хешей нет, содержимое машиной не подтверждено).
    Для остальных карточек обещать DOCX нельзя — в репозитории есть лишь PDF. */
 const DOCX_READY_IDS = new Set([
   '01', '02', '03', '04', '05', '06', '07', '08', '09', '10',
   '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
   '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
   '31', '32', '33', '34', '35', '36', '37', '38', '39', '40',
+  '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52',
 ]);
 /* Открытая прямая ссылка на DOCX есть только у БЕСПЛАТНЫХ позиций.
    Для платных № 02–10, 14–16, 18, 20–26, 28, 30–31, 33–36, 38–39 ссылки Google
@@ -39,6 +40,13 @@ const FREE_DOCX_LINKS: Record<string, string> = {
   '32': 'https://drive.google.com/uc?export=download&id=1L5lTo2x98SmLFEyZ-K-5ZRAc_nNpNVT3',
   '37': 'https://drive.google.com/uc?export=download&id=10x3YQnQ1GnnR31t7X3RT9EI-LbCO9tJ-',
   '40': 'https://drive.google.com/uc?export=download&id=1AHTJ4rYtSkd-YSqm2kdFFqnGBym_eVO9',
+  /* Партия 41–52: бесплатные № 43, 47, 49, 50, 51 получают кнопку «Скачать DOCX».
+     Платные № 41, 42, 44, 45, 46, 48, 52 сюда НЕ попадают — их ссылки только в relay. */
+  '43': 'https://drive.google.com/uc?export=download&id=1ZZVnL9UCAUysrLATjmrnC7s1yAQ1DmdZ',
+  '47': 'https://drive.google.com/uc?export=download&id=1KNSrB4JfUvNnlvrN7xt9Yo3O923ROEcl',
+  '49': 'https://drive.google.com/uc?export=download&id=1gG-jhlksSTT4yjJ-cWYXQpHRXH00SEyX',
+  '50': 'https://drive.google.com/uc?export=download&id=1RVypDlFejT-lJWBxzXyZv3e1hc4vfnzz',
+  '51': 'https://drive.google.com/uc?export=download&id=1NTWypeVdAJFj0wWmvtKRrNaXztcEqt4d',
 };
 const enrichedItems = catalog.items.map((item, index) => {
   const isReworkedDocx = DOCX_READY_IDS.has(String(item.id).padStart(2, '0'));
