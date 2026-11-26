@@ -212,7 +212,11 @@ test('манифест DOCX № 01–10: закреплённые SHA-256 сов
   for (const entry of PAID_TEMPLATES) {
     assert.equal(hasConfirmedDocx(entry.id), DOCX_READY_IDS.has(entry.id), `DOCX для ${entry.id}`);
   }
-  assert.equal(hasConfirmedDocx('14'), true, '№ 14 входит в комплект 11–20');
+  assert.equal(hasConfirmedDocx('14'), true, '№ 14 входит в партию 11–20');
+  assert.equal(hasConfirmedDocx('21'), true, '№ 21 входит в партию ЛНА 21–30');
+  assert.equal(hasConfirmedDocx('27'), true, 'бесплатный № 27 входит в партию ЛНА');
+  assert.equal(hasConfirmedDocx('30'), true, '№ 30 входит в партию ЛНА');
+  assert.equal(hasConfirmedDocx('31'), false, '№ 31 в партию не входит');
   assert.equal(hasConfirmedDocx('53'), false);
   assert.equal(hasConfirmedDocx('t07'), true);
   assert.equal(hasConfirmedDocx('01'), true, 'бесплатный № 01 входит в комплект');
@@ -432,9 +436,9 @@ test('неизвестный ID и бесплатный ID: ссылка НЕ ф
   }
 });
 
-test('обещание DOCX ограничено подтверждёнными № 01–20, для старых карточек — только PDF', () => {
-  /* Комплект редактируемых DOCX в репозитории подтверждён ровно для № 01–20.
-     Для остальных 34 платных позиций есть лишь PDF образца 27.03.2026,
+test('обещание DOCX ограничено подтверждёнными № 01–30, для старых карточек — только PDF', () => {
+  /* Комплект редактируемых DOCX в репозитории подтверждён ровно для № 01–30.
+     Для остальных 24 платных позиций есть лишь PDF образца 27.03.2026,
      поэтому и лайтбокс, и уведомление Марии не должны обещать DOCX. */
   const cases = [
     { id: '02', title: 'Срочный трудовой договор', package: 'single' as const, docx: true },
@@ -442,6 +446,11 @@ test('обещание DOCX ограничено подтверждёнными 
     { id: '14', title: 'Приказ об увольнении за прогул', package: 'single' as const, docx: true },
     { id: '20', title: 'Приказ о временном переводе', package: 'single' as const, docx: true },
     { id: '17', title: 'Приказ о предоставлении отпуска', package: 'free' as const, docx: true },
+    { id: '21', title: 'Приказ о командировке', package: 'single' as const, docx: true },
+    { id: '26', title: 'Положение об аттестации персонала', package: 'single' as const, docx: true },
+    { id: '27', title: 'Положение о конфиденциальности NDA', package: 'free' as const, docx: true },
+    { id: '29', title: 'Положение о командировках', package: 'free' as const, docx: true },
+    { id: '30', title: 'Положение об охране труда', package: 'single' as const, docx: true },
     { id: '53', title: 'Табель учёта рабочего времени Т-12', package: 'single' as const, docx: false },
   ];
 
@@ -470,7 +479,7 @@ test('обещание DOCX ограничено подтверждёнными 
     const tg = composeTelegram(v.value, 'K-1124-0001', { siteName: 'Кадры-Про' });
     const mail = composeEmail(v.value, 'K-1124-0001', { siteName: 'Кадры-Про' });
 
-    /* № 01–10: Мария получает прямую ссылку Google Drive на DOCX. */
+    /* № 01–30: Мария получает прямую ссылку Google Drive на DOCX. */
     const driveUrl = docxDriveUrl(item.id);
     assert.equal(notice.docxUrl, driveUrl, `ID ${item.id}: ссылка Google Drive в уведомлении`);
     for (const out of [tg, mail.text, mail.html]) {
@@ -603,17 +612,17 @@ test('экранирование: опасные теги и кавычки в �
   assert.match(mail.html, /&quot;ООО&quot;/);
 });
 
-test('ссылки Google Drive на платные DOCX № 02–10 и 14–20 не утекают клиенту: ни в ответ /leads, ни на сайт', async () => {
+test('ссылки Google Drive на платные DOCX № 02–10, 14–30 не утекают клиенту: ни в ответ /leads, ни на сайт', async () => {
   /* Требование: сайт показывает по платным позициям только превью и заявку,
      а прямые ссылки на DOCX приходят исключительно Марии в уведомлении.
      Проверяем с двух сторон: разметка собранной страницы и тело ответа на
      заявку (включая повтор и ветку дубля). */
   /* Открыто на сайте отдаются только БЕСПЛАТНЫЕ позиции с DOCX (№ 01, 11, 12, 13, 17, 19). */
-  const FREE_DOCX_OPEN_IDS = new Set(['01', '11', '12', '13', '17', '19']);
+  const FREE_DOCX_OPEN_IDS = new Set(['01', '11', '12', '13', '17', '19', '27', '29']);
   const paidLinks = Object.entries(DOCX_DRIVE_LINKS)
     .filter(([id]) => !FREE_DOCX_OPEN_IDS.has(id))
     .map(([, url]) => url);
-  assert.equal(paidLinks.length, 14, 'ожидались ссылки для платных № 02–10, 14–16, 18, 20');
+  assert.equal(paidLinks.length, 22, 'ожидались ссылки для платных № 02–10, 14–16, 18, 20–26, 28, 30');
 
   /* Бесплатные позиции, наоборот, обязаны присутствовать в открытой сборке — иначе кнопки нет. */
   for (const id of FREE_DOCX_OPEN_IDS) {
