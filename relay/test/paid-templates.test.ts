@@ -36,6 +36,7 @@ import {
   DOCX_READY_IDS,
   DOCX_PACKAGE,
   DOCX_PACKAGE_COMMIT,
+  DOCX_REFORMED_BATCH_IDS,
   hasConfirmedDocx,
   docxDriveUrl,
   DOCX_DRIVE_LINKS,
@@ -224,7 +225,20 @@ test('манифест DOCX № 01–10: закреплённые SHA-256 сов
   assert.equal(hasConfirmedDocx('43'), true, 'бесплатный № 43 входит в партию 41–52');
   assert.equal(hasConfirmedDocx('49'), true, 'бесплатный № 49 входит в партию 41–52');
   assert.equal(hasConfirmedDocx('52'), true, '№ 52 входит в партию 41–52');
-  assert.equal(hasConfirmedDocx('53'), false);
+  assert.equal(hasConfirmedDocx('52'), true, '№ 52 входит в партию 41–52');
+  /* Партия исправленного комплекта 53–64: DOCX подтверждены ссылкой Drive. */
+  assert.equal(DOCX_REFORMED_BATCH_IDS.length, 12, 'в партии 53–64 ровно 12 позиций');
+  assert.deepEqual(
+    [...DOCX_REFORMED_BATCH_IDS],
+    ['53', '54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64'],
+    'партия 53–64 идёт подряд и без пропусков',
+  );
+  for (const id of DOCX_REFORMED_BATCH_IDS) {
+    assert.equal(hasConfirmedDocx(id), true, `DOCX для № ${id} подтверждён партией 53–64`);
+    assert.ok(DOCX_DRIVE_LINKS[id], `у № ${id} должна быть ссылка Drive`);
+  }
+  assert.equal(hasConfirmedDocx('57'), true, 'бесплатный № 57 входит в партию 53–64');
+  assert.equal(hasConfirmedDocx('63'), true, 'бесплатный № 63 входит в партию 53–64');
   assert.equal(hasConfirmedDocx('t07'), true);
   assert.equal(hasConfirmedDocx('01'), true, 'бесплатный № 01 входит в комплект');
   assert.equal(hasConfirmedDocx(null), false);
@@ -358,6 +372,14 @@ test('все 44 платных ID дают верное название, сер
       assert.ok(tgText.includes(expectedUrl), `Telegram должен содержать ссылку на ${entry.filename}`);
       assert.match(tgText, /только для удобства Марии/i);
       assert.match(tgText, /публичный GitHub/i);
+      /* Партия 53–64: PDF в коммите — доревизионный образец другого документа,
+         поэтому Марию отдельно предупреждаем не отправлять его покупателю. */
+      if (DOCX_REFORMED_BATCH_IDS.includes(entry.id)) {
+        assert.match(tgText, /СТАРЫЙ PDF-образец/i, `ID ${entry.id}: нужна пометка о доревизионном PDF`);
+        assert.match(tgText, /отправлять его покупателю нельзя/i, `ID ${entry.id}: запрет отправлять старый PDF`);
+      } else {
+        assert.doesNotMatch(tgText, /СТАРЫЙ PDF-образец/i, `ID ${entry.id}: лишняя пометка о старом PDF`);
+      }
 
       /* 3. Проверяем письмо на почту (и textContent, и htmlContent). */
       const mailCall = mock.calls.find((c) => c.url.includes('brevo.com'));
@@ -382,6 +404,9 @@ test('все 44 платных ID дают верное название, сер
         assert.ok(content.includes(expectedUrl), `письмо должно содержать ссылку на ${entry.filename}`);
         assert.match(content, /только для удобства Марии/i);
         assert.match(content, /публичный GitHub/i);
+        if (DOCX_REFORMED_BATCH_IDS.includes(entry.id)) {
+          assert.match(content, /СТАРЫЙ PDF-образец/i, `ID ${entry.id}: в письме нужна пометка о доревизионном PDF`);
+        }
       }
       assert.ok(mailHtml.includes(`href="${expectedUrl}"`), 'в HTML-письме ссылка должна быть кликабельной');
     }
@@ -443,10 +468,11 @@ test('неизвестный ID и бесплатный ID: ссылка НЕ ф
   }
 });
 
-test('обещание DOCX ограничено подтверждёнными № 01–40, для старых карточек — только PDF', () => {
-  /* Комплект редактируемых DOCX в репозитории подтверждён ровно для № 01–40.
-     Для остальных 15 платных позиций есть лишь PDF образца 27.03.2026,
-     поэтому и лайтбокс, и уведомление Марии не должны обещать DOCX. */
+test('обещание DOCX ограничено подтверждёнными № 01–64, для неподтверждённых — только PDF', () => {
+  /* Комплект редактируемых DOCX подтверждён для всех 64 позиций: № 01–52 —
+     партии 01–10, 11–20, 21–30, 31–40, 41–52; № 53–64 — исправленный по
+     ревью комплект (ca9649c). Для неподтверждённого ID уведомление обязано
+     остаться прежним: только PDF и отказ обещать DOCX. */
   const cases = [
     { id: '02', title: 'Срочный трудовой договор', package: 'single' as const, docx: true },
     { id: '01', title: 'Трудовой договор бессрочный', package: 'free' as const, docx: true },
@@ -464,7 +490,12 @@ test('обещание DOCX ограничено подтверждёнными 
     { id: '37', title: 'Должностная инструкция кадровика', package: 'free' as const, docx: true },
     { id: '39', title: 'Должностная инструкция охранника', package: 'single' as const, docx: true },
     { id: '40', title: 'Универсальный шаблон должностной инструкции', package: 'free' as const, docx: true },
-    { id: '53', title: 'Табель учёта рабочего времени Т-12', package: 'single' as const, docx: false },
+    { id: '53', title: 'Табель учёта рабочего времени', package: 'single' as const, docx: true },
+    { id: '56', title: 'Контрольный лист СОУТ', package: 'single' as const, docx: true },
+    { id: '60', title: 'Памятка ведения воинского учёта', package: 'single' as const, docx: true },
+    { id: '62', title: 'Как составить трудовой договор', package: 'single' as const, docx: true },
+    { id: '57', title: 'Памятка приёма сотрудника', package: 'free' as const, docx: true },
+    { id: '63', title: 'Сроки хранения кадровых документов', package: 'free' as const, docx: true },
   ];
 
   for (const item of cases) {
@@ -507,13 +538,21 @@ test('обещание DOCX ограничено подтверждёнными 
         assert.match(out, /Google Drive/i);
         /* Приёмка — за Марией: слово «актуальный» не обещаем. */
         assert.doesNotMatch(out, /актуальный/i, `ID ${item.id}: нельзя называть DOCX «актуальным» без приёмки`);
-      } else {
-        assert.doesNotMatch(out, /редактируемый DOCX из комплекта/i, `ID ${item.id}: DOCX нет — обещать нельзя`);
-        assert.match(out, /DOCX для этой позиции не подтверждён/i);
-        assert.match(out, /PDF образца/i);
+      }
+      if (DOCX_REFORMED_BATCH_IDS.includes(item.id) && notice.githubUrl) {
+        /* Платная позиция партии: PDF в коммите — доревизионный образец,
+           Марию предупреждаем отдельно. У бесплатных (package: 'free') ссылки
+           на старый PDF в уведомлении нет вовсе — только DOCX. */
+        assert.match(out, /СТАРЫЙ PDF-образец/i, `ID ${item.id}: нужна пометка о доревизионном PDF`);
       }
     }
   }
+
+  /* Все 44 платных позиции теперь подтверждены — legacy-ветка остаётся только
+     как предохранитель для будущих неподтверждённых ID. Проверяем её прямо. */
+  assert.equal(hasConfirmedDocx('99'), false, 'несуществующий ID не должен считаться подтверждённым');
+  assert.equal(templateHandoffNote({ id: '99', title: 'Неизвестный', package: 'single', price: 500 }),
+    'DOCX для этой позиции не подтверждён: в репозитории есть только PDF образца 27.03.2026. Отправьте покупателю проверенный PDF (ссылка выше) и не обещайте редактируемый DOCX, пока комплект не выложен.');
 
   /* Пакеты: полный набор и email — без обещания DOCX, с ручной сборкой. */
   for (const pkg of ['full', 'email'] as const) {
@@ -635,11 +674,14 @@ test('ссылки Google Drive на платные DOCX № 02–10, 14–31, 3
   const FREE_DOCX_OPEN_IDS = new Set([
     '01', '11', '12', '13', '17', '19', '27', '29', '32', '37', '40',
     '43', '47', '49', '50', '51',
+    /* Партия 53–64: бесплатные № 57, 58, 63, 64 отдаются кнопкой «Скачать DOCX». */
+    '57', '58', '63', '64',
   ]);
   const paidLinks = Object.entries(DOCX_DRIVE_LINKS)
     .filter(([id]) => !FREE_DOCX_OPEN_IDS.has(id))
     .map(([, url]) => url);
-  assert.equal(paidLinks.length, 36, 'ожидались ссылки для платных № 02–10, 14–16, 18, 20–26, 28, 30–31, 33–36, 38–39, 41–42, 44–46, 48, 52');
+  assert.equal(paidLinks.length, 44, 'ожидались ссылки для всех 44 платных позиций (включая 53–56, 59–62)');
+  assert.equal(DOCX_DRIVE_LINKS['53']?.includes('16zVDdhihgcUt7v6fPl7xNQxWau3fvxwF'), true);
 
   /* Бесплатные позиции, наоборот, обязаны присутствовать в открытой сборке — иначе кнопки нет. */
   for (const id of FREE_DOCX_OPEN_IDS) {
