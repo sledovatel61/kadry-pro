@@ -523,7 +523,7 @@ test('обещание DOCX ограничено подтверждёнными 
     const tg = composeTelegram(v.value, 'K-1124-0001', { siteName: 'Кадры-Про' });
     const mail = composeEmail(v.value, 'K-1124-0001', { siteName: 'Кадры-Про' });
 
-    /* № 01–40: Мария получает прямую ссылку Google Drive на DOCX. */
+    /* Все 64 позиции: Мария получает прямую ссылку Google Drive на DOCX. */
     const driveUrl = docxDriveUrl(item.id);
     assert.equal(notice.docxUrl, driveUrl, `ID ${item.id}: ссылка Google Drive в уведомлении`);
     for (const out of [tg, mail.text, mail.html]) {
