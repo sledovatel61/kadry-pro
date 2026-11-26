@@ -12,7 +12,7 @@
  * Правила безопасности:
  *   1. Название, цена и имя файла берутся ТОЛЬКО из этого серверного списка
  *      (цене и произвольным ссылкам из браузера не доверяем).
- *   2. Для № 01–30 в уведомление Марии идёт прямая ссылка Google Drive на
+ *   2. Для № 01–40 в уведомление Марии идёт прямая ссылка Google Drive на
  *      редактируемый DOCX (DOCX_DRIVE_LINKS). Для остальных позиций — ссылка
  *      на PDF в фиксированном коммите публичного GitHub, где проверено наличие
  *      всех 44 PDF: после удаления shablony/*.pdf из main она продолжит работать.
@@ -64,6 +64,14 @@ export const DOCX_LNA_BATCH_IDS: readonly string[] = [
   '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
 ];
 
+/**
+ * Партия ДИ и регламента № 31–40: ссылки Drive переданы владельцем 26.11.2026.
+ * Хешей нет — содержимое DOCX машиной не подтверждено (см. DOCX_DRIVE_VERIFIED_IDS).
+ */
+export const DOCX_JOB_DESC_BATCH_IDS: readonly string[] = [
+  '31', '32', '33', '34', '35', '36', '37', '38', '39', '40',
+];
+
 export const DOCX_PACKAGE: readonly DocxPackageEntry[] = [
   { id: '01', filename: '01_Бессрочный_трудовой_договор.docx', sha256: '72538e6581f8e1c4e538775413bc87523abeeb96c4bed9a5c9862bdc5d6ed74f' },
   { id: '02', filename: '02_Срочный_трудовой_договор.docx', sha256: '16cb14a04885b3b784c30d9903005205beb28b7b0268d5cf089cea40458414ea' },
@@ -78,7 +86,7 @@ export const DOCX_PACKAGE: readonly DocxPackageEntry[] = [
 ];
 
 /**
- * Прямые ссылки Google Drive на редактируемые DOCX для № 01–30.
+ * Прямые ссылки Google Drive на редактируемые DOCX для № 01–40.
  *
  * ВАЖНО: это внутренние ссылки для Марии. Они попадают ТОЛЬКО в уведомление
  * (Telegram + письмо) и никогда — в ответ /leads или в разметку сайта: иначе
@@ -106,6 +114,16 @@ export const DOCX_DRIVE_LINKS: Readonly<Record<string, string>> = {
   '28': 'https://drive.google.com/uc?export=download&id=1zIc0XrELJEpalwvSPLscYHhlhnBiKwrq',
   '29': 'https://drive.google.com/uc?export=download&id=1TNIaTm9YrujQmvxSBAk22EPm0xY-Cevk',
   '30': 'https://drive.google.com/uc?export=download&id=1avuux5e5nF5PIBrIg0GkBEA2MeLDH3ql',
+  '31': 'https://drive.google.com/uc?export=download&id=1lftfJbNMjCoNS-RrOF_5bvx0ZY7Ts_pO',
+  '32': 'https://drive.google.com/uc?export=download&id=1L5lTo2x98SmLFEyZ-K-5ZRAc_nNpNVT3',
+  '33': 'https://drive.google.com/uc?export=download&id=1GE_Lzx5_CGjq2uWQLUxONVxCOOoJhsW_',
+  '34': 'https://drive.google.com/uc?export=download&id=1_GAufQJpQq_VoeVlghCnh3V0XnjIYltp',
+  '35': 'https://drive.google.com/uc?export=download&id=1uSXDE6h86zPIhlgVmRAKftUoa8sfTIZ1',
+  '36': 'https://drive.google.com/uc?export=download&id=1qG2Ge9YJR5mlacXBThYpvAfQts9uhkGY',
+  '37': 'https://drive.google.com/uc?export=download&id=10x3YQnQ1GnnR31t7X3RT9EI-LbCO9tJ-',
+  '38': 'https://drive.google.com/uc?export=download&id=16a8wXiP8WOL8MyIK_3UNPqgmKTx-96TY',
+  '39': 'https://drive.google.com/uc?export=download&id=1f0r1Go5KuNzMTKHM4GAyJNPJPq4-ty57',
+  '40': 'https://drive.google.com/uc?export=download&id=1AHTJ4rYtSkd-YSqm2kdFFqnGBym_eVO9',
   '02': 'https://drive.google.com/uc?export=download&id=1dOCzlh7d70wOR7iFU-ZfnBbP5tbZ8nYN',
   '03': 'https://drive.google.com/uc?export=download&id=1RPMEB4PnXmtr3qby_jlEoCdRQ9vQc2_K',
   '04': 'https://drive.google.com/uc?export=download&id=1CDmvPgQcsEDfr3rs2ht5dYz1uMnQQccc',
@@ -125,6 +143,8 @@ export const DOCX_DRIVE_LINKS: Readonly<Record<string, string>> = {
  *      c70ac32): файлы проверяемы по содержимому.
  *   2. № 11–20 — партия приказов, ссылки Drive переданы владельцем 24.11.2026.
  *   3. № 21–30 — партия ЛНА, ссылки Drive переданы владельцем 26.11.2026.
+ *   4. № 31–40 — партия должностных инструкций и регламента КДП, ссылки Drive
+ *      переданы владельцем 26.11.2026.
  *      Хешей в репозитории нет, содержимое DOCX машиной не подтверждено,
  *      поэтому приёмка документа остаётся за Марией (тот же текст задания,
  *      что для 01–10).
@@ -137,7 +157,7 @@ export const DOCX_DRIVE_VERIFIED_IDS: ReadonlySet<string> = new Set([
   ...Object.keys(DOCX_DRIVE_LINKS),
 ]);
 
-/** Ссылка Google Drive на DOCX по номеру позиции (01…30) или null. */
+/** Ссылка Google Drive на DOCX по номеру позиции (01…40) или null. */
 export function docxDriveUrl(id: string | null | undefined): string | null {
   if (!id) return null;
   const key = String(id).replace(/^t/i, '').padStart(2, '0');
@@ -229,8 +249,8 @@ export const MARIA_GITHUB_LINK_NOTE =
 /**
  * Что именно делать Марии — одинаково в Telegram и в письме.
  *
- * ВАЖНО: обещание DOCX даётся только там, где он подтверждён (№ 01–30). Для
- * остальных 24 платных позиций в репозитории есть лишь старый PDF образца
+ * ВАЖНО: обещание DOCX даётся только там, где он подтверждён (№ 01–40). Для
+ * остальных 15 платных позиций в репозитории есть лишь старый PDF образца
  * 27.03.2026, поэтому задание звучит иначе — отправить проверенный PDF,
  * а DOCX обещать нельзя.
  */

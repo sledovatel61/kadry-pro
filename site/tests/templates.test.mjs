@@ -5,16 +5,16 @@ import { checkTemplateCatalog } from '../scripts/check-templates.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../content/templates.json', import.meta.url), 'utf8'));
 
-test('каталог содержит 64 уникальных документа: 20 бесплатных, 44 платных и 52 JPG-превью (включая № 01–30)', () => {
+test('каталог содержит 64 уникальных документа: 20 бесплатных, 44 платных и 55 JPG-превью (включая № 01–40)', () => {
   const result = checkTemplateCatalog(catalog);
   assert.equal(result.ok, true, result.errors.join('\n'));
   assert.equal(result.free, 20);
   assert.equal(result.paid, 44);
-  assert.equal(result.previews, 52);
+  assert.equal(result.previews, 55);
 });
 
-test('шаблоны № 01–30 привязаны к /shablony/previews/01.jpg–30.jpg, а в публичной папке нет .docx', () => {
-  for (let i = 1; i <= 30; i++) {
+test('шаблоны № 01–40 привязаны к /shablony/previews/01.jpg–40.jpg, а в публичной папке нет .docx', () => {
+  for (let i = 1; i <= 40; i++) {
     const id = String(i).padStart(2, '0');
     const item = catalog.items.find((entry) => entry.id === id);
     assert.ok(item, `в каталоге отсутствует шаблон ${id}`);
