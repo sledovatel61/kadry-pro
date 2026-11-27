@@ -377,6 +377,21 @@ test('заявка «консультация»: поля, согласие, в�
   assert.equal(payload.calc, undefined, 'у консультации нет расчёта');
 });
 
+test('выбранный тариф кадрового аутсорсинга попадает в поле service без потери значения', () => {
+  for (const service of ['subscription_start', 'subscription_business', 'subscription_max']) {
+    const form = makeForm({
+      name: el({ value: 'Мария' }),
+      phone: el({ value: '+7 961 302 21 12' }),
+      consent: el({ checked: true }),
+      service: el({ value: service }),
+    }, { leadKind: 'consult', page: 'contact', consentVersion: CONSENT_VERSION });
+
+    const payload = buildPayload(form, started, idem);
+    assert.equal(payload.service, service);
+    assert.equal(payload.kind, 'consult', 'service code stays in the existing service field; no Worker contract change');
+  }
+});
+
 test('заявка из калькулятора несёт штат, зарплату, тариф и экономию', () => {
   const form = makeForm({
     name: el({ value: 'Мария' }),

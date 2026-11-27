@@ -11,6 +11,7 @@
  *  • отправка заявок в Formspree — этим занимается leads-form.ts (Агент 03);
  *  • самодельный куки-баннер — его заменил честный consent.ts (Агент 02).
  */
+import { preselectContactService } from '../shared/service-selection.ts';
 
 /* ============================================
    ДЕКОРАТИВНЫЙ ФОН — динамическая инъекция
@@ -259,6 +260,10 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   var urlParams = new URLSearchParams(window.location.search);
+  var serviceParam = urlParams.get('service');
+  var serviceSelect = document.querySelector<HTMLSelectElement>('select[name="service"]');
+  if (serviceSelect) preselectContactService(serviceSelect, serviceParam);
+
   var tabParam = urlParams.get('tab');
   if (tabParam) {
     var tabBtn = document.querySelector('.tabs-nav button[data-tab="' + tabParam + '"]');
